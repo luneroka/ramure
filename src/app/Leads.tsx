@@ -191,17 +191,17 @@ export function LeadsTab(p: Props) {
           <p className="muted small">{t(lang, 'noNameNoSearch')}</p>
         ) : (
           <>
-            <div className="row small-actions">
-              <button type="button" className="btn small primary" onClick={launch}>
-                {t(lang, 'launchSearch')}
-              </button>
-            </div>
             <div className="search-links">
               {links.map((l) => (
                 <a key={l.id} className="chip" href={l.url} target="_blank" rel="noopener">
                   {l.label} ↗
                 </a>
               ))}
+            </div>
+            <div className="row small-actions">
+              <button type="button" className="btn small primary" onClick={launch}>
+                {t(lang, 'launchSearch')}
+              </button>
             </div>
           </>
         )}

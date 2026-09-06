@@ -359,7 +359,7 @@ const strings = {
   leadDeleted: { fr: 'Piste supprimée', en: 'Lead deleted' },
   deleteLead: { fr: 'Supprimer la piste', en: 'Delete the lead' },
   externalSearch: { fr: 'Recherches externes', en: 'External searches' },
-  launchSearch: { fr: 'Lancer les recherches', en: 'Search the archives' },
+  launchSearch: { fr: 'Lancer toutes les recherches', en: 'Run all the searches' },
   popupBlocked: {
     fr: 'Le navigateur a bloqué certains onglets : ouvrez les liens un par un.',
     en: 'The browser blocked some tabs: open the links one by one.',

@@ -2331,7 +2331,7 @@ a.lead-title:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
+  margin-bottom: 10px;
 }
 .chip {
   display: inline-block;
