@@ -32,7 +32,8 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
     if (q.length < 1) return [];
     const seen = new Set<string>();
     return known.filter((p) => { const k = placeText(p).toLowerCase(); if (!k.includes(q) || seen.has(k)) return false; seen.add(k); return true; }).slice(0, 5)
-      .map((p): PlaceSuggestion => ({ ...p, source: 'tree' }));
+      // Normalise: drop empty components so "Quimper, Finistère" from the tree matches the service's spelling.
+      .map((p): PlaceSuggestion => ({ text: placeText(p), parts: p.parts.filter((x) => x.length), lat: p.lat, lon: p.lon, source: 'tree' }));
   }, [text, known]);
 
   const type = (s: string) => {
