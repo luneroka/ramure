@@ -269,3 +269,26 @@ label.radio input, label.check input { width: auto; }
 
 .btn.icon.lang { font-family: var(--mono); font-size: 12.5px; letter-spacing: .04em; }
 .btn.icon svg { display: block; }
+
+/* ---------- Guided date and place fields ---------- */
+.field-label { font-size: 12.5px; color: var(--ink-3); }
+.date-field, .place-field { display: grid; gap: 4px; position: relative; }
+.date-head { display: flex; justify-content: space-between; align-items: baseline; }
+.date-guided { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.date-guided > select { width: auto; flex: 0 0 auto; }
+.date-triplet { display: inline-flex; gap: 4px; align-items: center; }
+.date-triplet input { width: 44px; text-align: center; padding-left: 4px; padding-right: 4px; }
+.date-triplet input.year { width: 64px; }
+.date-triplet select { width: auto; max-width: 120px; }
+.date-and { font-size: 13px; color: var(--ink-3); }
+.event-draft.suggested { border-style: dashed; }
+.place-suggestions {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 12; margin: 2px 0 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); max-height: 240px; overflow: auto;
+}
+.place-suggestions li button { display: flex; width: 100%; align-items: center; gap: 8px; text-align: left; padding: 7px 9px; border: 0; background: none; border-radius: 6px; cursor: pointer; font-size: 13.5px; }
+.place-suggestions li button:hover { background: var(--surface-2); }
+.place-text { flex: 1; }
+.place-loading { padding: 6px 9px; }
+.editor .link { font-size: 12px; }
+.editor .link:disabled { color: var(--ink-3); cursor: default; text-decoration: none; }

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { formatDate, type GDate } from '../gedcom/dates';
-import { parseHumanDate } from '../gedcom/humanDate';
-import { placeText, type Event, type EventType, type Individual, type Name, type Sex, type Tree } from '../gedcom/model';
+import { approximateYear, type GDate } from '../gedcom/dates';
+import { placeText, type Event, type EventType, type Individual, type Name, type Place, type Sex, type Tree } from '../gedcom/model';
 import { eventLabel, t, type Lang } from '../i18n';
 import { blankEvent, type PersonPatch } from '../tree/edit';
+import { DateField } from './fields/DateField';
+import { PlaceField } from './fields/PlaceField';
 
 interface Props {
   tree: Tree;
@@ -16,59 +17,75 @@ interface Props {
 }
 
 const EVENT_TYPES: EventType[] = ['birth', 'baptism', 'death', 'burial', 'cremation', 'occupation', 'residence', 'census', 'education', 'religion', 'emigration', 'immigration', 'naturalization', 'retirement', 'will', 'probate', 'graduation', 'confirmation', 'first-communion', 'title', 'description', 'custom'];
+const WITH_DESCRIPTION = new Set<EventType>(['occupation', 'residence', 'education', 'religion', 'title', 'description', 'custom']);
+
+/** Someone born this long ago gets a death row offered by default. */
+const DEATH_AFTER_YEARS = 100;
 
 interface EventDraft {
   key: number;
   type: EventType;
   customType: string;
   value: string;
-  dateText: string;
-  placeText: string;
+  date?: GDate;
+  place?: Place;
   cause: string;
   note: string;
   original?: Event;
+  /** Offered by default; dropped on save if left empty. */
+  suggested?: boolean;
 }
 
 let draftKey = 1;
 
-function toDraft(e: Event, lang: Lang): EventDraft {
-  return {
-    key: draftKey++,
-    type: e.type,
-    customType: e.customType ?? '',
-    value: e.value ?? '',
-    dateText: e.date ? formatDate(e.date, lang) : '',
-    placeText: placeText(e.place),
-    cause: e.cause ?? '',
-    note: e.notes.join('\n\n'),
-    original: e,
-  };
+function toDraft(e: Event): EventDraft {
+  return { key: draftKey++, type: e.type, customType: e.customType ?? '', value: e.value ?? '', date: e.date, place: e.place, cause: e.cause ?? '', note: e.notes.join('\n\n'), original: e };
 }
 
-function interpretDate(text: string, original: Event | undefined, lang: Lang): { date?: GDate; ok: boolean } {
-  const s = text.trim();
-  if (!s) return { ok: true };
-  // Unchanged display text keeps the original structured date (including raw calendar escapes).
-  if (original?.date && formatDate(original.date, lang) === s) return { date: original.date, ok: true };
-  const d = parseHumanDate(s);
-  if (d) return { date: d, ok: true };
-  return { date: { raw: `(${s})`, kind: 'phrase', phrase: s }, ok: false };
+function emptyDraft(type: EventType, suggested = false): EventDraft {
+  return { key: draftKey++, type, customType: '', value: '', cause: '', note: '', suggested };
 }
 
-function fromDraft(d: EventDraft, lang: Lang): Event {
+function isBlank(d: EventDraft): boolean {
+  return !d.date && !d.place && !d.value.trim() && !d.cause.trim() && !d.note.trim() && !(d.type === 'custom' && d.customType.trim());
+}
+
+function fromDraft(d: EventDraft): Event {
   const base = d.original ? { ...d.original } : blankEvent(d.type);
   if (base.type !== d.type) { const fresh = blankEvent(d.type); base.type = fresh.type; base.tag = fresh.tag; }
   base.customType = d.type === 'custom' ? d.customType.trim() || undefined : undefined;
   base.value = d.value.trim() || undefined;
-  base.date = interpretDate(d.dateText, d.original, lang).date;
-  const pt = d.placeText.trim();
-  if (pt) {
-    const parts = pt.split(',').map((s) => s.trim());
-    base.place = d.original?.place && placeText(d.original.place) === pt ? d.original.place : { text: pt, parts };
-  } else base.place = undefined;
+  base.date = d.date;
+  base.place = d.place;
   base.cause = d.cause.trim() || undefined;
   base.notes = d.note.trim() ? d.note.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean) : [];
   return base;
+}
+
+function bornLongAgo(drafts: EventDraft[]): boolean {
+  const birth = drafts.find((d) => d.type === 'birth' || d.type === 'baptism');
+  const y = approximateYear(birth?.date);
+  return y !== undefined && new Date().getFullYear() - y > DEATH_AFTER_YEARS;
+}
+
+/** Initial rows: the person's events, plus an empty birth and, when warranted, an empty death. */
+function initialDrafts(person: Individual): EventDraft[] {
+  const drafts = person.events.map(toDraft);
+  if (!drafts.some((d) => d.type === 'birth')) drafts.unshift(emptyDraft('birth', true));
+  if (!drafts.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(drafts)) {
+    const i = drafts.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
+    drafts.splice(i + 1, 0, emptyDraft('death', true));
+  }
+  return drafts;
+}
+
+export function knownPlaces(tree: Tree): Place[] {
+  const seen = new Set<string>();
+  const out: Place[] = [];
+  const add = (p?: Place) => { if (!p) return; const k = placeText(p).toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push(p); };
+  for (const i of Object.values(tree.individuals)) for (const e of i.events) add(e.place);
+  for (const f of Object.values(tree.families)) for (const e of f.events) add(e.place);
+  return out.sort((a, b) => placeText(a).localeCompare(placeText(b)));
 }
 
 export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, canDelete = true }: Props) {
@@ -79,19 +96,21 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [sex, setSex] = useState<Sex>(person.sex);
   const [isPrivate, setPrivate] = useState(person.restriction === 'privacy');
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
-  const [events, setEvents] = useState<EventDraft[]>(() => person.events.map((e) => toDraft(e, lang)));
+  const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const places = useMemo(() => knownPlaces(tree), [tree]);
 
-  const places = useMemo(() => {
-    const set = new Set<string>();
-    for (const i of Object.values(tree.individuals)) for (const e of i.events) if (e.place) set.add(placeText(e.place));
-    for (const f of Object.values(tree.families)) for (const e of f.events) if (e.place) set.add(placeText(e.place));
-    return [...set].sort();
-  }, [tree]);
-
-  const update = (key: number, patch: Partial<EventDraft>) => setEvents((evs) => evs.map((e) => (e.key === key ? { ...e, ...patch } : e)));
+  const update = (key: number, patch: Partial<EventDraft>) => setEvents((evs) => {
+    const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
+    // A birth more than a century ago earns an empty death row, once.
+    if ('date' in patch && !next.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(next)) {
+      const i = next.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
+      next.splice(i + 1, 0, emptyDraft('death', true));
+    }
+    return next;
+  });
   const remove = (key: number) => setEvents((evs) => evs.filter((e) => e.key !== key));
-  const add = () => setEvents((evs) => [...evs, { key: draftKey++, type: evs.some((e) => e.type === 'birth') ? 'death' : 'birth', customType: '', value: '', dateText: '', placeText: '', cause: '', note: '' }]);
+  const add = () => setEvents((evs) => [...evs, emptyDraft(evs.some((e) => e.type === 'death') ? 'occupation' : evs.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth')]);
 
   const save = () => {
     const names: Name[] = [{ ...first, given: given.trim(), surname: surname.trim() }, ...person.names.slice(1)];
@@ -99,7 +118,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
     onSave({
       names,
       sex,
-      events: events.map((d) => fromDraft(d, lang)),
+      events: events.filter((d) => !isBlank(d) || (d.original && !d.suggested)).map(fromDraft),
       notes: notes.trim() ? notes.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean) : [],
       restriction: isPrivate ? 'privacy' : undefined,
     });
@@ -123,37 +142,24 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
       <h3>{t(lang, 'events')}</h3>
       <div className="event-drafts">
-        {events.map((d) => {
-          const di = interpretDate(d.dateText, d.original, lang);
-          return (
-            <div key={d.key} className="event-draft">
-              <div className="row">
-                <select value={d.type} onChange={(e) => update(d.key, { type: e.target.value as EventType })} aria-label={t(lang, 'eventType')}>
-                  {EVENT_TYPES.map((ty) => <option key={ty} value={ty}>{eventLabel(lang, ty)}</option>)}
-                </select>
-                {d.type === 'custom' && <input value={d.customType} placeholder={t(lang, 'other')} onChange={(e) => update(d.key, { customType: e.target.value })} />}
-                <button type="button" className="icon-btn" onClick={() => remove(d.key)} aria-label={t(lang, 'delete')}>×</button>
-              </div>
-              {(d.type === 'occupation' || d.type === 'residence' || d.type === 'education' || d.type === 'religion' || d.type === 'title' || d.type === 'description' || d.type === 'custom') && (
-                <input value={d.value} placeholder={t(lang, 'description')} onChange={(e) => update(d.key, { value: e.target.value })} />
-              )}
-              <div className="grid2">
-                <label className="stack">{t(lang, 'date')}
-                  <input value={d.dateText} placeholder={t(lang, 'dateHint')} onChange={(e) => update(d.key, { dateText: e.target.value })} />
-                  <span className={`date-preview ${di.ok ? '' : 'warn'}`}>{d.dateText.trim() ? (di.ok && di.date ? di.date.raw : t(lang, 'dateUnreadable')) : ''}</span>
-                </label>
-                <label className="stack">{t(lang, 'place')}
-                  <input list="ramure-places" value={d.placeText} onChange={(e) => update(d.key, { placeText: e.target.value })} />
-                </label>
-              </div>
-              {(d.type === 'death' || d.type === 'burial') && <input value={d.cause} placeholder={t(lang, 'cause')} onChange={(e) => update(d.key, { cause: e.target.value })} />}
-              <textarea rows={1} value={d.note} placeholder={t(lang, 'notes')} onChange={(e) => update(d.key, { note: e.target.value })} />
+        {events.map((d) => (
+          <div key={d.key} className={`event-draft ${d.suggested ? 'suggested' : ''}`}>
+            <div className="row">
+              <select value={d.type} onChange={(e) => update(d.key, { type: e.target.value as EventType })} aria-label={t(lang, 'eventType')}>
+                {EVENT_TYPES.map((ty) => <option key={ty} value={ty}>{eventLabel(lang, ty)}</option>)}
+              </select>
+              {d.type === 'custom' && <input value={d.customType} placeholder={t(lang, 'other')} onChange={(e) => update(d.key, { customType: e.target.value })} />}
+              <button type="button" className="icon-btn" onClick={() => remove(d.key)} aria-label={t(lang, 'delete')}>×</button>
             </div>
-          );
-        })}
+            {WITH_DESCRIPTION.has(d.type) && <input value={d.value} placeholder={t(lang, 'description')} onChange={(e) => update(d.key, { value: e.target.value })} />}
+            <DateField key={`d${d.key}`} lang={lang} value={d.date} onChange={(date) => update(d.key, { date })} />
+            <PlaceField key={`p${d.key}`} lang={lang} value={d.place} known={places} onChange={(place) => update(d.key, { place })} />
+            {(d.type === 'death' || d.type === 'burial') && <input value={d.cause} placeholder={t(lang, 'cause')} onChange={(e) => update(d.key, { cause: e.target.value })} />}
+            <textarea rows={1} value={d.note} placeholder={t(lang, 'notes')} onChange={(e) => update(d.key, { note: e.target.value })} />
+          </div>
+        ))}
       </div>
       <button type="button" className="btn" onClick={add}>{t(lang, 'addEvent')}</button>
-      <datalist id="ramure-places">{places.map((p) => <option key={p} value={p} />)}</datalist>
 
       <h3>{t(lang, 'notes')}</h3>
       <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -180,6 +186,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 // ---------- Family (union) editor ----------
 
 interface FamilyEditorProps {
+  tree: Tree;
   lang: Lang;
   unionType: 'married' | 'unmarried' | 'civil' | 'unknown';
   events: Event[];
@@ -187,29 +194,29 @@ interface FamilyEditorProps {
   onCancel(): void;
 }
 
-export function FamilyEditor({ lang, unionType, events, onSave, onCancel }: FamilyEditorProps) {
+export function FamilyEditor({ tree, lang, unionType, events, onSave, onCancel }: FamilyEditorProps) {
   const [type, setType] = useState(unionType);
   const marr = events.find((e) => e.type === 'marriage'), div = events.find((e) => e.type === 'divorce');
-  const [mDate, setMDate] = useState(marr?.date ? formatDate(marr.date, lang) : '');
-  const [mPlace, setMPlace] = useState(placeText(marr?.place));
-  const [dDate, setDDate] = useState(div?.date ? formatDate(div.date, lang) : '');
-  const [dPlace, setDPlace] = useState(placeText(div?.place));
+  const [mDate, setMDate] = useState<GDate | undefined>(marr?.date);
+  const [mPlace, setMPlace] = useState<Place | undefined>(marr?.place);
+  const [dDate, setDDate] = useState<GDate | undefined>(div?.date);
+  const [dPlace, setDPlace] = useState<Place | undefined>(div?.place);
+  const places = useMemo(() => knownPlaces(tree), [tree]);
 
   const save = () => {
     const rest = events.filter((e) => e.type !== 'marriage' && e.type !== 'divorce');
     const out: Event[] = [];
-    const build = (orig: Event | undefined, ty: EventType, dateText: string, place: string): Event | undefined => {
-      if (!dateText.trim() && !place.trim() && !orig) return undefined;
+    const build = (orig: Event | undefined, ty: EventType, date?: GDate, place?: Place): Event | undefined => {
+      if (!date && !place && !orig) return undefined;
       const e = orig ? { ...orig } : blankEvent(ty);
-      e.date = interpretDate(dateText, orig, lang).date;
-      const pt = place.trim();
-      e.place = pt ? (orig?.place && placeText(orig.place) === pt ? orig.place : { text: pt, parts: pt.split(',').map((s) => s.trim()) }) : undefined;
+      e.date = date;
+      e.place = place;
       return e;
     };
-    const m = (type === 'married' || marr) ? build(marr, 'marriage', mDate, mPlace) : undefined;
+    const m = type !== 'unmarried' ? build(marr, 'marriage', mDate, mPlace) : undefined;
     if (m && (type === 'married' || m.date || m.place)) out.push(m);
     const d = build(div, 'divorce', dDate, dPlace);
-    if (d && (dDate.trim() || dPlace.trim())) out.push(d);
+    if (d && (dDate || dPlace)) out.push(d);
     onSave({ unionType: type, events: [...out, ...rest] });
   };
 
@@ -224,15 +231,13 @@ export function FamilyEditor({ lang, unionType, events, onSave, onCancel }: Fami
         </select>
       </label>
       {type !== 'unmarried' && (
-        <div className="grid2">
-          <label className="stack">{eventLabel(lang, 'marriage')} · {t(lang, 'date')}<input value={mDate} placeholder={t(lang, 'dateHint')} onChange={(e) => setMDate(e.target.value)} /></label>
-          <label className="stack">{t(lang, 'place')}<input list="ramure-places" value={mPlace} onChange={(e) => setMPlace(e.target.value)} /></label>
-        </div>
+        <>
+          <DateField lang={lang} value={mDate} onChange={setMDate} label={`${eventLabel(lang, 'marriage')} · ${t(lang, 'date')}`} />
+          <PlaceField lang={lang} value={mPlace} known={places} onChange={setMPlace} label={`${eventLabel(lang, 'marriage')} · ${t(lang, 'place')}`} />
+        </>
       )}
-      <div className="grid2">
-        <label className="stack">{eventLabel(lang, 'divorce')} · {t(lang, 'date')}<input value={dDate} placeholder={t(lang, 'dateHint')} onChange={(e) => setDDate(e.target.value)} /></label>
-        <label className="stack">{t(lang, 'place')}<input list="ramure-places" value={dPlace} onChange={(e) => setDPlace(e.target.value)} /></label>
-      </div>
+      <DateField lang={lang} value={dDate} onChange={setDDate} label={`${eventLabel(lang, 'divorce')} · ${t(lang, 'date')}`} />
+      <PlaceField lang={lang} value={dPlace} known={places} onChange={setDPlace} label={`${eventLabel(lang, 'divorce')} · ${t(lang, 'place')}`} />
       <div className="row">
         <button type="submit" className="btn primary">{t(lang, 'save')}</button>
         <button type="button" className="btn" onClick={onCancel}>{t(lang, 'cancel')}</button>

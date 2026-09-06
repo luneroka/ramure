@@ -173,7 +173,7 @@ export function PersonPanel(props: Props) {
             <div key={f.id} className="union">
               <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{tg(lang, 'unknownPerson', person.sex === 'M' ? 'F' : person.sex === 'F' ? 'M' : 'U')}</li>}</ul>
               {editingFamily === f.id ? (
-                <FamilyEditor lang={lang} unionType={f.unionType} events={f.events} onCancel={() => setEditingFamily(null)} onSave={(patch) => { props.onSaveFamily(f.id, patch); setEditingFamily(null); }} />
+                <FamilyEditor tree={tree} lang={lang} unionType={f.unionType} events={f.events} onCancel={() => setEditingFamily(null)} onSave={(patch) => { props.onSaveFamily(f.id, patch); setEditingFamily(null); }} />
               ) : (
                 <div className="union-line">
                   {line || <span className="muted">—</span>}
