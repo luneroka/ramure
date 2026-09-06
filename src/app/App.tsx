@@ -13,10 +13,12 @@ import { newTree, type EditResult, type FamilyPatch, type PersonPatch } from '..
 import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
-import { AccountDialog } from './AccountDialog';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
+import { TreeMenu, UserMenu } from './Menus';
+import { parseRoute, useHashRoute } from './router';
+import { Settings, type DefaultView } from './Settings';
 import { PersonPanel } from './PersonPanel';
 import { useAuth } from './useAuth';
 
@@ -123,7 +125,18 @@ export function App() {
 
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
-  const [accountDialog, setAccountDialog] = useState(false);
+  const [route, navigate] = useHashRoute();
+  const [treeList, setTreeList] = useState<TreeSummary[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<'account' | 'profile' | 'preferences' | undefined>();
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [defaultView, setDefaultViewState] = useState<DefaultView>(() =>
+    localStorage.getItem('ramure.defaultView') === 'all' ? 'all' : 'hourglass',
+  );
+  const setDefaultView = (v: DefaultView) => {
+    setDefaultViewState(v);
+    localStorage.setItem('ramure.defaultView', v);
+  };
   const [homeRefresh, setHomeRefresh] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pendingInvite, setPendingInvite] = useState<{ token: string; accountName: string } | null>(null);
@@ -135,7 +148,6 @@ export function App() {
   const [band, setBand] = useState<{ band: DetailBand; zoom: number }>({ band: 'cards', zoom: 1 });
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<{ id: string; version: number; created_at: number }> | null>(null);
@@ -162,6 +174,18 @@ export function App() {
     return r.accounts;
   }, []);
 
+  useEffect(() => {
+    if (!account) return;
+    let alive = true;
+    api
+      .listTrees(account.id)
+      .then((r) => alive && setTreeList(r.trees))
+      .catch(() => alive && setTreeList([]));
+    return () => {
+      alive = false;
+    };
+  }, [account, homeRefresh]);
+
   const selectAccount = (a: Account) => {
     setAccount(a);
     localStorage.setItem(LAST_ACCOUNT_KEY, a.id);
@@ -181,7 +205,7 @@ export function App() {
 
   // ---------- Opening and closing trees ----------
 
-  const closeTree = useCallback(() => {
+  const goHome = useCallback(() => {
     engine.current?.dispose();
     engine.current = null;
     setActiveMediaStore(null);
@@ -192,7 +216,8 @@ export function App() {
     setEditing(false);
     setHomeRefresh((n) => n + 1);
     localStorage.removeItem(LAST_TREE_KEY);
-  }, []);
+    navigate({ name: 'home' });
+  }, [navigate]);
 
   const openCloud = useCallback(
     async (id: string, name: string, role: Role) => {
@@ -220,7 +245,9 @@ export function App() {
         setEditing(false);
         setDraft(null);
         setShowReport(false);
+        setView(defaultView);
         localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ id, name, role }));
+        navigate({ name: 'tree', id }, true);
       } catch (err) {
         eng.dispose();
         engine.current = null;
@@ -229,7 +256,7 @@ export function App() {
         localStorage.removeItem(LAST_TREE_KEY);
       }
     },
-    [lang, toast],
+    [lang, toast, navigate, defaultView],
   );
 
   // Boot: URL parameters (sign-in result, invite).
@@ -278,20 +305,67 @@ export function App() {
         setPendingInvite(null);
       }
       const list = await loadAccounts(prefer).catch(() => [] as Account[]);
-      if (prefer) return; // just joined: show the account's trees
+      if (prefer) {
+        navigate({ name: 'home' }, true);
+        return; // just joined: show the account's trees
+      }
       let last: Source | null = null;
       try {
         last = JSON.parse(localStorage.getItem(LAST_TREE_KEY) ?? 'null') as Source | null;
       } catch {
         /* ignore */
       }
-      if (last && list.length) await openCloud(last.id, last.name, last.role);
+      const r = route;
+      if (r.name === 'tree' && list.length) {
+        const known = r.id === last?.id ? last : undefined;
+        if (known) await openCloud(known.id, known.name, known.role);
+        else {
+          try {
+            const info = await api.getTree(r.id);
+            await openCloud(r.id, info.name, info.role);
+          } catch {
+            navigate({ name: 'home' }, true);
+          }
+        }
+      } else if (r.name === 'home' && last && list.length && !location.hash) {
+        await openCloud(last.id, last.name, last.role);
+      }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.user, loadAccounts, openCloud, lang, toast]);
 
+  // Route changes after boot (back button, typed address): leaving a tree closes it; entering one opens it.
+  const sourceRef = useRef(source);
+  const treeListRef = useRef(treeList);
+  useEffect(() => {
+    sourceRef.current = source;
+    treeListRef.current = treeList;
+  }, [source, treeList]);
+  useEffect(() => {
+    const onHash = () => {
+      const r = parseRoute(location.hash);
+      const cur = sourceRef.current;
+      if (r.name !== 'tree' && cur) {
+        engine.current?.dispose();
+        engine.current = null;
+        setActiveMediaStore(null);
+        setSource(null);
+        dispatch({ type: 'close' });
+        setSelectedId(undefined);
+        setDraft(null);
+        setEditing(false);
+        setHomeRefresh((n) => n + 1);
+      } else if (r.name === 'tree' && (!cur || cur.id !== r.id)) {
+        const tr = treeListRef.current.find((x) => x.id === r.id);
+        if (tr) void openCloud(tr.id, tr.name, tr.role);
+      }
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [openCloud]);
+
   const signOut = async () => {
-    setMenuOpen(false);
-    closeTree();
+    goHome();
     setAccounts(null);
     setAccount(null);
     await auth.logout();
@@ -473,10 +547,9 @@ export function App() {
         e.preventDefault();
         redo();
       } else if (e.key === 'Escape') {
-        setMenuOpen(false);
         setSnapshots(null);
         setAddMenu(null);
-        setAccountDialog(false);
+        setSearchOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -534,23 +607,22 @@ export function App() {
   };
 
   const startNewTree = () => {
-    setMenuOpen(false);
     const name = window.prompt(t(lang, 'treeName'), account?.name ?? '');
     if (name === null) return;
     const r = newTree('', '', 'U');
     void createTreeFrom(name.trim() || t(lang, 'newTreeName').replace(/\.ged$/, ''), serializeGedcom(r.tree), true);
   };
 
-  const renameTree = async () => {
-    setMenuOpen(false);
-    if (!source) return;
-    const name = window.prompt(t(lang, 'treeName'), source.name);
-    if (name === null || !name.trim() || name.trim() === source.name) return;
+  const commitRename = async () => {
+    const name = (renaming ?? '').trim();
+    setRenaming(null);
+    if (!source || !name || name === source.name) return;
     try {
-      await api.renameTree(source.id, name.trim());
-      setSource({ ...source, name: name.trim() });
-      dispatch({ type: 'rename', fileName: name.trim() });
-      localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ ...source, name: name.trim() }));
+      await api.renameTree(source.id, name);
+      setSource({ ...source, name });
+      dispatch({ type: 'rename', fileName: name });
+      localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ ...source, name }));
+      setTreeList((l) => l.map((x) => (x.id === source.id ? { ...x, name } : x)));
       toast(t(lang, 'saved'));
     } catch {
       toast(t(lang, 'syncError'));
@@ -561,7 +633,7 @@ export function App() {
     if (!window.confirm(t(lang, 'deleteTreeConfirm'))) return;
     try {
       await api.deleteTree(tr.id);
-      if (source?.id === tr.id) closeTree();
+      if (source?.id === tr.id) goHome();
       setHomeRefresh((n) => n + 1);
     } catch {
       toast(t(lang, 'syncError'));
@@ -569,7 +641,6 @@ export function App() {
   };
 
   const openSnapshots = async () => {
-    setMenuOpen(false);
     if (!source) return;
     const r = await api.listSnapshots(source.id);
     setSnapshots(r.snapshots);
@@ -633,12 +704,7 @@ export function App() {
       <div className="app gate">
         <Login lang={lang} auth={auth} pendingInvite={pendingInvite} toast={toast} />
         <div className="gate-tools">
-          <button
-            className="btn icon"
-            onClick={cycleTheme}
-            aria-label={themeLabel}
-            title={themeLabel}
-          >
+          <button className="btn icon" onClick={cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />
           </button>
           <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
@@ -658,28 +724,75 @@ export function App() {
     <div className="app" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
       <header className="topbar">
         <div className="brand">
-          <button className="brand-name as-button" onClick={closeTree} title={t(lang, 'library')}>
+          <button className="brand-name as-button" onClick={goHome} title={t(lang, 'library')}>
             {t(lang, 'appName')}
           </button>
-          {tree && (
-            <span className="brand-file">
-              {history.fileName} · {count} {t(lang, 'people')}
-            </span>
-          )}
-          {source && (
-            <button
-              className={`sync-pill ${sync.status}`}
-              onClick={() => void engine.current?.sync()}
-              title={syncLabel}
-              aria-label={syncLabel}
-            >
-              <span className="sync-dot" />
-              <span className="sync-text">{syncLabel}</span>
-            </button>
+          {source && tree && (
+            <>
+              {renaming !== null ? (
+                <form
+                  className="rename-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void commitRename();
+                  }}
+                >
+                  <input
+                    autoFocus
+                    value={renaming}
+                    onChange={(e) => setRenaming(e.target.value)}
+                    onBlur={() => void commitRename()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setRenaming(null);
+                    }}
+                    aria-label={t(lang, 'treeName')}
+                  />
+                </form>
+              ) : (
+                <TreeMenu
+                  lang={lang}
+                  current={source}
+                  trees={treeList}
+                  owner={source.role === 'owner'}
+                  hasImportReport={tree.importNotes.length > 0}
+                  onSwitch={(tr) => void openCloud(tr.id, tr.name, tr.role)}
+                  onNewTree={startNewTree}
+                  onRename={() => setRenaming(source.name)}
+                  onExport={exportGedcom}
+                  onSnapshots={() => void openSnapshots()}
+                  onReport={() => setShowReport(true)}
+                  onDelete={() =>
+                    void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
+                  }
+                />
+              )}
+              {source.role === 'owner' && renaming === null && (
+                <button
+                  className="icon-btn pen"
+                  onClick={() => setRenaming(source.name)}
+                  aria-label={t(lang, 'renameTree')}
+                  title={t(lang, 'renameTree')}
+                >
+                  ✎
+                </button>
+              )}
+              <span className="brand-file">
+                {count} {t(lang, 'people')}
+              </span>
+              <button
+                className={`sync-pill ${sync.status}`}
+                onClick={() => void engine.current?.sync()}
+                title={syncLabel}
+                aria-label={syncLabel}
+              >
+                <span className="sync-dot" />
+                <span className="sync-text">{syncLabel}</span>
+              </button>
+            </>
           )}
         </div>
         {tree && (
-          <div className="search">
+          <div className={`search ${searchOpen ? 'open' : ''}`}>
             <input
               type="search"
               value={query}
@@ -690,8 +803,12 @@ export function App() {
                 if (e.key === 'Enter' && matches[0]) {
                   focusOn(matches[0].id);
                   setQuery('');
+                  setSearchOpen(false);
                 }
-                if (e.key === 'Escape') setQuery('');
+                if (e.key === 'Escape') {
+                  setQuery('');
+                  setSearchOpen(false);
+                }
               }}
             />
             {matches.length > 0 && (
@@ -702,6 +819,7 @@ export function App() {
                       onClick={() => {
                         focusOn(m.id);
                         setQuery('');
+                        setSearchOpen(false);
                       }}
                     >
                       {displayName(m)}
@@ -724,6 +842,16 @@ export function App() {
               e.target.value = '';
             }}
           />
+          {tree && (
+            <button
+              className="btn icon search-toggle"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-label={t(lang, 'searchShort')}
+              title={t(lang, 'searchShort')}
+            >
+              ⌕
+            </button>
+          )}
           {tree && !readOnly && (
             <>
               <button
@@ -746,113 +874,48 @@ export function App() {
               </button>
             </>
           )}
-          <button
-            className="btn icon"
-            onClick={cycleTheme}
-            aria-label={themeLabel}
-            title={themeLabel}
-          >
+          {tree && (
+            <button className="btn icon" onClick={exportGedcom} aria-label={t(lang, 'export')} title={t(lang, 'export')}>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12M7 10l5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+            </button>
+          )}
+          <button className="btn icon" onClick={cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />
           </button>
           <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
             {lang === 'fr' ? 'EN' : 'FR'}
           </button>
-          <div className="menu-wrap">
-            <button className="btn icon" onClick={() => setMenuOpen((v) => !v)} aria-label={t(lang, 'menu')} aria-expanded={menuOpen}>
-              ⋯
-            </button>
-            {menuOpen && (
-              <ul className="menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
-                {tree && (
-                  <li>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        closeTree();
-                      }}
-                    >
-                      {t(lang, 'library')}
-                    </button>
-                  </li>
-                )}
-                {account && (
-                  <li>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setAccountDialog(true);
-                      }}
-                    >
-                      {t(lang, 'accountMembers')}
-                    </button>
-                  </li>
-                )}
-                <li className="sep" />
-                {account && (
-                  <li>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        fileInput.current?.click();
-                      }}
-                    >
-                      {t(lang, 'openFile')}
-                    </button>
-                  </li>
-                )}
-                {tree && (
-                  <li>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        exportGedcom();
-                      }}
-                    >
-                      {t(lang, 'export')}
-                    </button>
-                  </li>
-                )}
-                {account && (
-                  <li>
-                    <button onClick={startNewTree}>{t(lang, 'newTree')}</button>
-                  </li>
-                )}
-                {tree && source?.role === 'owner' && (
-                  <li>
-                    <button onClick={() => void renameTree()}>{t(lang, 'renameTree')}…</button>
-                  </li>
-                )}
-                {tree && (
-                  <li>
-                    <button onClick={() => void openSnapshots()}>{t(lang, 'snapshots')}</button>
-                  </li>
-                )}
-                {tree && tree.importNotes.length > 0 && (
-                  <li>
-                    <button
-                      onClick={() => {
-                        setShowReport(true);
-                        setMenuOpen(false);
-                      }}
-                    >
-                      {t(lang, 'importReport')} ({tree.importNotes.length})
-                    </button>
-                  </li>
-                )}
-                <li className="sep" />
-                <li>
-                  <button onClick={() => void signOut()}>
-                    {t(lang, 'signOut')} ({auth.user.email})
-                  </button>
-                </li>
-              </ul>
-            )}
-          </div>
+          <UserMenu
+            lang={lang}
+            user={auth.user}
+            accountName={account?.name}
+            onAccount={() => {
+              setSettingsSection('account');
+              navigate({ name: 'settings' });
+            }}
+            onSettings={() => {
+              setSettingsSection(undefined);
+              navigate({ name: 'settings' });
+            }}
+            onSignOut={() => void signOut()}
+          />
         </div>
       </header>
 
       <main className="stage">
-        {tree && layout ? (
+        {tree && layout && route.name === 'tree' ? (
           <>
             <TreeCanvas
               key={sourceKey}
@@ -976,10 +1039,41 @@ export function App() {
               </div>
             )}
           </>
+        ) : route.name === 'settings' ? (
+          <Settings
+            lang={lang}
+            user={auth.user}
+            account={account}
+            accounts={accounts ?? []}
+            theme={theme}
+            defaultView={defaultView}
+            section={settingsSection}
+            onSelectAccount={selectAccount}
+            onAccountRenamed={(name) => {
+              if (account) setAccount({ ...account, name });
+              void loadAccounts(account?.id);
+              toast(t(lang, 'saved'));
+            }}
+            onLeftAccount={() => {
+              void loadAccounts();
+              navigate({ name: 'home' });
+            }}
+            onProfileRenamed={() => {
+              void auth.refresh();
+              toast(t(lang, 'saved'));
+            }}
+            onLang={(l) => {
+              setLang(l);
+              saveLang(l);
+            }}
+            onTheme={setTheme}
+            onDefaultView={setDefaultView}
+            onBack={() => navigate({ name: 'home' })}
+            toast={toast}
+          />
         ) : (
           <Home
             lang={lang}
-            auth={auth}
             accounts={accounts}
             account={account}
             onSelectAccount={selectAccount}
@@ -988,7 +1082,7 @@ export function App() {
             onImport={() => fileInput.current?.click()}
             onNewTree={startNewTree}
             onDeleteTree={(tr) => void deleteTree(tr)}
-            onManageAccount={() => setAccountDialog(true)}
+            onTrees={setTreeList}
             refreshKey={homeRefresh}
             busy={busy}
           />
@@ -1021,24 +1115,6 @@ export function App() {
               )}
             </div>
           </div>
-        )}
-        {accountDialog && account && (
-          <AccountDialog
-            lang={lang}
-            account={account}
-            meId={auth.user.id}
-            onClose={() => setAccountDialog(false)}
-            onRenamed={(name) => {
-              setAccount({ ...account, name });
-              void loadAccounts(account.id);
-            }}
-            onLeft={() => {
-              setAccountDialog(false);
-              closeTree();
-              void loadAccounts();
-            }}
-            toast={toast}
-          />
         )}
         {notice && (
           <div className="toast" role="status">

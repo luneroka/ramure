@@ -154,7 +154,6 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [surname, setSurname] = useState(first.surname);
   const [nick, setNick] = useState(first.nick ?? '');
   const [sex, setSex] = useState<Sex>(person.sex);
-  const [isPrivate, setPrivate] = useState(person.restriction === 'privacy');
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
   const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person));
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -199,7 +198,6 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
             .map((s) => s.trim())
             .filter(Boolean)
         : [],
-      restriction: isPrivate ? 'privacy' : undefined,
       ...(portrait !== undefined ? { portrait } : {}),
     });
   };
@@ -286,10 +284,6 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
       <h3>{t(lang, 'notes')}</h3>
       <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-      <label className="check">
-        <input type="checkbox" checked={isPrivate} onChange={(e) => setPrivate(e.target.checked)} />
-        {t(lang, 'privatePerson')}
-      </label>
 
       <div className="row editor-actions">
         <button type="submit" className="btn primary">
