@@ -50,7 +50,9 @@ Local development never emails: `.dev.vars` (git-ignored) sets `DEV_ECHO_LINKS=1
 npm run deploy
 ```
 
-This builds the app and publishes the Worker with the static assets. Repeat after each change, or connect the GitHub repository under Workers & Pages → Create → Workers → Import a repository for automatic deploys on push.
+This builds the app and publishes the Worker with the static assets.
+
+The GitHub repository is connected to the Worker (Workers & Pages → ramure → Settings → Build), so every push to `main` builds and deploys automatically. The build command must be `npm run build` and the deploy command `npx wrangler deploy`, since the Worker serves the built `dist` folder.
 
 ## Costs
 
