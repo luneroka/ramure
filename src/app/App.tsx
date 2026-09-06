@@ -616,7 +616,7 @@ export function App() {
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
-    if (f && auth.user && account) void openFile(f);
+    if (f && auth.user && account && account.role !== 'viewer') void openFile(f);
   };
 
   const exportGedcom = () => {
@@ -1187,7 +1187,12 @@ export function App() {
                           {s.by ? ` · ${t(lang, 'by')} ${s.by}` : ''}
                         </span>
                       </span>
-                      <button className="btn small" onClick={() => void restoreSnapshot(s.id)} disabled={readOnly}>
+                      <button
+                        className="btn small"
+                        onClick={() => void restoreSnapshot(s.id)}
+                        disabled={source?.role !== 'owner'}
+                        title={source?.role !== 'owner' ? t(lang, 'adminsOnly') : undefined}
+                      >
                         {t(lang, 'restore')}
                       </button>
                     </li>

@@ -51,10 +51,12 @@ export interface TreeSummary {
   role: Role;
 }
 
+export type AccountRole = 'owner' | 'member' | 'viewer';
+
 export interface Account {
   id: string;
   name: string;
-  role: 'owner' | 'member';
+  role: AccountRole;
   members: number;
   trees: number;
 }
@@ -63,7 +65,7 @@ export interface AccountMember {
   id: string;
   email: string;
   name: string | null;
-  role: 'owner' | 'member';
+  role: AccountRole;
   added_at: number;
 }
 
@@ -77,14 +79,16 @@ export const api = {
   createAccount: (name: string) => call<{ id: string; name: string; role: 'owner' }>('POST', '/api/accounts', { name }),
   renameAccount: (id: string, name: string) => call<{ ok: true }>('PATCH', `/api/accounts/${id}`, { name }),
   accountMembers: (id: string) => call<{ members: AccountMember[] }>('GET', `/api/accounts/${id}/members`),
-  setAccountRole: (id: string, userId: string, role: 'owner' | 'member') =>
+  setAccountRole: (id: string, userId: string, role: AccountRole) =>
     call<{ ok: true }>('PATCH', `/api/accounts/${id}/members/${userId}`, { role }),
   removeAccountMember: (id: string, userId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/members/${userId}`),
-  createAccountInvite: (id: string) => call<{ link: string; expiresAt: number }>('POST', `/api/accounts/${id}/invites`, {}),
+  createAccountInvite: (id: string, role: 'member' | 'viewer' = 'member') =>
+    call<{ link: string; expiresAt: number; role: AccountRole }>('POST', `/api/accounts/${id}/invites`, { role }),
   listAccountInvites: (id: string) =>
-    call<{ invites: Array<{ id: string; createdAt: number; expiresAt: number }> }>('GET', `/api/accounts/${id}/invites`),
+    call<{ invites: Array<{ id: string; createdAt: number; expiresAt: number; role: AccountRole }> }>('GET', `/api/accounts/${id}/invites`),
   revokeAccountInvite: (id: string, inviteId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/invites/${inviteId}`),
-  inviteInfo: (token: string) => call<{ accountId: string; accountName: string }>('GET', `/api/invites/${encodeURIComponent(token)}`),
+  inviteInfo: (token: string) =>
+    call<{ accountId: string; accountName: string; role: AccountRole }>('GET', `/api/invites/${encodeURIComponent(token)}`),
   acceptInvite: (token: string) =>
     call<{ accountId: string; role: 'owner' | 'member' }>('POST', `/api/invites/${encodeURIComponent(token)}/accept`, {}),
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { t, type Lang, type ThemeChoice } from '../i18n';
-import { api, type Account, type AccountMember, type Me } from '../sync/api';
+import { api, type Account, type AccountMember, type AccountRole, type Me } from '../sync/api';
 import type { AskSpec } from './Modal';
 
 export type DefaultView = 'all' | 'hourglass';
@@ -33,8 +33,9 @@ export function Settings(p: Props) {
   const [name, setName] = useState(account?.name ?? '');
   const [profileName, setProfileName] = useState(p.user.name ?? '');
   const [members, setMembers] = useState<AccountMember[]>([]);
-  const [invites, setInvites] = useState<Array<{ id: string; expiresAt: number }>>([]);
+  const [invites, setInvites] = useState<Array<{ id: string; expiresAt: number; role: AccountRole }>>([]);
   const [link, setLink] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member');
   const [refresh, setRefresh] = useState(0);
   const owner = account?.role === 'owner';
   const ownerCount = members.filter((m) => m.role === 'owner').length;
@@ -54,7 +55,7 @@ export function Settings(p: Props) {
     if (p.section) document.getElementById(`settings-${p.section}`)?.scrollIntoView({ block: 'start' });
   }, [p.section]);
 
-  const roleLabel = (r: 'owner' | 'member') => t(lang, r === 'owner' ? 'roleOwner' : 'roleMember');
+  const roleLabel = (r: AccountRole) => t(lang, r === 'owner' ? 'roleOwner' : r === 'member' ? 'roleMember' : 'roleViewer');
   const copy = async () => {
     if (!link) return;
     try {
@@ -120,7 +121,7 @@ export function Settings(p: Props) {
                       value={m.role}
                       onChange={(e) =>
                         api
-                          .setAccountRole(account.id, m.id, e.target.value as 'owner' | 'member')
+                          .setAccountRole(account.id, m.id, e.target.value as AccountRole)
                           .then(() => {
                             setRefresh((n) => n + 1);
                             p.toast(t(lang, 'roleChanged'));
@@ -130,6 +131,7 @@ export function Settings(p: Props) {
                     >
                       <option value="owner">{t(lang, 'roleOwner')}</option>
                       <option value="member">{t(lang, 'roleMember')}</option>
+                      <option value="viewer">{t(lang, 'roleViewer')}</option>
                     </select>
                   ) : (
                     <span className="tag">{roleLabel(m.role)}</span>
@@ -162,12 +164,21 @@ export function Settings(p: Props) {
             {owner && (
               <>
                 <h3>{t(lang, 'inviteLink')}</h3>
-                <p className="muted small">{t(lang, 'accountInviteHint')}</p>
+                <p className="muted small">
+                  {t(lang, 'accountInviteHint')} {t(lang, 'viewerHint')}
+                </p>
                 <div className="row">
+                  <label className="field">
+                    {t(lang, 'inviteRole')}
+                    <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'member' | 'viewer')}>
+                      <option value="member">{t(lang, 'roleMember')}</option>
+                      <option value="viewer">{t(lang, 'roleViewer')}</option>
+                    </select>
+                  </label>
                   <button
                     className="btn primary"
                     onClick={() =>
-                      api.createAccountInvite(account.id).then((r) => {
+                      api.createAccountInvite(account.id, inviteRole).then((r) => {
                         setLink(r.link);
                         setRefresh((n) => n + 1);
                         p.toast(t(lang, 'linkCreated'));
@@ -190,7 +201,7 @@ export function Settings(p: Props) {
                     {invites.map((i) => (
                       <li key={i.id}>
                         <span className="member-name">
-                          {t(lang, 'activeLink')} · {t(lang, 'until')}{' '}
+                          {t(lang, 'activeLink')} · {roleLabel(i.role)} · {t(lang, 'until')}{' '}
                           {new Date(i.expiresAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}
                         </span>
                         <button

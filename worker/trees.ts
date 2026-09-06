@@ -10,7 +10,8 @@
 import { Hono } from 'hono';
 import { parseGedcom } from '../src/gedcom/parse';
 import { serializeGedcom } from '../src/gedcom/serialize';
-import type { OpEnvelope } from '../src/tree/ops';
+import type { Op, OpEnvelope } from '../src/tree/ops';
+import { displayName } from '../src/gedcom/model';
 import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
 import { HttpError, now, randomId } from './util';
@@ -39,9 +40,9 @@ async function roleOf(env: Env, treeId: string, userId: string): Promise<Role | 
     `SELECT m.role FROM trees t JOIN account_members m ON m.account_id = t.account_id WHERE t.id = ? AND m.user_id = ?`,
   )
     .bind(treeId, userId)
-    .first<{ role: 'owner' | 'member' }>();
+    .first<{ role: 'owner' | 'member' | 'viewer' }>();
   if (!row) return null;
-  return row.role === 'owner' ? 'owner' : 'editor';
+  return row.role === 'owner' ? 'owner' : row.role === 'member' ? 'editor' : 'viewer';
 }
 
 async function requireRole(env: Env, treeId: string, user: User, allowed: Role[]): Promise<Role> {
@@ -150,7 +151,7 @@ trees.get('/:id/ops', async (c) => {
 trees.post('/:id/ops', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner', 'editor']);
+  const role = await requireRole(c.env, id, user, ['owner', 'editor']);
   const body = await c.req.json<{ baseVersion?: number; ops?: OpEnvelope[] }>();
   const baseVersion = Number(body.baseVersion ?? -1);
   const envelopes = Array.isArray(body.ops) ? body.ops : [];
@@ -185,7 +186,24 @@ trees.post('/:id/ops', async (c) => {
   const knownIds = new Set(known.results.map((r) => r.op_id));
   const fresh = envelopes.filter((e) => !knownIds.has(e.id)).map((e) => ({ ...e, actor: user.id, ts: Number(e.ts) || now() }));
 
+  // Restoring a version rewrites the whole tree: administrators only.
+  const flat = (op: Op): Op[] => (op.t === 'batch' ? op.ops.flatMap(flat) : [op]);
+  if (role !== 'owner' && fresh.some((e) => flat(e.op).some((o) => o.t === 'replaceTree')))
+    throw new HttpError(403, 'restoring a version is for administrators');
+
   const tree = parseGedcom(row.doc);
+  // Deleting or merging people is destructive: keep a version of the tree as it was just before, automatically.
+  const destructive = fresh.flatMap((e) => flat(e.op)).filter((o) => o.t === 'deletePerson' || o.t === 'mergePeople');
+  const guardLabel = destructive.length
+    ? destructive
+        .map((o) => {
+          const target = o.t === 'deletePerson' ? tree.individuals[o.id] : o.t === 'mergePeople' ? tree.individuals[o.dropId] : undefined;
+          const who = target ? displayName(target) : '?';
+          return o.t === 'deletePerson' ? `Avant suppression de ${who}` : `Avant fusion de ${who}`;
+        })
+        .slice(0, 2)
+        .join(' · ')
+    : null;
   const result = replayOps(tree, fresh);
   const doc = serializeGedcom(result.tree);
   if (doc.length > MAX_DOC_BYTES) throw new HttpError(413, 'tree too large');
@@ -211,6 +229,13 @@ trees.post('/:id/ops', async (c) => {
       ),
     ),
   ];
+  if (guardLabel) {
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at, label, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(randomId('S'), id, row.version, row.doc, ts, guardLabel, user.id),
+    );
+  }
   if (Math.floor(newVersion / SNAPSHOT_EVERY) > Math.floor(row.version / SNAPSHOT_EVERY)) {
     statements.push(
       c.env.DB.prepare(`INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at) VALUES (?, ?, ?, ?, ?)`).bind(

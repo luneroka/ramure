@@ -93,14 +93,16 @@ export function Home(p: Props) {
         ) : (
           <h1 className="account-name">{account.name}</h1>
         )}
-        <div className="row">
-          <button className="btn" onClick={p.onImport} disabled={p.busy}>
-            {t(lang, 'openFile')}
-          </button>
-          <button className="btn primary" onClick={p.onNewTree} disabled={p.busy}>
-            {t(lang, 'newTree')}
-          </button>
-        </div>
+        {account.role !== 'viewer' && (
+          <div className="row">
+            <button className="btn" onClick={p.onImport} disabled={p.busy}>
+              {t(lang, 'openFile')}
+            </button>
+            <button className="btn primary" onClick={p.onNewTree} disabled={p.busy}>
+              {t(lang, 'newTree')}
+            </button>
+          </div>
+        )}
       </div>
 
       {trees === null ? (

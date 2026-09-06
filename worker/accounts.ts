@@ -8,7 +8,7 @@ import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
 import { HttpError, now, randomId, randomToken, sha256 } from './util';
 
-export type AccountRole = 'owner' | 'member';
+export type AccountRole = 'owner' | 'member' | 'viewer';
 
 const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -76,7 +76,7 @@ accounts.patch('/:id', async (c) => {
 accounts.get('/:id/members', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
-  await requireAccountRole(c.env, id, user, ['owner', 'member']);
+  await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
   const rows = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.name, m.role, m.added_at FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? ORDER BY m.added_at`,
   )
@@ -91,7 +91,7 @@ accounts.patch('/:id/members/:userId', async (c) => {
   await requireAccountRole(c.env, id, user, ['owner']);
   const target = c.req.param('userId');
   const body = await c.req.json<{ role?: AccountRole }>();
-  if (body.role !== 'owner' && body.role !== 'member') throw new HttpError(400, 'bad role');
+  if (body.role !== 'owner' && body.role !== 'member' && body.role !== 'viewer') throw new HttpError(400, 'bad role');
   if (target === user.id && body.role !== 'owner') {
     const owners = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM account_members WHERE account_id = ? AND role = 'owner'`)
       .bind(id)
@@ -106,7 +106,7 @@ accounts.delete('/:id/members/:userId', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   const target = c.req.param('userId');
-  const role = await requireAccountRole(c.env, id, user, ['owner', 'member']);
+  const role = await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
   if (target !== user.id && role !== 'owner') throw new HttpError(403, 'not allowed');
   const targetRole = await accountRole(c.env, id, target);
   if (targetRole === 'owner') {
@@ -123,11 +123,15 @@ accounts.post('/:id/invites', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
+  const body = await c.req.json<{ role?: string }>().catch(() => ({}) as { role?: string });
+  const role: AccountRole = body.role === 'viewer' ? 'viewer' : 'member';
   const token = randomToken();
-  await c.env.DB.prepare(`INSERT INTO account_invites (token_hash, account_id, created_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?)`)
-    .bind(await sha256(token), id, user.id, now(), now() + INVITE_TTL_MS)
+  await c.env.DB.prepare(
+    `INSERT INTO account_invites (token_hash, account_id, created_by, created_at, expires_at, role) VALUES (?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(await sha256(token), id, user.id, now(), now() + INVITE_TTL_MS, role)
     .run();
-  return c.json({ link: `${c.env.APP_ORIGIN}/?invite=${encodeURIComponent(token)}`, expiresAt: now() + INVITE_TTL_MS }, 201);
+  return c.json({ link: `${c.env.APP_ORIGIN}/?invite=${encodeURIComponent(token)}`, expiresAt: now() + INVITE_TTL_MS, role }, 201);
 });
 
 accounts.get('/:id/invites', async (c) => {
@@ -135,14 +139,14 @@ accounts.get('/:id/invites', async (c) => {
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
   const rows = await c.env.DB.prepare(
-    `SELECT token_hash, created_at, expires_at, revoked_at FROM account_invites WHERE account_id = ? ORDER BY created_at DESC`,
+    `SELECT token_hash, created_at, expires_at, revoked_at, role FROM account_invites WHERE account_id = ? ORDER BY created_at DESC`,
   )
     .bind(id)
-    .all<{ token_hash: string; created_at: number; expires_at: number; revoked_at: number | null }>();
+    .all<{ token_hash: string; created_at: number; expires_at: number; revoked_at: number | null; role: AccountRole }>();
   return c.json({
     invites: rows.results
       .filter((r) => !r.revoked_at && r.expires_at > now())
-      .map((r) => ({ id: r.token_hash.slice(0, 12), createdAt: r.created_at, expiresAt: r.expires_at })),
+      .map((r) => ({ id: r.token_hash.slice(0, 12), createdAt: r.created_at, expiresAt: r.expires_at, role: r.role })),
   });
 });
 
@@ -160,25 +164,25 @@ export const invites = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 invites.get('/:token', async (c) => {
   const row = await c.env.DB.prepare(
-    `SELECT i.account_id, i.expires_at, i.revoked_at, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
+    `SELECT i.account_id, i.expires_at, i.revoked_at, i.role, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
   )
     .bind(await sha256(c.req.param('token')))
-    .first<{ account_id: string; expires_at: number; revoked_at: number | null; name: string }>();
+    .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole; name: string }>();
   if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
-  return c.json({ accountId: row.account_id, accountName: row.name });
+  return c.json({ accountId: row.account_id, accountName: row.name, role: row.role });
 });
 
 invites.post('/:token/accept', async (c) => {
   const user = requireUser(c.get('user'));
-  const row = await c.env.DB.prepare(`SELECT account_id, expires_at, revoked_at FROM account_invites WHERE token_hash = ?`)
+  const row = await c.env.DB.prepare(`SELECT account_id, expires_at, revoked_at, role FROM account_invites WHERE token_hash = ?`)
     .bind(await sha256(c.req.param('token')))
-    .first<{ account_id: string; expires_at: number; revoked_at: number | null }>();
+    .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole }>();
   if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
   const existing = await accountRole(c.env, row.account_id, user.id);
   if (!existing) {
-    await c.env.DB.prepare(`INSERT INTO account_members (account_id, user_id, role, added_at) VALUES (?, ?, 'member', ?)`)
-      .bind(row.account_id, user.id, now())
+    await c.env.DB.prepare(`INSERT INTO account_members (account_id, user_id, role, added_at) VALUES (?, ?, ?, ?)`)
+      .bind(row.account_id, user.id, row.role, now())
       .run();
   }
-  return c.json({ accountId: row.account_id, role: existing ?? 'member' });
+  return c.json({ accountId: row.account_id, role: existing ?? row.role });
 });

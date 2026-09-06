@@ -211,6 +211,12 @@ const strings = {
   roleViewer: { fr: 'Lecteur', en: 'Viewer' },
   removeMember: { fr: 'Retirer', en: 'Remove' },
   inviteLink: { fr: 'Lien d’invitation', en: 'Invite link' },
+  inviteRole: { fr: 'Rôle donné par le lien', en: 'Role given by the link' },
+  viewerHint: {
+    fr: 'Un lecteur consulte les arbres sans pouvoir les modifier.',
+    en: 'A viewer can look at the trees but not change them.',
+  },
+  adminsOnly: { fr: 'Réservé aux administrateurs', en: 'Administrators only' },
   inviteHint: {
     fr: 'Toute personne avec ce lien rejoint l’arbre avec le rôle choisi, après connexion. Valable 30 jours, révocable.',
     en: 'Anyone with this link joins the tree with the chosen role, after signing in. Valid 30 days, revocable.',
