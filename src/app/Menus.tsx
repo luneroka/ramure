@@ -50,7 +50,7 @@ interface TreeMenuProps {
   trees: TreeSummary[];
   owner: boolean;
   readOnly?: boolean;
-  hasImportReport: boolean;
+  checkCount: number;
   onSwitch(tree: TreeSummary): void;
   onNewTree(): void;
   onRename(): void;
@@ -120,7 +120,17 @@ export function TreeMenu(p: TreeMenuProps) {
         {item(t(lang, 'export'), p.onExport)}
         {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
         {item(t(lang, 'versionHistory'), p.onSnapshots)}
-        {item(t(lang, 'importReport'), p.onReport)}
+        <button
+          role="menuitem"
+          className="dd-item"
+          onClick={() => {
+            setOpen(false);
+            p.onReport();
+          }}
+        >
+          {t(lang, 'importReport')}
+          {p.checkCount > 0 && <span className="dd-meta">{p.checkCount}</span>}
+        </button>
         {p.owner && item(t(lang, 'deleteTree'), p.onDelete, 'danger')}
       </Dropdown>
     </div>

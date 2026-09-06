@@ -38,6 +38,7 @@ const strings = {
   reportHint: { fr: 'mis à jour en direct', en: 'updated live' },
   reportEmpty: { fr: 'Rien à signaler.', en: 'Nothing to report.' },
   dismiss: { fr: 'Ignorer', en: 'Dismiss' },
+  fix: { fr: 'Corriger', en: 'Fix' },
   dismissHint: { fr: 'Ne plus afficher cette remarque sur cet appareil', en: 'Stop showing this note on this device' },
   importedFrom: { fr: 'Importé depuis', en: 'Imported from' },
   noTree: { fr: 'Aucun arbre chargé.', en: 'No tree loaded.' },

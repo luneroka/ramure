@@ -13,7 +13,7 @@ import { newTree, type EditResult, type FamilyPatch, type PersonPatch } from '..
 import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
-import { auditTree, noteKey } from '../tree/audit';
+import { auditTree, noteKey, type CheckNote } from '../tree/audit';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
@@ -433,8 +433,10 @@ export function App() {
   const setDismissed = (set: Set<string>) => setDismissedFor({ key: dismissKey, set });
   const reportNotes = useMemo(() => {
     if (!tree) return [];
-    const stillRelevant = tree.importNotes.filter((n) => !n.ids?.length || n.ids.some((id) => tree.individuals[id]));
-    return [...stillRelevant, ...auditTree(tree)].filter((n) => !dismissed.has(noteKey(n)));
+    const stillRelevant: CheckNote[] = tree.importNotes.filter((n) => !n.ids?.length || n.ids.some((id) => tree.individuals[id]));
+    const all = [...stillRelevant, ...auditTree(tree)].filter((n) => !dismissed.has(noteKey(n)));
+    // Impossible things first, then the merely unusual.
+    return all.sort((a, b) => (a.level === b.level ? 0 : a.level === 'warning' ? -1 : 1));
   }, [tree, dismissed]);
   const dismissNote = (key: string) => {
     const next = new Set(dismissed);
@@ -841,7 +843,7 @@ export function App() {
                   current={source}
                   trees={treeList}
                   owner={source.role === 'owner'}
-                  hasImportReport={reportNotes.length > 0}
+                  checkCount={reportNotes.length}
                   onSwitch={(tr) => void openCloud(tr.id, tr.name, tr.role)}
                   onNewTree={startNewTree}
                   onRename={() => setRenaming(source.name)}
@@ -1136,9 +1138,22 @@ export function App() {
                               </button>
                             ))}
                         </span>
-                        <button className="btn small subtle" onClick={() => dismissNote(noteKey(n))} title={t(lang, 'dismissHint')}>
-                          {t(lang, 'dismiss')}
-                        </button>
+                        <span className="report-actions">
+                          {n.fixId && tree.individuals[n.fixId] && !readOnly && (
+                            <button
+                              className="btn small"
+                              onClick={() => {
+                                focusOn(n.fixId!);
+                                setEditing(true);
+                              }}
+                            >
+                              {t(lang, 'fix')}
+                            </button>
+                          )}
+                          <button className="btn small subtle" onClick={() => dismissNote(noteKey(n))} title={t(lang, 'dismissHint')}>
+                            {t(lang, 'dismiss')}
+                          </button>
+                        </span>
                       </li>
                     ))}
                   </ul>

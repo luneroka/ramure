@@ -2155,3 +2155,25 @@ label.check input {
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+
+.report-actions {
+  display: inline-flex;
+  gap: 4px;
+  flex: none;
+}
+.report li .report-text::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin: 0 7px 1px 0;
+  background: var(--ink-3);
+}
+.report li.warning .report-text::before {
+  background: var(--warn);
+}
+.report li {
+  list-style: none;
+  margin-left: -18px;
+}
