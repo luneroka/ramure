@@ -34,9 +34,19 @@ npm run typecheck
 npm run build     # static site in dist/
 ```
 
+## Run the API locally
+
+```bash
+npm run db:migrate:local   # once
+npm run dev:api            # Worker on :8787 with emulated D1 and R2
+npm run dev                # app on :5173, /api proxied to the Worker
+```
+
+Sign-in links are shown in the app instead of emailed while `DEV_ECHO_LINKS` is set in `wrangler.toml`.
+
 ## Deploy
 
-The build is a static site. Any static host works; Cloudflare Pages or Netlify with `npm run build` and output `dist` need no configuration. GitHub Pages under a sub-path needs `base` set in `vite.config.ts`.
+See `docs/deploy-cloudflare.md`. One Worker serves the app and the API; D1 holds the trees and op logs, R2 the portraits.
 
 ## Layout
 
@@ -44,7 +54,11 @@ The build is a static site. Any static host works; Cloudflare Pages or Netlify w
 src/gedcom/    tokenizer, dates, model, parse, geneweb repairs, serialize
 src/tree/      hourglass layout (pure, worker-ready)
 src/canvas/    Canvas 2D renderer and gesture wrapper
-src/app/       React shell and person panel
+src/app/       React shell, library, person panel, share dialog
+src/sync/      op log sync: rebase core, engine, API client
+src/store/     storage interfaces: local IndexedDB, cloud media cache
+worker/        Cloudflare Worker: auth, trees, ops, invites, media
+migrations/    D1 schema
 fixtures/      the phase 0 round-trip files, used by the tests
 docs/          design brief and findings
 ```

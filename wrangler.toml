@@ -21,7 +21,7 @@ binding = "MEDIA"
 bucket_name = "ramure-media"
 
 [vars]
-APP_ORIGIN = "http://localhost:5174"
+APP_ORIGIN = "http://localhost:5173"
 # In local development sign-in links are returned by the API instead of emailed. Never set this in production.
 DEV_ECHO_LINKS = "1"
 MAIL_FROM = "Ramure <ramure@example.com>"

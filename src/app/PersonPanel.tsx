@@ -35,6 +35,8 @@ interface Props extends PanelActions {
   editing: boolean;
   /** The person is a draft relative: not yet in the tree. */
   isDraft?: boolean;
+  /** Viewer role: no editing controls. */
+  readOnly?: boolean;
   setEditing(v: boolean): void;
 }
 
@@ -87,7 +89,7 @@ function EventRow({ e, lang, tree, birth }: { e: Event; lang: Lang; tree: Tree; 
 type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
 
 export function PersonPanel(props: Props) {
-  const { tree, person, lang, editing, isDraft, setEditing, onFocus, onSelect, onClose } = props;
+  const { tree, person, lang, editing, isDraft, readOnly, setEditing, onFocus, onSelect, onClose } = props;
   const [picking, setPicking] = useState<Picking>(null);
   const [editingFamily, setEditingFamily] = useState<string | null>(null);
   const photoInput = useRef<HTMLInputElement>(null);
@@ -184,16 +186,18 @@ export function PersonPanel(props: Props) {
       <header className="panel-head">
         <button
           type="button"
-          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''}`}
-          onClick={() => photoInput.current?.click()}
-          disabled={photoBusy}
+          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
+          onClick={() => !readOnly && photoInput.current?.click()}
+          disabled={photoBusy || readOnly}
           aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
           title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         >
           <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
-          <span className="medallion-badge" aria-hidden="true">
-            {person.mediaIds[0] ? '✎' : '+'}
-          </span>
+          {!readOnly && (
+            <span className="medallion-badge" aria-hidden="true">
+              {person.mediaIds[0] ? '✎' : '+'}
+            </span>
+          )}
         </button>
         <input
           ref={photoInput}
@@ -239,9 +243,11 @@ export function PersonPanel(props: Props) {
         <button className="btn primary" onClick={() => onFocus(person.id)}>
           {t(lang, 'focusOn')}
         </button>
-        <button className="btn" onClick={() => setEditing(true)}>
-          {t(lang, 'edit')}
-        </button>
+        {!readOnly && (
+          <button className="btn" onClick={() => setEditing(true)}>
+            {t(lang, 'edit')}
+          </button>
+        )}
       </div>
 
       {picking?.kind === 'merge' && (
@@ -349,9 +355,11 @@ export function PersonPanel(props: Props) {
               ) : (
                 <div className="union-line">
                   {line || <span className="muted">—</span>}
-                  <button className="link small" onClick={() => setEditingFamily(f.id)}>
-                    {t(lang, 'editUnion')}
-                  </button>
+                  {!readOnly && (
+                    <button className="link small" onClick={() => setEditingFamily(f.id)}>
+                      {t(lang, 'editUnion')}
+                    </button>
+                  )}
                 </div>
               )}
               <h4>{t(lang, 'children')}</h4>
@@ -367,26 +375,30 @@ export function PersonPanel(props: Props) {
                           ? tg(lang, 'adopted', tree.individuals[c]!.sex)
                           : undefined
                       }
-                      onRemove={() => props.onUnlinkChild(f.id, c)}
+                      onRemove={readOnly ? undefined : () => props.onUnlinkChild(f.id, c)}
                     />
                   ))}
               </ul>
-              <div className="row small-actions">
-                <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>
-                  {t(lang, 'addChild')}
-                </button>
-                <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>
-                  {t(lang, 'linkChild')}
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="row small-actions">
+                  <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>
+                    {t(lang, 'addChild')}
+                  </button>
+                  <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>
+                    {t(lang, 'linkChild')}
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
-        <div className="row small-actions">
-          <button className="btn small" onClick={() => setPicking({ kind: 'partner' })}>
-            {t(lang, 'linkPartner')}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="row small-actions">
+            <button className="btn small" onClick={() => setPicking({ kind: 'partner' })}>
+              {t(lang, 'linkPartner')}
+            </button>
+          </div>
+        )}
       </section>
       {otherEvents.length > 0 && (
         <section>
@@ -408,11 +420,13 @@ export function PersonPanel(props: Props) {
           ))}
         </section>
       )}
-      <section className="panel-footer">
-        <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>
-          {t(lang, 'merge')}
-        </button>
-      </section>
+      {!readOnly && (
+        <section className="panel-footer">
+          <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>
+            {t(lang, 'merge')}
+          </button>
+        </section>
+      )}
     </aside>
   );
 }
