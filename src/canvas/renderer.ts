@@ -5,7 +5,7 @@
  * full cards, names only, dots.
  */
 
-import { approximateYear, formatDate } from '../gedcom/dates';
+import { approximateYear, formatDate, type GDate } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
 import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
 import { formatAge, t, tg, type Lang } from '../i18n';
@@ -70,6 +70,20 @@ export function readTheme(el: HTMLElement): Theme {
   };
 }
 
+/** "en 1952", "vers 1860", "avant 1900", "1857–1859" for a birth shown on a card. */
+function birthYearText(d: GDate, lang: Lang): string {
+  const y = approximateYear(d), y2 = approximateYear(d.date2 ? { ...d, date: d.date2 } : undefined);
+  if (y === undefined) return formatDate(d, lang);
+  const fr = lang === 'fr';
+  switch (d.kind) {
+    case 'about': case 'estimated': case 'calculated': return (fr ? 'vers ' : 'c. ') + y;
+    case 'before': return (fr ? 'avant ' : 'bef. ') + y;
+    case 'after': return (fr ? 'après ' : 'aft. ') + y;
+    case 'between': case 'from-to': return y2 !== undefined && y2 !== y ? `${fr ? 'en ' : ''}${y}–${y2}` : (fr ? 'en ' : '') + y;
+    default: return (fr ? 'en ' : '') + y;
+  }
+}
+
 function lifespan(ind: Individual, lang: Lang): string {
   const b = findEvent(ind.events, 'birth') ?? findEvent(ind.events, 'baptism');
   const d = findEvent(ind.events, 'death') ?? findEvent(ind.events, 'burial');
@@ -80,9 +94,9 @@ function lifespan(ind: Individual, lang: Lang): string {
     const age = computeAge(b?.date, d.date);
     return `${bs || '?'} – ${ds || '?'}${age ? ` (${formatAge(lang, age, 'card')})` : ''}`;
   }
-  if (bs) {
-    const age = isLiving(ind) ? computeAge(b?.date, 'today') : undefined;
-    return tg(lang, 'born', ind.sex) + ' ' + bs + (age ? ` (${formatAge(lang, age, 'card')})` : '');
+  if (b?.date) {
+    const age = isLiving(ind) ? computeAge(b.date, 'today') : undefined;
+    return tg(lang, 'born', ind.sex) + ' ' + birthYearText(b.date, lang) + (age ? ` (${formatAge(lang, age, 'card')})` : '');
   }
   return '';
 }
