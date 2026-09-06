@@ -141,7 +141,7 @@ const strings = {
     fr: 'Stockée sur cet appareil, réduite à 640 px. Un cadrage portrait rend le mieux dans le médaillon.',
     en: 'Kept on this device, downsized to 640 px. A portrait crop looks best in the medallion.',
   },
-  addEvent: { fr: '+ Événement', en: '+ Event' },
+  addEvent: { fr: 'Événement', en: 'Event' },
   privatePerson: { fr: 'Personne privée (masquée dans les partages)', en: 'Private person (hidden when shared)' },
   editUnion: { fr: 'Modifier l’union', en: 'Edit union' },
   unionType: { fr: 'Type d’union', en: 'Union type' },

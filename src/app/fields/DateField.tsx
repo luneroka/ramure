@@ -147,10 +147,10 @@ export function DateField({ value, onChange, lang, label }: Props) {
           emit(kind, which === 'a' ? n : a, which === 'b' ? n : b);
         }}
       >
-        <option value="">{lang === 'fr' ? 'mois' : 'month'}</option>
+        <option value="">{lang === 'fr' ? 'Mois' : 'Month'}</option>
         {months.map((m, i) => (
           <option key={m} value={String(i + 1)}>
-            {m}
+            {m.charAt(0).toUpperCase() + m.slice(1)}
           </option>
         ))}
       </select>
