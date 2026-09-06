@@ -2701,3 +2701,13 @@ textarea:focus {
     border-radius: 0;
   }
 }
+
+/* Children of a union sit indented under their parents' line, so several unions read as separate branches. */
+.union-children {
+  margin: 6px 0 4px 18px;
+  padding-left: 14px;
+  border-left: 2px solid var(--line-2);
+}
+.union-children .sub-band {
+  margin-top: 0;
+}

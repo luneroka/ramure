@@ -407,34 +407,36 @@ export function PersonPanel(props: Props) {
                   )}
                 </div>
               )}
-              <h4 className="sub-band">{t(lang, 'children')}</h4>
-              <ul className="people">
-                {f.childIds
-                  .filter((c) => tree.individuals[c])
-                  .map((c) => (
-                    <Person
-                      key={c}
-                      id={c}
-                      tag={
-                        tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted'
-                          ? tg(lang, 'adopted', tree.individuals[c]!.sex)
-                          : undefined
-                      }
-                      onRemove={readOnly ? undefined : () => props.onUnlinkChild(f.id, c)}
-                    />
-                  ))}
-                {f.childIds.filter((c) => tree.individuals[c]).length === 0 && <li className="muted small">—</li>}
-              </ul>
-              {!readOnly && (
-                <div className="row small-actions">
-                  <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>
-                    {t(lang, 'addChild')}
-                  </button>
-                  <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>
-                    {t(lang, 'linkChild')}
-                  </button>
-                </div>
-              )}
+              <div className="union-children">
+                <h4 className="sub-band">{t(lang, 'children')}</h4>
+                <ul className="people">
+                  {f.childIds
+                    .filter((c) => tree.individuals[c])
+                    .map((c) => (
+                      <Person
+                        key={c}
+                        id={c}
+                        tag={
+                          tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted'
+                            ? tg(lang, 'adopted', tree.individuals[c]!.sex)
+                            : undefined
+                        }
+                        onRemove={readOnly ? undefined : () => props.onUnlinkChild(f.id, c)}
+                      />
+                    ))}
+                  {f.childIds.filter((c) => tree.individuals[c]).length === 0 && <li className="muted small">—</li>}
+                </ul>
+                {!readOnly && (
+                  <div className="row small-actions">
+                    <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>
+                      {t(lang, 'addChild')}
+                    </button>
+                    <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>
+                      {t(lang, 'linkChild')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
