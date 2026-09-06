@@ -32,12 +32,14 @@ export interface TreeCanvasProps {
   onHandle?(kind: HandleKind, personId: string, at: { x: number; y: number }): void;
   /** Show add-relative handles on the selected card. */
   editable?: boolean;
+  /** Card drawn as a dashed preview: a relative being added, not yet saved. */
+  draftId?: string;
 }
 
 const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
-  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable } = props;
+  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable, draftId } = props;
   const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId) : []), [editable, layout, tree, selectedId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
@@ -59,11 +61,11 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!ctx) return;
       if (!theme.current) theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
-        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H, handles,
+        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H, handles, draftId,
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
     });
-  }, [layout, tree, selectedId, lang, onBandChange, handles]);
+  }, [layout, tree, selectedId, lang, onBandChange, handles, draftId]);
   // Effects that must not re-run when draw changes read it through this ref.
   const drawRef = useRef(draw);
   drawRef.current = draw;

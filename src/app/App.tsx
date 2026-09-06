@@ -5,7 +5,7 @@ import { kvGet, kvSet, listSnapshots, loadSnapshot, saveSnapshot, TREE_KEY, type
 import { parseGedcom, serializeGedcom } from '../gedcom';
 import { displayName, type Tree } from '../gedcom/model';
 import { applyTheme, detectLang, loadTheme, saveLang, t, tg, type Lang, type ThemeChoice } from '../i18n';
-import { addChild, addParent, addPartner, addSibling, deletePerson, linkChild, linkPartner, mergePeople, newTree, unlinkChild, updateFamily, updatePerson, type EditResult, type FamilyPatch } from '../tree/edit';
+import { addChild, addParent, addPartner, addSibling, deletePerson, linkChild, linkPartner, mergePeople, newTree, unlinkChild, updateFamily, updatePerson, type EditResult, type FamilyPatch, type PersonPatch } from '../tree/edit';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
 import sampleGedcom from '../../fixtures/geneanet/input-fixture.ged?raw';
@@ -14,6 +14,19 @@ import { PersonPanel } from './PersonPanel';
 
 type ViewMode = 'all' | 'hourglass' | 'ancestors' | 'descendants';
 type AddKind = 'father' | 'mother' | 'partner' | 'child' | 'sibling';
+
+/** A relative being added: previewed on the canvas, committed only on save. */
+interface Draft { kind: AddKind; relativeId: string; familyId?: string; preview: EditResult }
+
+function buildRelative(tree: Tree, kind: AddKind, id: string, familyId?: string): EditResult {
+  switch (kind) {
+    case 'father': return addParent(tree, id, 'father');
+    case 'mother': return addParent(tree, id, 'mother');
+    case 'partner': return addPartner(tree, id);
+    case 'child': return addChild(tree, id, {}, familyId);
+    case 'sibling': return addSibling(tree, id);
+  }
+}
 
 /** Pick a sensible first focus: the person with the most relatives on both sides. */
 function defaultFocus(tree: Tree): string | undefined {
@@ -54,6 +67,7 @@ export function App() {
   const [showReport, setShowReport] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<Omit<Snapshot, 'gedcom'>> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -111,13 +125,23 @@ export function App() {
   }, [doc, tree, history.past.length]);
 
   // ---------- Layout ----------
+  // While a relative is being drafted, the canvas shows the preview tree.
+  const displayTree = draft ? draft.preview.tree : tree;
   const layoutOpts = useMemo(() => ({ ...DEFAULT_LAYOUT, maxUp: view === 'descendants' ? 0 : DEFAULT_LAYOUT.maxUp, maxDown: view === 'ancestors' ? 0 : DEFAULT_LAYOUT.maxDown }), [view]);
   const effectiveFocus = tree && focusId && tree.individuals[focusId] ? focusId : tree ? defaultFocus(tree) : undefined;
   const layout = useMemo(() => {
-    if (!tree) return null;
-    if (view === 'all') return Object.keys(tree.individuals).length ? layoutEverything(tree) : null;
-    return effectiveFocus ? layoutHourglass(tree, effectiveFocus, layoutOpts) : null;
-  }, [tree, effectiveFocus, layoutOpts, view]);
+    if (!displayTree) return null;
+    if (view === 'all') return Object.keys(displayTree.individuals).length ? layoutEverything(displayTree) : null;
+    return effectiveFocus ? layoutHourglass(displayTree, effectiveFocus, layoutOpts) : null;
+  }, [displayTree, effectiveFocus, layoutOpts, view]);
+
+  // A drafted card must be visible: fall back to the whole tree if the current view hides it.
+  useEffect(() => {
+    if (!draft || !layout) return;
+    const id = draft.preview.focusId!;
+    if (!layout.nodes.some((n) => n.id === id)) setView('all');
+    else requestAnimationFrame(() => canvas.current?.centerOn(id, true));
+  }, [draft, layout]);
   const hiddenCount = tree && layout ? Object.keys(tree.individuals).length - new Set(layout.nodes.map((n) => n.id)).size : 0;
 
   // Opening view when a tree is loaded; glide to the focus when it changes.
@@ -159,16 +183,36 @@ export function App() {
     setAddMenu((m) => (m && m.id === id ? null : { id, x: at.x, y: at.y }));
   }, []);
 
-  const addRelative = (kind: AddKind, id: string) => {
+  const startDraft = (kind: AddKind, id: string, familyId?: string) => {
     if (!tree) return;
     setAddMenu(null);
-    switch (kind) {
-      case 'father': apply(() => addParent(tree, id, 'father'), { edit: true }); break;
-      case 'mother': apply(() => addParent(tree, id, 'mother'), { edit: true }); break;
-      case 'partner': apply(() => addPartner(tree, id), { edit: true }); break;
-      case 'child': apply(() => addChild(tree, id), { edit: true }); break;
-      case 'sibling': apply(() => addSibling(tree, id), { edit: true }); break;
+    try {
+      const preview = buildRelative(tree, kind, id, familyId);
+      setDraft({ kind, relativeId: id, familyId, preview });
+      setSelectedId(preview.focusId);
+      setEditing(true);
+    } catch (err) {
+      toast(err instanceof Error ? (err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message) : String(err));
     }
+  };
+
+  const cancelDraft = useCallback(() => {
+    setDraft((d) => {
+      if (d) setSelectedId(d.relativeId);
+      return null;
+    });
+    setEditing(false);
+  }, []);
+
+  const saveDraft = (patch: PersonPatch) => {
+    if (!tree || !draft) return;
+    const r = buildRelative(tree, draft.kind, draft.relativeId, draft.familyId);
+    const done = updatePerson(r.tree, r.focusId!, patch);
+    dispatch({ type: 'commit', tree: done.tree });
+    setDraft(null);
+    setSelectedId(r.focusId);
+    setEditing(false);
+    toast(t(lang, 'saved'));
   };
 
   const addOptions = (id: string): Array<{ kind: AddKind; label: string }> => {
@@ -184,8 +228,8 @@ export function App() {
     return out;
   };
 
-  const undo = useCallback(() => { if (history.past.length) { dispatch({ type: 'undo' }); setEditing(false); } }, [history.past.length]);
-  const redo = useCallback(() => { if (history.future.length) { dispatch({ type: 'redo' }); setEditing(false); } }, [history.future.length]);
+  const undo = useCallback(() => { if (history.past.length) { dispatch({ type: 'undo' }); setEditing(false); setDraft(null); } }, [history.past.length]);
+  const redo = useCallback(() => { if (history.future.length) { dispatch({ type: 'redo' }); setEditing(false); setDraft(null); } }, [history.future.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -202,8 +246,8 @@ export function App() {
 
   // Keep selection valid after undo / delete.
   useEffect(() => {
-    if (tree && selectedId && !tree.individuals[selectedId]) { setSelectedId(undefined); setEditing(false); }
-  }, [tree, selectedId]);
+    if (displayTree && selectedId && !displayTree.individuals[selectedId]) { setSelectedId(undefined); setEditing(false); }
+  }, [displayTree, selectedId]);
 
   // ---------- Files ----------
   const openFile = async (file: File) => {
@@ -263,14 +307,14 @@ export function App() {
     return Object.values(tree.individuals).filter((i) => displayName(i).toLowerCase().includes(q)).slice(0, 8);
   }, [tree, query]);
 
-  const focusOn = (id: string) => { setFocusId(id); setSelectedId(id); setEditing(false); setAddMenu(null); if (view === 'all') setView('hourglass'); };
+  const focusOn = (id: string) => { setDraft(null); setFocusId(id); setSelectedId(id); setEditing(false); setAddMenu(null); if (view === 'all') setView('hourglass'); };
   const switchLang = () => { const next: Lang = lang === 'fr' ? 'en' : 'fr'; setLang(next); saveLang(next); };
   const cycleTheme = () => setTheme((c) => (c === 'auto' ? 'light' : c === 'light' ? 'dark' : 'auto'));
   const onBandChange = useCallback((b: DetailBand, zoom: number) => {
     setBand((prev) => (prev.band === b && Math.abs(prev.zoom - zoom) < 0.005 ? prev : { band: b, zoom }));
   }, []);
 
-  const selected = tree && selectedId ? tree.individuals[selectedId] : undefined;
+  const selected = displayTree && selectedId ? displayTree.individuals[selectedId] : undefined;
   const count = tree ? Object.keys(tree.individuals).length : 0;
 
   return (
@@ -332,14 +376,15 @@ export function App() {
           <>
             <TreeCanvas
               ref={canvas}
-              tree={tree}
+              tree={displayTree!}
               layout={layout}
               selectedId={selectedId}
               lang={lang}
-              editable={!editing}
-              onSelect={(id) => { setSelectedId(id); setEditing(false); setAddMenu(null); }}
+              editable={!editing && !draft}
+              onSelect={(id) => { setDraft(null); setSelectedId(id); setEditing(false); setAddMenu(null); }}
               onFocus={focusOn}
               onHandle={onHandle}
+              draftId={draft?.preview.focusId}
               onBandChange={onBandChange}
             />
             <div className="canvas-tools">
@@ -364,7 +409,7 @@ export function App() {
               <>
                 <div className="add-backdrop" onPointerDown={() => setAddMenu(null)} />
                 <ul className="add-menu" role="menu" aria-label={t(lang, 'addRelative')} style={{ left: Math.min(addMenu.x + 8, window.innerWidth - 220), top: addMenu.y }}>
-                  {addOptions(addMenu.id).map((o) => <li key={o.kind}><button onClick={() => addRelative(o.kind, addMenu.id)}>{o.label}</button></li>)}
+                  {addOptions(addMenu.id).map((o) => <li key={o.kind}><button onClick={() => startDraft(o.kind, addMenu.id)}>{o.label}</button></li>)}
                 </ul>
               </>
             )}
@@ -426,20 +471,21 @@ export function App() {
         {notice && <div className="toast" role="status">{notice}</div>}
       </main>
 
-      {tree && selected && (
+      {tree && displayTree && selected && (
         <PersonPanel
-          tree={tree}
+          tree={displayTree}
           person={selected}
           lang={lang}
-          editing={editing}
-          setEditing={setEditing}
+          editing={editing || !!draft}
+          isDraft={!!draft}
+          setEditing={(v) => { if (!v && draft) cancelDraft(); else setEditing(v); }}
           onFocus={focusOn}
-          onSelect={(id) => { setSelectedId(id); setEditing(false); }}
-          onClose={() => { setSelectedId(undefined); setEditing(false); }}
-          onSavePerson={(id, patch) => { apply(() => updatePerson(tree, id, patch)); toast(t(lang, 'saved')); }}
+          onSelect={(id) => { setDraft(null); setSelectedId(id); setEditing(false); }}
+          onClose={() => { if (draft) cancelDraft(); else { setSelectedId(undefined); setEditing(false); } }}
+          onSavePerson={(id, patch) => { if (draft) saveDraft(patch); else { apply(() => updatePerson(tree, id, patch)); toast(t(lang, 'saved')); } }}
           onDeletePerson={(id) => apply(() => deletePerson(tree, id), { select: false })}
           onSaveFamily={(id, patch: FamilyPatch) => { apply(() => updateFamily(tree, id, patch)); toast(t(lang, 'saved')); }}
-          onAddChild={(pid, fid) => apply(() => addChild(tree, pid, {}, fid), { edit: true })}
+          onAddChild={(pid, fid) => startDraft('child', pid, fid)}
           onLinkPartner={(pid, partner) => apply(() => linkPartner(tree, pid, partner))}
           onLinkChild={(fid, cid) => apply(() => linkChild(tree, fid, cid))}
           onUnlinkChild={(fid, cid) => apply(() => unlinkChild(tree, fid, cid))}

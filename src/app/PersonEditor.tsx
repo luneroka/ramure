@@ -12,6 +12,7 @@ interface Props {
   onSave(patch: PersonPatch): void;
   onCancel(): void;
   onDelete(): void;
+  canDelete?: boolean;
 }
 
 const EVENT_TYPES: EventType[] = ['birth', 'baptism', 'death', 'burial', 'cremation', 'occupation', 'residence', 'census', 'education', 'religion', 'emigration', 'immigration', 'naturalization', 'retirement', 'will', 'probate', 'graduation', 'confirmation', 'first-communion', 'title', 'description', 'custom'];
@@ -70,7 +71,7 @@ function fromDraft(d: EventDraft, lang: Lang): Event {
   return base;
 }
 
-export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete }: Props) {
+export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, canDelete = true }: Props) {
   const first = person.names[0] ?? { given: '', surname: '' };
   const [given, setGiven] = useState(first.given);
   const [surname, setSurname] = useState(first.surname);
@@ -162,7 +163,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete }:
         <button type="submit" className="btn primary">{t(lang, 'save')}</button>
         <button type="button" className="btn" onClick={onCancel}>{t(lang, 'cancel')}</button>
         <span className="spacer" />
-        {confirmDelete ? (
+        {!canDelete ? null : confirmDelete ? (
           <span className="confirm">
             <span className="small">{t(lang, 'confirmDelete')}</span>
             <button type="button" className="btn danger" onClick={onDelete}>{t(lang, 'delete')}</button>

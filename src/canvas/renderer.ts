@@ -8,7 +8,7 @@
 import { approximateYear, formatDate } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
 import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
-import { tg, type Lang } from '../i18n';
+import { t, tg, type Lang } from '../i18n';
 
 export interface Camera { x: number; y: number; k: number }
 
@@ -51,6 +51,7 @@ export interface RenderState {
   camera: Camera;
   selectedId?: string;
   hoverId?: string;
+  draftId?: string;
   lang: Lang;
   theme: Theme;
   /** Only draw nodes intersecting the viewport (plus margin). */
@@ -169,6 +170,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     if (!ind) continue;
     const isFocus = n.id === layout.focusId;
     const isSel = n.id === s.selectedId;
+    const isDraft = n.id === s.draftId;
     const isHover = n.id === s.hoverId;
     const sexColor = ind.sex === 'M' ? T.male : ind.sex === 'F' ? T.female : T.unknown;
     const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
@@ -188,7 +190,9 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.fill();
     ctx.lineWidth = (isFocus || isSel ? 2 : 1) / Math.max(k, 0.5);
     ctx.strokeStyle = isFocus ? T.focus : isSel ? T.accent : isHover ? T.line2 : T.line;
+    if (isDraft) ctx.setLineDash([6, 4]);
     ctx.stroke();
+    ctx.setLineDash([]);
     // Sex stripe on the left edge.
     ctx.save();
     roundRect(ctx, n.x, n.y, n.w, n.h, r);
@@ -197,9 +201,10 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.fillRect(n.x, n.y, 5, n.h);
     ctx.restore();
 
-    ctx.fillStyle = T.ink;
+    ctx.fillStyle = isDraft ? T.ink3 : T.ink;
     ctx.textBaseline = 'middle';
-    const name = displayName(ind);
+    const rawName = displayName(ind);
+    const name = rawName === '?' ? t(lang, 'newPersonName') : rawName;
     if (band === 'names') {
       ctx.font = `600 17px ${T.bodyFont}`;
       ctx.textAlign = 'center';

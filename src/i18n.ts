@@ -108,6 +108,7 @@ const strings = {
   hasFather: { fr: 'Père déjà renseigné', en: 'Father already set' },
   hasMother: { fr: 'Mère déjà renseignée', en: 'Mother already set' },
   newPersonName: { fr: 'Nouvelle personne', en: 'New person' },
+  draftHint: { fr: 'Cette personne n’est ajoutée à l’arbre qu’à l’enregistrement. Annuler ne laisse aucune trace.', en: 'This person joins the tree only when you save. Cancel leaves no trace.' },
   startHint: { fr: 'Commencez par vous, puis ajoutez vos parents depuis la fiche.', en: 'Start with yourself, then add your parents from the card.' },
   saved: { fr: 'Enregistré', en: 'Saved' },
   newTreeName: { fr: 'nouvel-arbre.ged', en: 'new-tree.ged' },

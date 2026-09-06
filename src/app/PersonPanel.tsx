@@ -27,6 +27,8 @@ interface Props extends PanelActions {
   lang: Lang;
   /** Open directly in edit mode (after "add relative"). */
   editing: boolean;
+  /** The person is a draft relative: not yet in the tree. */
+  isDraft?: boolean;
   setEditing(v: boolean): void;
 }
 
@@ -57,7 +59,7 @@ function EventRow({ e, lang, tree }: { e: Event; lang: Lang; tree: Tree }) {
 type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
 
 export function PersonPanel(props: Props) {
-  const { tree, person, lang, editing, setEditing, onFocus, onSelect, onClose } = props;
+  const { tree, person, lang, editing, isDraft, setEditing, onFocus, onSelect, onClose } = props;
   const [picking, setPicking] = useState<Picking>(null);
   const [editingFamily, setEditingFamily] = useState<string | null>(null);
   const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
@@ -95,11 +97,13 @@ export function PersonPanel(props: Props) {
           <h2 className="panel-name">{name}</h2>
           <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>×</button>
         </header>
+        {isDraft && <p className="muted small draft-hint">{t(lang, 'draftHint')}</p>}
         <PersonEditor
           tree={tree}
           person={person}
           lang={lang}
-          onSave={(patch) => { props.onSavePerson(person.id, patch); setEditing(false); }}
+          canDelete={!isDraft}
+          onSave={(patch) => { props.onSavePerson(person.id, patch); if (!isDraft) setEditing(false); }}
           onCancel={() => setEditing(false)}
           onDelete={() => { props.onDeletePerson(person.id); setEditing(false); }}
         />
