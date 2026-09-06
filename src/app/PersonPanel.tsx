@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { approximateYear, formatDate } from '../gedcom/dates';
 import { computeAge } from '../gedcom/age';
 import { displayName, findEvent, placeText, type Event, type Family, type Individual, type MediaObject, type Tree } from '../gedcom/model';
@@ -9,6 +9,7 @@ import { mediaStore } from '../store';
 import { prepareImage } from '../media/portraits';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
+import { SplitPanes } from './SplitPanes';
 import { Medallion } from './fields/Portrait';
 
 export interface PanelActions {
@@ -104,7 +105,6 @@ function eventRows(tree: Tree, person: Individual, lang: Lang): Row[] {
       });
     }
   }
-  // Chronological; undated rows keep their place after the dated ones, except a birth which always leads.
   const order = (r: Row) => (r.label === eventLabel(lang, 'birth') ? -Infinity : (r.year ?? Infinity));
   return rows.sort((a, b) => order(a) - order(b));
 }
@@ -127,10 +127,34 @@ function sourceRows(tree: Tree, person: Individual, lang: Lang): Array<{ label: 
   return out;
 }
 
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches);
+  useEffect(() => {
+    const mq = matchMedia('(max-width: 640px)');
+    const on = () => setNarrow(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
+
 export function PersonPanel(props: Props) {
   const { tree, person, lang, editing, isDraft, readOnly, setEditing, onFocus, onSelect, onClose } = props;
   const [picking, setPicking] = useState<Picking>(null);
   const [editingFamily, setEditingFamily] = useState<string | null>(null);
+  const [topTab, setTopTab] = useState('fiche');
+  const [bottomTab, setBottomTab] = useState('documents');
+  const narrow = useNarrow();
+  // Tabs start over for every person opened.
+  const [seenId, setSeenId] = useState(person.id);
+  if (seenId !== person.id) {
+    setSeenId(person.id);
+    setTopTab('fiche');
+    setBottomTab('documents');
+    setPicking(null);
+    setEditingFamily(null);
+  }
+
   const photoInput = useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const quickPhoto = async (file: File) => {
@@ -151,6 +175,7 @@ export function PersonPanel(props: Props) {
       setPhotoBusy(false);
     }
   };
+
   const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
   const sexGlyph = person.sex === 'M' ? '♂' : person.sex === 'F' ? '♀' : '';
   const living = isLiving(person);
@@ -166,6 +191,7 @@ export function PersonPanel(props: Props) {
   );
   const siblings = parentFamilies.flatMap(({ fam }) => fam.childIds.filter((c) => c !== person.id && tree.individuals[c]));
   const unions = person.partnerIn.map((fid) => tree.families[fid]).filter((f): f is Family => !!f);
+  const familyCount = parents.length + siblings.length + unions.reduce((n, f) => n + 1 + f.childIds.length, 0);
 
   const Person = ({ id, tag, onRemove }: { id: string; tag?: string; onRemove?: () => void }) => {
     const p = tree.individuals[id]!;
@@ -204,28 +230,30 @@ export function PersonPanel(props: Props) {
   if (editing) {
     return (
       <aside className="panel" aria-label={name}>
-        <header className="panel-head">
-          <h2 className="panel-name">{name}</h2>
-          <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>
-            ×
-          </button>
-        </header>
-        {isDraft && <p className="muted small draft-hint">{t(lang, 'draftHint')}</p>}
-        <PersonEditor
-          tree={tree}
-          person={person}
-          lang={lang}
-          canDelete={!isDraft}
-          onSave={(patch) => {
-            props.onSavePerson(person.id, patch);
-            if (!isDraft) setEditing(false);
-          }}
-          onCancel={() => setEditing(false)}
-          onDelete={() => {
-            props.onDeletePerson(person.id);
-            setEditing(false);
-          }}
-        />
+        <div className="panel-scroll">
+          <header className="panel-head">
+            <h2 className="panel-name">{name}</h2>
+            <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>
+              ×
+            </button>
+          </header>
+          {isDraft && <p className="muted small draft-hint">{t(lang, 'draftHint')}</p>}
+          <PersonEditor
+            tree={tree}
+            person={person}
+            lang={lang}
+            canDelete={!isDraft}
+            onSave={(patch) => {
+              props.onSavePerson(person.id, patch);
+              if (!isDraft) setEditing(false);
+            }}
+            onCancel={() => setEditing(false)}
+            onDelete={() => {
+              props.onDeletePerson(person.id);
+              setEditing(false);
+            }}
+          />
+        </div>
       </aside>
     );
   }
@@ -233,89 +261,73 @@ export function PersonPanel(props: Props) {
   const rows = eventRows(tree, person, lang);
   const sources = sourceRows(tree, person, lang);
 
-  return (
-    <aside className="panel" aria-label={name}>
-      <header className="panel-hero">
-        <button
-          type="button"
-          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
-          onClick={() => !readOnly && photoInput.current?.click()}
-          disabled={photoBusy || readOnly}
-          aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
-          title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
-        >
-          <Medallion mediaId={person.mediaIds[0]} size={88} className="panel-medallion" />
-          {!readOnly && (
-            <span className="medallion-badge" aria-hidden="true">
-              {person.mediaIds[0] ? '✎' : '+'}
-            </span>
-          )}
-        </button>
-        <input
-          ref={photoInput}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void quickPhoto(f);
-            e.target.value = '';
-          }}
-        />
-        <div className="hero-text">
-          <h2 className="panel-name">
-            {name}{' '}
-            <span className="panel-sex" aria-hidden="true">
-              {sexGlyph}
-            </span>
-          </h2>
-          {occupation && <p className="hero-sub">{occupation}</p>}
-          <div className="panel-tags">
-            {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
-            {person.names.slice(1).map((n, i) => (
-              <span key={i} className="tag">
-                {[n.given, n.surname].filter(Boolean).join(' ')}
-                {n.type ? ` (${n.type})` : ''}
-              </span>
-            ))}
-            {living && (
-              <span className="tag living">
-                {tg(lang, 'living', person.sex)}
-                {ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}
-              </span>
-            )}
-            {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
-          </div>
-        </div>
-        <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>
-          ×
-        </button>
-      </header>
-
-      <div className="row panel-actions">
-        <button className="btn primary" onClick={() => onFocus(person.id)}>
-          {t(lang, 'focusOn')}
-        </button>
-        {!readOnly && (
-          <button className="btn" onClick={() => setEditing(true)}>
-            {t(lang, 'edit')}
-          </button>
-        )}
-      </div>
-
-      {picking?.kind === 'merge' && (
-        <PersonPicker
-          tree={tree}
-          lang={lang}
-          exclude={[person.id]}
-          hint={t(lang, 'mergeHint')}
-          onCancel={() => setPicking(null)}
-          onPick={(id) => {
-            props.onMerge(person.id, id);
-            setPicking(null);
-          }}
-        />
+  const renderFiche = () => (
+    <>
+      {rows.length > 0 ? (
+        <ul className="timeline">
+          {rows.map((r) => (
+            <li key={r.key} className="ev">
+              <div className="ev-head">
+                <span className="ev-label">{r.label}</span>
+                <span className="ev-date">{r.date ?? '—'}</span>
+              </div>
+              {r.lines.map((l, i) => (
+                <div key={i} className="ev-line">
+                  {l}
+                </div>
+              ))}
+              {r.cause && (
+                <div className="ev-line muted">
+                  {t(lang, 'cause')} : {r.cause}
+                </div>
+              )}
+              {r.age && (
+                <div className="ev-line muted">
+                  {t(lang, 'age')} : {r.age}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">—</p>
       )}
+      {person.notes.length > 0 && (
+        <section>
+          <h3 className="band">{t(lang, 'notes')}</h3>
+          {person.notes.map((n, i) => (
+            <p key={i} className="note">
+              {n}
+            </p>
+          ))}
+        </section>
+      )}
+      {!readOnly && (
+        <section className="panel-footer">
+          {picking?.kind === 'merge' ? (
+            <PersonPicker
+              tree={tree}
+              lang={lang}
+              exclude={[person.id]}
+              hint={t(lang, 'mergeHint')}
+              onCancel={() => setPicking(null)}
+              onPick={(id) => {
+                props.onMerge(person.id, id);
+                setPicking(null);
+              }}
+            />
+          ) : (
+            <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>
+              {t(lang, 'merge')}
+            </button>
+          )}
+        </section>
+      )}
+    </>
+  );
+
+  const renderFamille = () => (
+    <>
       {picking?.kind === 'partner' && (
         <PersonPicker
           tree={tree}
@@ -340,38 +352,6 @@ export function PersonPanel(props: Props) {
           }}
         />
       )}
-
-      {rows.length > 0 && (
-        <section>
-          <h3 className="band">{t(lang, 'lifeEvents')}</h3>
-          <ul className="timeline">
-            {rows.map((r) => (
-              <li key={r.key} className="ev">
-                <div className="ev-head">
-                  <span className="ev-label">{r.label}</span>
-                  <span className="ev-date">{r.date ?? '—'}</span>
-                </div>
-                {r.lines.map((l, i) => (
-                  <div key={i} className="ev-line">
-                    {l}
-                  </div>
-                ))}
-                {r.cause && (
-                  <div className="ev-line muted">
-                    {t(lang, 'cause')} : {r.cause}
-                  </div>
-                )}
-                {r.age && (
-                  <div className="ev-line muted">
-                    {t(lang, 'age')} : {r.age}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {parents.length > 0 && (
         <section>
           <h3 className="band">{t(lang, 'parents')}</h3>
@@ -392,7 +372,6 @@ export function PersonPanel(props: Props) {
           </ul>
         </section>
       )}
-
       <section>
         <h3 className="band">{t(lang, 'partners')}</h3>
         {unions.length === 0 && <p className="muted small">—</p>}
@@ -479,18 +458,12 @@ export function PersonPanel(props: Props) {
           </div>
         )}
       </section>
+    </>
+  );
 
-      {person.notes.length > 0 && (
-        <section>
-          <h3 className="band">{t(lang, 'notes')}</h3>
-          {person.notes.map((n, i) => (
-            <p key={i} className="note">
-              {n}
-            </p>
-          ))}
-        </section>
-      )}
-      {sources.length > 0 && (
+  const renderDocuments = () => (
+    <>
+      {sources.length > 0 ? (
         <section>
           <h3 className="band">{t(lang, 'sources')}</h3>
           <ul className="sources">
@@ -501,14 +474,106 @@ export function PersonPanel(props: Props) {
             ))}
           </ul>
         </section>
+      ) : (
+        <p className="muted small">{t(lang, 'noDocumentsYet')}</p>
       )}
-      {!readOnly && (
-        <section className="panel-footer">
-          <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>
-            {t(lang, 'merge')}
-          </button>
-        </section>
-      )}
+    </>
+  );
+
+  const renderRecherches = () => <p className="muted small">{t(lang, 'noLeadsYet')}</p>;
+
+  return (
+    <aside className="panel" aria-label={name}>
+      <header className="panel-hero">
+        <button
+          type="button"
+          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
+          onClick={() => !readOnly && photoInput.current?.click()}
+          disabled={photoBusy || readOnly}
+          aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+          title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+        >
+          <Medallion mediaId={person.mediaIds[0]} size={88} className="panel-medallion" />
+          {!readOnly && (
+            <span className="medallion-badge" aria-hidden="true">
+              {person.mediaIds[0] ? '✎' : '+'}
+            </span>
+          )}
+        </button>
+        <input
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void quickPhoto(f);
+            e.target.value = '';
+          }}
+        />
+        <div className="hero-text">
+          <h2 className="panel-name">
+            {name}{' '}
+            <span className="panel-sex" aria-hidden="true">
+              {sexGlyph}
+            </span>
+          </h2>
+          {occupation && <p className="hero-sub">{occupation}</p>}
+          <div className="panel-tags">
+            {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
+            {person.names.slice(1).map((n, i) => (
+              <span key={i} className="tag">
+                {[n.given, n.surname].filter(Boolean).join(' ')}
+                {n.type ? ` (${n.type})` : ''}
+              </span>
+            ))}
+            {living && (
+              <span className="tag living">
+                {tg(lang, 'living', person.sex)}
+                {ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}
+              </span>
+            )}
+            {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
+          </div>
+          <div className="row panel-actions">
+            <button className="btn small primary" onClick={() => onFocus(person.id)}>
+              {t(lang, 'focusOn')}
+            </button>
+            {!readOnly && (
+              <button className="btn small" onClick={() => setEditing(true)}>
+                {t(lang, 'edit')}
+              </button>
+            )}
+          </div>
+        </div>
+        <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>
+          ×
+        </button>
+      </header>
+
+      <SplitPanes
+        key={person.id}
+        lang={lang}
+        narrow={narrow}
+        top={{
+          tabs: [
+            { id: 'fiche', label: t(lang, 'tabFiche'), count: rows.length },
+            { id: 'famille', label: t(lang, 'tabFamille'), count: familyCount },
+          ],
+          active: topTab,
+          onSelect: setTopTab,
+          render: (id) => (id === 'famille' ? renderFamille() : renderFiche()),
+        }}
+        bottom={{
+          tabs: [
+            { id: 'documents', label: t(lang, 'tabDocuments'), count: sources.length },
+            { id: 'recherches', label: t(lang, 'tabRecherches') },
+          ],
+          active: bottomTab,
+          onSelect: setBottomTab,
+          render: (id) => (id === 'recherches' ? renderRecherches() : renderDocuments()),
+        }}
+      />
     </aside>
   );
 }

@@ -2025,3 +2025,133 @@ label.check input {
 .report .btn.small.subtle {
   flex: none;
 }
+
+/* ---------- Split person panel ---------- */
+.panel {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-scroll {
+  overflow: auto;
+  padding: 16px 18px 32px;
+  flex: 1;
+  min-height: 0;
+}
+.panel-hero {
+  margin: 0;
+  flex: none;
+}
+.panel-hero .panel-actions {
+  margin: 8px 0 0;
+}
+.panel-hero .panel-actions .btn {
+  flex: none;
+}
+.split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.half {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.half.collapsed {
+  flex: 0 0 auto;
+}
+.half-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 18px 16px;
+}
+.half-body > section:first-child .band,
+.half-body > .timeline:first-child {
+  margin-top: 10px;
+}
+.tabs {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex: none;
+}
+.tab {
+  flex: 1;
+  border: 0;
+  background: none;
+  padding: 9px 8px 7px;
+  cursor: pointer;
+  font: 600 13px var(--body);
+  color: var(--ink-3);
+  border-bottom: 2px solid transparent;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.tab:hover {
+  color: var(--ink);
+}
+.tab-count {
+  font: 500 11px var(--mono);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 16px;
+}
+.tab.on .tab-count {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.tab-collapse {
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 14px;
+}
+.tab-collapse:hover {
+  color: var(--ink);
+}
+.divider {
+  height: 10px;
+  flex: none;
+  cursor: row-resize;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  touch-action: none;
+}
+.divider.disabled {
+  cursor: default;
+}
+.divider-pill {
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line-2);
+}
+.divider:hover .divider-pill {
+  background: var(--accent);
+}
+.split.narrow .half-body {
+  padding-top: 6px;
+}
+.panel .panel-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
