@@ -61,7 +61,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const hoverId = useRef<string | undefined>(undefined);
   const raf = useRef(0);
   const anim = useRef<number | null>(null);
-  const pendingFit = useRef(false);
+  // A freshly mounted canvas fits its whole layout as soon as it knows its size.
+  const pendingFit = useRef(true);
   const portraits = useRef<PortraitCache | null>(null);
   if (!portraits.current) portraits.current = new PortraitCache(() => drawRef.current());
   const RULER_GUTTER = 170; // screen px reserved on the left for generation labels
@@ -117,7 +118,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       canvas.style.height = h + 'px';
       if (pendingFit.current) {
         pendingFit.current = false;
-        fitRef.current(false, true);
+        fitRef.current(false);
       }
       drawRef.current();
     });

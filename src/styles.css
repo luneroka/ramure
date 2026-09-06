@@ -1582,3 +1582,11 @@ label.check input {
 .modal-message { margin: 0; color: var(--ink-2); font-size: 14px; }
 .modal-actions { margin-top: 4px; }
 .tree-card-delete { display: none; }
+
+/* ---------- Form controls line up with buttons ---------- */
+.field input, .field select, .editor input, .editor select, .signin input, .invite-link input, .settings form.row input.grow, .picker input { min-height: 38px; }
+.settings form.row, .dialog form.row { align-items: flex-end; }
+.settings form.row .btn, .dialog form.row .btn { min-height: 38px; }
+.member-list select { min-height: 32px; }
+.home-head { align-items: center; }
+.modal .field { margin-top: 4px; }
