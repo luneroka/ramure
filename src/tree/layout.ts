@@ -27,7 +27,7 @@ export interface LayoutOptions {
 }
 
 export const DEFAULT_LAYOUT: LayoutOptions = {
-  cardW: 176, cardH: 60, rowGap: 84, siblingGap: 30, partnerGap: 16, maxUp: 6, maxDown: 6,
+  cardW: 216, cardH: 64, rowGap: 88, siblingGap: 28, partnerGap: 16, maxUp: 6, maxDown: 6,
 };
 
 export interface LayoutNode {
