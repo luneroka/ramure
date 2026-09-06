@@ -383,6 +383,16 @@ const strings = {
   storageUsed: { fr: 'utilisés', en: 'used' },
   files: { fr: 'fichiers', en: 'files' },
   file: { fr: 'fichier', en: 'file' },
+  unsure: { fr: 'À vérifier', en: 'To check' },
+  unsureLabel: { fr: 'Informations à vérifier', en: 'Information to check' },
+  unsureHint: {
+    fr: 'La personne apparaît en pointillé sur la toile, avec un « ? », jusqu’à ce que vous décochiez.',
+    en: 'The person shows dashed on the canvas, with a “?”, until you untick this.',
+  },
+  sectionIdentity: { fr: 'Identité', en: 'Identity' },
+  sectionTracking: { fr: 'Suivi', en: 'Tracking' },
+  editPerson: { fr: 'Modifier la fiche', en: 'Edit the profile' },
+  newPersonTitle: { fr: 'Nouvelle personne', en: 'New person' },
   storageHint: {
     fr: 'Portraits et documents de tous les arbres du compte.',
     en: 'Portraits and documents across the account’s trees.',
@@ -530,7 +540,8 @@ export function detectLang(): Lang {
   } catch {
     /* storage unavailable */
   }
-  return (navigator.language || 'fr').toLowerCase().startsWith('fr') ? 'fr' : 'en';
+  // French unless the person chose otherwise in Paramètres.
+  return 'fr';
 }
 
 export function saveLang(lang: Lang): void {

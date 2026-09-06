@@ -122,6 +122,8 @@ export interface Individual {
   partnerIn: string[];
   /** GEDCOM RESN: privacy, locked, confidential. */
   restriction?: string;
+  /** Marked as needing another look: identity or facts not established (custom tag _UNSURE). */
+  unsure?: boolean;
   /** Research leads about this person. */
   leads: Lead[];
   extra: GedcomRecord[];

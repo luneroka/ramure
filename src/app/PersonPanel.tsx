@@ -41,7 +41,6 @@ export interface PanelActions {
   /** Documents: a stored media record to attach or update, one to remove, one to promote. */
   onSaveDocument(id: string, media: MediaObject): void;
   onDeleteDocument(id: string, mediaId: string): void;
-  onChoosePortrait(id: string, mediaId: string): void;
   onSaveLeads(id: string, leads: Lead[]): void;
   /** A short message for the user (toast). */
   onNotice(message: string): void;
@@ -246,37 +245,6 @@ export function PersonPanel(props: Props) {
       </li>
     );
   };
-
-  if (editing) {
-    return (
-      <aside className="panel" aria-label={name}>
-        <div className="panel-scroll">
-          <header className="panel-head">
-            <h2 className="panel-name">{name}</h2>
-            <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>
-              ×
-            </button>
-          </header>
-          {isDraft && <p className="muted small draft-hint">{t(lang, 'draftHint')}</p>}
-          <PersonEditor
-            tree={tree}
-            person={person}
-            lang={lang}
-            canDelete={!isDraft}
-            onSave={(patch) => {
-              props.onSavePerson(person.id, patch);
-              if (!isDraft) setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-            onDelete={() => {
-              props.onDeletePerson(person.id);
-              setEditing(false);
-            }}
-          />
-        </div>
-      </aside>
-    );
-  }
 
   const rows = eventRows(tree, person, lang);
   const sources = sourceRows(tree, person, lang);
@@ -491,7 +459,6 @@ export function PersonPanel(props: Props) {
       sources={sources}
       onSaveDocument={(m) => props.onSaveDocument(person.id, m)}
       onDeleteDocument={(mid) => props.onDeleteDocument(person.id, mid)}
-      onSetPortrait={(mid) => props.onChoosePortrait(person.id, mid)}
       onError={props.onNotice}
     />
   );
@@ -505,7 +472,7 @@ export function PersonPanel(props: Props) {
       onNotice={props.onNotice}
     />
   );
-  const docCount = person.mediaIds.filter((id) => tree.media[id]).length + sources.length;
+  const docCount = person.mediaIds.filter((id) => tree.media[id] && id !== heroPortrait).length + sources.length;
   const openLeads = (person.leads ?? []).filter((l) => !l.done).length;
 
   return (
@@ -559,6 +526,7 @@ export function PersonPanel(props: Props) {
                 {ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}
               </span>
             )}
+            {person.unsure && <span className="tag unsure">? {t(lang, 'unsure')}</span>}
             {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
           </div>
           <div className="row panel-actions">
@@ -600,6 +568,24 @@ export function PersonPanel(props: Props) {
           render: (id) => (id === 'recherches' ? renderRecherches() : renderDocuments()),
         }}
       />
+      {editing && (
+        <PersonEditor
+          tree={tree}
+          person={person}
+          lang={lang}
+          canDelete={!isDraft}
+          isDraft={isDraft}
+          onSave={(patch) => {
+            props.onSavePerson(person.id, patch);
+            if (!isDraft) setEditing(false);
+          }}
+          onCancel={() => setEditing(false)}
+          onDelete={() => {
+            props.onDeletePerson(person.id);
+            setEditing(false);
+          }}
+        />
+      )}
     </aside>
   );
 }

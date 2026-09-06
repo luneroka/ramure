@@ -42,7 +42,6 @@ interface Props {
   /** A new or edited media record, already stored; attaches it to the person. */
   onSaveDocument(media: MediaObject): void;
   onDeleteDocument(mediaId: string): void;
-  onSetPortrait(mediaId: string): void;
   onError(message: string): void;
 }
 
@@ -68,8 +67,12 @@ export function DocumentsTab(p: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState<MediaObject | null>(null);
-  const docs = person.mediaIds.map((id) => tree.media[id]).filter((m): m is MediaObject => !!m);
+  // The portrait belongs to the medallion and the edit form, not to this list.
   const portrait = portraitId(person, tree);
+  const docs = person.mediaIds
+    .filter((id) => id !== portrait)
+    .map((id) => tree.media[id])
+    .filter((m): m is MediaObject => !!m);
 
   const pick = (file: File) => {
     const err = documentError(file);
@@ -172,15 +175,9 @@ export function DocumentsTab(p: Props) {
                   <div className="doc-meta">
                     <span>{kindLabel(lang, m.kind)}</span>
                     {m.date && <span>· {formatDate(m.date, lang)}</span>}
-                    {m.id === portrait && <span className="tag">{t(lang, 'isPortrait')}</span>}
                   </div>
                   {!readOnly && (
                     <div className="row doc-actions">
-                      {m.id !== portrait && !isPdf(m.format) && (
-                        <button type="button" className="btn small subtle" onClick={() => p.onSetPortrait(m.id)}>
-                          {t(lang, 'setAsPortrait')}
-                        </button>
-                      )}
                       <button
                         type="button"
                         className="btn small subtle"

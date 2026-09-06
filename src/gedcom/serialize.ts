@@ -209,6 +209,7 @@ function writeIndividual(w: Writer, ind: Individual): void {
   }
   for (const f of ind.partnerIn) w.line(1, 'FAMS', ptr(f));
   if (ind.restriction) w.line(1, 'RESN', ind.restriction);
+  if (ind.unsure) w.line(1, '_UNSURE', 'Y');
   for (const n of ind.notes) w.line(1, 'NOTE', n);
   writeCitations(w, 1, ind.citations);
   for (const m of ind.mediaIds) w.line(1, 'OBJE', ptr(m));

@@ -54,9 +54,11 @@ interface PickerProps {
   onChange(next: MediaObject | null): void;
   /** Id allocator for a new media record. */
   allocateId(): string;
+  /** Smaller medallion, no hint text: for the edit dialog. */
+  compact?: boolean;
 }
 
-export function PortraitPicker({ lang, current, onChange, allocateId }: PickerProps) {
+export function PortraitPicker({ lang, current, onChange, allocateId, compact }: PickerProps) {
   const input = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
@@ -77,8 +79,8 @@ export function PortraitPicker({ lang, current, onChange, allocateId }: PickerPr
   };
 
   return (
-    <div className="portrait-picker">
-      <Medallion mediaId={shown} size={96} />
+    <div className={`portrait-picker ${compact ? 'compact' : ''}`}>
+      <Medallion mediaId={shown} size={compact ? 72 : 96} />
       <div className="portrait-actions">
         <input
           ref={input}
@@ -91,13 +93,13 @@ export function PortraitPicker({ lang, current, onChange, allocateId }: PickerPr
             e.target.value = '';
           }}
         />
-        <button type="button" className="btn" disabled={busy} onClick={() => input.current?.click()}>
+        <button type="button" className={`btn ${compact ? 'small' : ''}`} disabled={busy} onClick={() => input.current?.click()}>
           {shown ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         </button>
         {shown && (
           <button
             type="button"
-            className="btn subtle"
+            className={`btn subtle ${compact ? 'small' : ''}`}
             onClick={() => {
               if (pending) void mediaStore.delete(pending);
               setPending(undefined);
@@ -107,7 +109,7 @@ export function PortraitPicker({ lang, current, onChange, allocateId }: PickerPr
             {t(lang, 'removePhoto')}
           </button>
         )}
-        <p className="muted small">{t(lang, 'photoHint')}</p>
+        {!compact && <p className="muted small">{t(lang, 'photoHint')}</p>}
       </div>
     </div>
   );

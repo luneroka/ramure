@@ -132,7 +132,6 @@ export function App() {
   const [treeList, setTreeList] = useState<TreeSummary[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<'account' | 'profile' | 'preferences' | undefined>();
-  const [renaming, setRenaming] = useState<string | null>(null);
   const [defaultView, setDefaultViewState] = useState<DefaultView>(() =>
     localStorage.getItem('ramure.defaultView') === 'all' ? 'all' : 'hourglass',
   );
@@ -676,10 +675,15 @@ export function App() {
     void createTreeFrom(name.trim() || t(lang, 'newTreeName').replace(/\.ged$/, ''), serializeGedcom(r.tree), true);
   };
 
-  const commitRename = async () => {
-    const name = (renaming ?? '').trim();
-    setRenaming(null);
-    if (!source || !name || name === source.name) return;
+  const renameTree = async () => {
+    if (!source) return;
+    const answer = await ask({
+      title: t(lang, 'renameTree'),
+      input: { label: t(lang, 'treeName'), initial: source.name },
+      confirmLabel: t(lang, 'save'),
+    });
+    const name = (answer ?? '').trim();
+    if (!name || name === source.name) return;
     try {
       await api.renameTree(source.id, name);
       setSource({ ...source, name });
@@ -762,11 +766,6 @@ export function App() {
     setAddMenu(null);
     if (view === 'all') setView('hourglass');
   };
-  const switchLang = () => {
-    const next: Lang = lang === 'fr' ? 'en' : 'fr';
-    setLang(next);
-    saveLang(next);
-  };
   const cycleTheme = () => setTheme((c) => (c === 'auto' ? 'light' : c === 'light' ? 'dark' : 'auto'));
   const onBandChange = useCallback((b: DetailBand, zoom: number) => {
     setBand((prev) => (prev.band === b && Math.abs(prev.zoom - zoom) < 0.005 ? prev : { band: b, zoom }));
@@ -798,9 +797,6 @@ export function App() {
           <button className="btn icon" onClick={cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />
           </button>
-          <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
-            {lang === 'fr' ? 'EN' : 'FR'}
-          </button>
         </div>
         {notice && (
           <div className="toast" role="status">
@@ -820,56 +816,25 @@ export function App() {
           </button>
           {source && tree && (
             <>
-              {renaming !== null ? (
-                <form
-                  className="rename-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void commitRename();
-                  }}
-                >
-                  <input
-                    autoFocus
-                    value={renaming}
-                    onChange={(e) => setRenaming(e.target.value)}
-                    onBlur={() => void commitRename()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') setRenaming(null);
-                    }}
-                    aria-label={t(lang, 'treeName')}
-                  />
-                </form>
-              ) : (
-                <TreeMenu
-                  lang={lang}
-                  current={source}
-                  trees={treeList}
-                  owner={source.role === 'owner'}
-                  checkCount={reportNotes.length}
-                  onSwitch={(tr) => void openCloud(tr.id, tr.name, tr.role)}
-                  onNewTree={startNewTree}
-                  onRename={() => setRenaming(source.name)}
-                  onExport={exportGedcom}
-                  onSnapshots={() => void openSnapshots()}
-                  onSaveVersion={() => void saveVersion()}
-                  readOnly={readOnly}
-                  onReport={() => setShowReport(true)}
-                  onResources={() => setShowResources(true)}
-                  onDelete={() =>
-                    void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
-                  }
-                />
-              )}
-              {source.role === 'owner' && renaming === null && (
-                <button
-                  className="icon-btn pen"
-                  onClick={() => setRenaming(source.name)}
-                  aria-label={t(lang, 'renameTree')}
-                  title={t(lang, 'renameTree')}
-                >
-                  ✎
-                </button>
-              )}
+              <TreeMenu
+                lang={lang}
+                current={source}
+                trees={treeList}
+                owner={source.role === 'owner'}
+                checkCount={reportNotes.length}
+                onSwitch={(tr) => void openCloud(tr.id, tr.name, tr.role)}
+                onNewTree={startNewTree}
+                onRename={() => void renameTree()}
+                onExport={exportGedcom}
+                onSnapshots={() => void openSnapshots()}
+                onSaveVersion={() => void saveVersion()}
+                readOnly={readOnly}
+                onReport={() => setShowReport(true)}
+                onResources={() => setShowResources(true)}
+                onDelete={() =>
+                  void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
+                }
+              />
               <span className="brand-file">
                 {count} {t(lang, 'people')}
               </span>
@@ -996,9 +961,6 @@ export function App() {
           )}
           <button className="btn icon" onClick={cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />
-          </button>
-          <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
-            {lang === 'fr' ? 'EN' : 'FR'}
           </button>
           <UserMenu
             lang={lang}
@@ -1356,11 +1318,6 @@ export function App() {
                 toast(t(lang, 'documentDeleted'));
               }
             })();
-          }}
-          onChoosePortrait={(id, mediaId) => {
-            if (draft) return;
-            const media = tree.media[mediaId];
-            if (media && commit(ops.updatePerson(id, { portrait: media }))) toast(t(lang, 'photoSaved'));
           }}
           onSaveLeads={(id, leads) => {
             if (draft) return;

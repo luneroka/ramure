@@ -15,7 +15,16 @@ describe('leads, documents and resources round-trip', () => {
       ops.updatePerson('I1', {
         leads: [{ id: 'Labc', title: 'Acte de mariage à Conty', url: 'https://example.org/x', note: 'AD Somme', done: true }],
         media: [
-          { id: 'M1', file: 'ramure:M1', format: 'pdf', title: 'Naissance', kind: 'birth', date: parseDate('12 MAR 1852'), notes: [], extra: [] },
+          {
+            id: 'M1',
+            file: 'ramure:M1',
+            format: 'pdf',
+            title: 'Naissance',
+            kind: 'birth',
+            date: parseDate('12 MAR 1852'),
+            notes: [],
+            extra: [],
+          },
           { id: 'M2', file: 'ramure:M2', format: 'jpg', title: 'Portrait', kind: 'photo', primary: true, notes: [], extra: [] },
         ],
         mediaIds: ['M1', 'M2'],

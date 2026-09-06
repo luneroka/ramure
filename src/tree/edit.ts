@@ -103,6 +103,8 @@ export interface PersonPatch {
   restriction?: string | undefined;
   /** New portrait media record to attach as the main picture; null removes the current one. */
   portrait?: MediaObject | null;
+  /** Marked as needing another look; undefined clears it. */
+  unsure?: boolean | undefined;
   /** Research leads, replaced wholesale. */
   leads?: Lead[];
   /** Media records to add or update in the tree (documents). */
@@ -119,10 +121,10 @@ export function portraitId(ind: Individual, tree?: Tree): string | undefined {
   if (!tree) return ind.mediaIds[0];
   const flagged = ind.mediaIds.find((id) => tree.media[id]?.primary);
   if (flagged) return flagged;
-  // Imported trees: the first attached picture without a document kind.
+  // Imported trees: the first attached picture without a document kind. Documents never become the face.
   return ind.mediaIds.find((id) => {
     const m = tree.media[id];
-    return !m || m.kind === undefined || m.kind === 'photo';
+    return !!m && m.kind === undefined;
   });
 }
 
@@ -131,6 +133,7 @@ export function updatePerson(tree: Tree, id: string, patch: PersonPatch): EditRe
   const { portrait, media, ...rest } = patch;
   const next: Individual = { ...ind, ...rest };
   if (patch.restriction === undefined && 'restriction' in patch) delete next.restriction;
+  if (!patch.unsure && 'unsure' in patch) delete next.unsure;
   let t = tree;
   if (media?.length) {
     const table = { ...t.media };

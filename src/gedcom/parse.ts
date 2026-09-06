@@ -367,6 +367,10 @@ function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
       ind.restriction = c.value.trim().toLowerCase();
       continue;
     }
+    if (c.tag === '_UNSURE') {
+      if (c.value.trim().toUpperCase() === 'Y') ind.unsure = true;
+      continue;
+    }
     if (c.tag === 'NOTE' || c.tag === 'SOUR' || c.tag === 'OBJE' || c.tag === '_LINK') continue;
     const et = INDI_EVENT_TAGS[c.tag];
     if (et) {

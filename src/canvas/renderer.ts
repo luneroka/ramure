@@ -31,6 +31,7 @@ export interface Theme {
   accent: string;
   focus: string;
   focusSoft: string;
+  warn: string;
   connector: string;
   male: string;
   female: string;
@@ -100,6 +101,7 @@ export function readTheme(el: HTMLElement): Theme {
     accent: v('--accent'),
     focus: v('--focus'),
     focusSoft: v('--focus-soft'),
+    warn: v('--warn') || '#e0955a',
     connector: v('--connector'),
     male: v('--male'),
     female: v('--female'),
@@ -156,6 +158,21 @@ export function isLiving(ind: Individual): boolean {
   const by = approximateYear((findEvent(ind.events, 'birth') ?? findEvent(ind.events, 'baptism'))?.date);
   if (by === undefined) return false;
   return new Date().getFullYear() - by < 110;
+}
+
+/** A small amber « ? » disc: this person still needs checking. */
+function drawUnsureBadge(ctx: CanvasRenderingContext2D, T: Theme, x: number, y: number): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.fillStyle = T.warn;
+  ctx.fill();
+  ctx.fillStyle = T.ground;
+  ctx.font = `700 11px ${T.bodyFont}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('?', x, y + 0.5);
+  ctx.restore();
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -263,6 +280,13 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.beginPath();
       ctx.arc(cx, cy, isFocus ? 16 : 11, 0, Math.PI * 2);
       ctx.fill();
+      if (ind.unsure) {
+        // Unsure people read as a hollow ring even from far away.
+        ctx.fillStyle = T.ground;
+        ctx.beginPath();
+        ctx.arc(cx, cy, isFocus ? 10 : 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (isFocus || isSel) {
         ctx.strokeStyle = isFocus ? T.focus : T.accent;
         ctx.lineWidth = 5 / k;
@@ -276,8 +300,8 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.fillStyle = isFocus ? T.focusSoft : T.surface;
     ctx.fill();
     ctx.lineWidth = (isFocus || isSel ? 2 : 1) / Math.max(k, 0.5);
-    ctx.strokeStyle = isFocus ? T.focus : isSel ? T.accent : isHover ? T.line2 : T.line;
-    if (isDraft) ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = isFocus ? T.focus : isSel ? T.accent : ind.unsure ? T.warn : isHover ? T.line2 : T.line;
+    if (isDraft || ind.unsure) ctx.setLineDash([6, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
     // Sex stripe on the left edge.
@@ -296,6 +320,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.font = `600 17px ${T.bodyFont}`;
       ctx.textAlign = 'center';
       ctx.fillText(fitText(ctx, name, n.w - 22), cx + 2, cy);
+      if (ind.unsure) drawUnsureBadge(ctx, T, n.x + n.w - 14, n.y + 14);
     } else {
       // Medallion portrait on the left: an oval like an old locket.
       const MW = 42,
@@ -325,6 +350,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
         ctx.textAlign = 'right';
         ctx.fillText('×' + (n.dup + 1), n.x + n.w - 10, n.y + 12);
       }
+      if (ind.unsure) drawUnsureBadge(ctx, T, n.x + n.w - 14, n.y + n.h - 14);
     }
   }
 
