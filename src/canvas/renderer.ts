@@ -92,7 +92,7 @@ function lifespan(ind: Individual, lang: Lang): string {
   const ds = dy !== undefined ? String(dy) : d?.date ? formatDate(d.date, lang) : '';
   if (d) {
     const age = computeAge(b?.date, d.date);
-    return `${bs || '?'}–${ds || '?'}${age ? ` (${formatAge(lang, age, 'card')})` : ''}`;
+    return `${bs || '?'} – ${ds || '?'}${age ? ` (${formatAge(lang, age, 'card')})` : ''}`;
   }
   if (b?.date) {
     const age = isLiving(ind) ? computeAge(b.date, 'today') : undefined;
