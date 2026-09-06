@@ -8,7 +8,8 @@
 import { approximateYear, formatDate } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
 import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
-import { t, tg, type Lang } from '../i18n';
+import { formatAge, t, tg, type Lang } from '../i18n';
+import { computeAge } from '../gedcom/age';
 
 export interface Camera { x: number; y: number; k: number }
 
@@ -75,8 +76,14 @@ function lifespan(ind: Individual, lang: Lang): string {
   const by = approximateYear(b?.date), dy = approximateYear(d?.date);
   const bs = by !== undefined ? String(by) : b?.date ? formatDate(b.date, lang) : '';
   const ds = dy !== undefined ? String(dy) : d?.date ? formatDate(d.date, lang) : '';
-  if (d) return `${bs || '?'} – ${ds || '?'}`;
-  if (bs) return tg(lang, 'born', ind.sex) + ' ' + bs;
+  if (d) {
+    const age = computeAge(b?.date, d.date);
+    return `${bs || '?'} – ${ds || '?'}${age ? ` (${formatAge(lang, age, 'card')})` : ''}`;
+  }
+  if (bs) {
+    const age = isLiving(ind) ? computeAge(b?.date, 'today') : undefined;
+    return tg(lang, 'born', ind.sex) + ' ' + bs + (age ? ` (${formatAge(lang, age, 'card')})` : '');
+  }
   return '';
 }
 
@@ -215,7 +222,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.fillText(fitText(ctx, name, n.w - 26), n.x + 15, n.y + 21);
       ctx.font = `400 12.5px ${T.monoFont}`;
       ctx.fillStyle = T.ink2;
-      ctx.fillText(fitText(ctx, lifespan(ind, lang), n.w - 40), n.x + 15, n.y + 42);
+      ctx.fillText(fitText(ctx, lifespan(ind, lang), isLiving(ind) ? n.w - 40 : n.w - 26), n.x + 15, n.y + 42);
       if (isLiving(ind)) {
         ctx.fillStyle = T.accent;
         ctx.beginPath();

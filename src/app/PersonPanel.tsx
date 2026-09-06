@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { formatDate } from '../gedcom/dates';
 import { displayName, findEvent, placeText, type Event, type Family, type Individual, type Tree } from '../gedcom/model';
-import { eventLabel, t, tg, type Lang } from '../i18n';
+import { eventLabel, formatAge, t, tg, type Lang } from '../i18n';
+import { computeAge } from '../gedcom/age';
 import { isLiving } from '../canvas/renderer';
 import type { FamilyPatch, PersonPatch } from '../tree/edit';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
@@ -32,11 +33,13 @@ interface Props extends PanelActions {
   setEditing(v: boolean): void;
 }
 
-function EventRow({ e, lang, tree }: { e: Event; lang: Lang; tree: Tree }) {
+function EventRow({ e, lang, tree, birth }: { e: Event; lang: Lang; tree: Tree; birth?: Event }) {
   const bits: string[] = [];
   if (e.value) bits.push(e.value);
   if (e.date) bits.push(formatDate(e.date, lang));
   if (e.place) bits.push(placeText(e.place));
+  const age = e.type === 'death' && !e.age ? computeAge(birth?.date, e.date) : undefined;
+  if (age) bits.push(formatAge(lang, age));
   return (
     <li className="event">
       <span className="event-label">{eventLabel(lang, e.type, e.customType)}</span>
@@ -65,6 +68,8 @@ export function PersonPanel(props: Props) {
   const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
   const sexGlyph = person.sex === 'M' ? '♂' : person.sex === 'F' ? '♀' : '';
   const living = isLiving(person);
+  const birthEvent = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
+  const ageToday = living ? computeAge(birthEvent?.date, 'today') : undefined;
 
   const parentFamilies = person.childOf.map((l) => ({ link: l, fam: tree.families[l.familyId] })).filter((x): x is { link: typeof x.link; fam: Family } => !!x.fam);
   const parents = parentFamilies.flatMap(({ link, fam }) =>
@@ -122,7 +127,7 @@ export function PersonPanel(props: Props) {
           <div className="panel-tags">
             {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
             {person.names.slice(1).map((n, i) => <span key={i} className="tag">{[n.given, n.surname].filter(Boolean).join(' ')}{n.type ? ` (${n.type})` : ''}</span>)}
-            {living && <span className="tag living">{tg(lang, 'living', person.sex)}</span>}
+            {living && <span className="tag living">{tg(lang, 'living', person.sex)}{ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}</span>}
             {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
           </div>
         </div>
@@ -144,7 +149,7 @@ export function PersonPanel(props: Props) {
         <PersonPicker tree={tree} lang={lang} exclude={[person.id, ...(tree.families[picking.familyId]?.childIds ?? [])]} onCancel={() => setPicking(null)} onPick={(id) => { props.onLinkChild(picking.familyId, id); setPicking(null); }} />
       )}
 
-      {lifeEvents.length > 0 && <ul className="events">{lifeEvents.map((e, i) => <EventRow key={i} e={e} lang={lang} tree={tree} />)}</ul>}
+      {lifeEvents.length > 0 && <ul className="events">{lifeEvents.map((e, i) => <EventRow key={i} e={e} lang={lang} tree={tree} birth={birthEvent} />)}</ul>}
 
       {parents.length > 0 && (
         <section>

@@ -184,3 +184,10 @@ export type GenderedKey = keyof typeof gendered;
 export function tg(lang: Lang, key: GenderedKey, sex: 'M' | 'F' | 'U'): string {
   return gendered[key][lang][sex];
 }
+
+/** "77 ans" / "~77 ans" in French, "77" / "~77" on cards and "aged 77" in text for English. */
+export function formatAge(lang: Lang, age: { years: number; approx: boolean }, style: 'card' | 'text' = 'text'): string {
+  const n = (age.approx ? '~' : '') + age.years;
+  if (lang === 'fr') return `${n} an${age.years > 1 ? 's' : ''}`;
+  return style === 'card' ? n : `aged ${n}`;
+}
