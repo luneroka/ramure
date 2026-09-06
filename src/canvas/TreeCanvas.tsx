@@ -8,7 +8,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { Tree } from '../gedcom/model';
 import type { Lang } from '../i18n';
 import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
-import { clampZoom, detailBand, hitTest, readTheme, render, type Camera, type DetailBand, type Theme } from './renderer';
+import { clampZoom, computeHandles, detailBand, hitHandle, hitTest, readTheme, render, type Camera, type DetailBand, type HandleKind, type Theme } from './renderer';
 
 export interface TreeCanvasHandle {
   fit(animate?: boolean): void;
@@ -28,12 +28,17 @@ export interface TreeCanvasProps {
   /** Double tap on a card, or tap on the already selected card. */
   onFocus(id: string): void;
   onBandChange?(band: DetailBand, zoom: number): void;
+  /** Tap on an add-relative handle of the selected card. */
+  onHandle?(kind: HandleKind, personId: string): void;
+  /** Show add-relative handles on the selected card. */
+  editable?: boolean;
 }
 
 const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
-  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange } = props;
+  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable } = props;
+  const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId, lang) : []), [editable, layout, tree, selectedId, lang]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
   const size = useRef({ w: 0, h: 0, dpr: 1 });
@@ -54,11 +59,11 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!ctx) return;
       if (!theme.current) theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
-        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H,
+        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H, handles,
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
     });
-  }, [layout, tree, selectedId, lang, onBandChange]);
+  }, [layout, tree, selectedId, lang, onBandChange, handles]);
   // Effects that must not re-run when draw changes read it through this ref.
   const drawRef = useRef(draw);
   drawRef.current = draw;
@@ -190,10 +195,11 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     const p = pos(e);
     if (!ptrs.current.has(e.pointerId)) {
       if (e.pointerType === 'mouse') {
-        const h = hitTest(layout, cam.current, p.x, p.y);
+        const hd = hitHandle(handles, cam.current, p.x, p.y);
+        const h = hd ? undefined : hitTest(layout, cam.current, p.x, p.y);
         const id = h?.id;
         if (id !== hoverId.current) { hoverId.current = id; draw(); }
-        canvasRef.current!.style.cursor = id ? 'pointer' : 'grab';
+        canvasRef.current!.style.cursor = id || hd ? 'pointer' : 'grab';
       }
       return;
     }
@@ -226,6 +232,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       canvasRef.current!.style.cursor = 'grab';
       const quick = gesture.current.moved < 6 && performance.now() - (gesture.current.downAt ?? 0) < 600;
       if (quick) {
+        const hd = hitHandle(handles, cam.current, p.x, p.y);
+        if (hd) { onHandle?.(hd.kind, hd.personId); return; }
         const h = hitTest(layout, cam.current, p.x, p.y);
         if (h) {
           const now = performance.now();

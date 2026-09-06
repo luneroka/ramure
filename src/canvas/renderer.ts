@@ -27,8 +27,51 @@ export function detailBand(k: number): DetailBand {
   return k >= 0.6 ? 'cards' : k >= 0.26 ? 'names' : 'dots';
 }
 
+export type HandleKind = 'father' | 'mother' | 'partner' | 'child' | 'sibling';
+
+export interface Handle {
+  kind: HandleKind;
+  personId: string;
+  x: number; y: number; w: number; h: number;
+  label: string;
+}
+
+/** Add-relative pills around the selected card, in world coordinates. */
+export function computeHandles(layout: Layout, tree: Tree, selectedId: string | undefined, lang: Lang): Handle[] {
+  if (!selectedId) return [];
+  const n = layout.nodes.find((x) => x.id === selectedId);
+  const ind = tree.individuals[selectedId];
+  if (!n || !ind) return [];
+  const fr = lang === 'fr';
+  const labels: Record<HandleKind, string> = fr
+    ? { father: '+ Père', mother: '+ Mère', partner: '+ Conjoint·e', child: '+ Enfant', sibling: '+ Frère / sœur' }
+    : { father: '+ Father', mother: '+ Mother', partner: '+ Partner', child: '+ Child', sibling: '+ Sibling' };
+  const birth = ind.childOf.find((l) => l.pedigree === 'birth') ?? ind.childOf[0];
+  const fam = birth ? tree.families[birth.familyId] : undefined;
+  const out: Handle[] = [];
+  const H = 24;
+  const widthFor = (label: string) => 18 + label.length * 7.2;
+  const pill = (kind: HandleKind, cx: number, cy: number) => {
+    const w = widthFor(labels[kind]);
+    out.push({ kind, personId: selectedId, x: cx - w / 2, y: cy - H / 2, w, h: H, label: labels[kind] });
+  };
+  const topY = n.y - 18;
+  const needFather = !fam?.husbandId, needMother = !fam?.wifeId;
+  if (needFather && needMother) { pill('father', n.x + n.w * 0.28, topY); pill('mother', n.x + n.w * 0.72, topY); }
+  else if (needFather) pill('father', n.x + n.w / 2, topY);
+  else if (needMother) pill('mother', n.x + n.w / 2, topY);
+  const bottomY = n.y + n.h + 18;
+  const row: HandleKind[] = ['child', 'partner', 'sibling'];
+  const widths = row.map((k) => widthFor(labels[k]));
+  const total = widths.reduce((a, b) => a + b, 0) + 8 * (row.length - 1);
+  let x = n.x + n.w / 2 - total / 2;
+  row.forEach((k, i) => { pill(k, x + widths[i]! / 2, bottomY); x += widths[i]! + 8; });
+  return out;
+}
+
 export interface RenderState {
   layout: Layout;
+  handles?: Handle[];
   tree: Tree;
   camera: Camera;
   selectedId?: string;
@@ -197,6 +240,20 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     }
   }
 
+  // Add-relative handles on the selected card.
+  if (band === 'cards' && s.handles?.length) {
+    for (const hd of s.handles) {
+      roundRect(ctx, hd.x, hd.y, hd.w, hd.h, hd.h / 2);
+      ctx.fillStyle = T.accent;
+      ctx.fill();
+      ctx.fillStyle = T.ground;
+      ctx.font = `600 11.5px ${T.bodyFont}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(hd.label, hd.x + hd.w / 2, hd.y + hd.h / 2 + 0.5);
+    }
+  }
+
   // Generation ruler, fixed on the left, tracking rows vertically.
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = `500 11px ${T.monoFont}`;
@@ -214,6 +271,13 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.fillStyle = g === 0 ? T.focus : T.ink3;
     ctx.fillText(label, 14, y);
   }
+}
+
+export function hitHandle(handles: Handle[] | undefined, cam: Camera, sx: number, sy: number): Handle | undefined {
+  if (!handles?.length || detailBand(cam.k) !== 'cards') return undefined;
+  const wx = (sx - cam.x) / cam.k, wy = (sy - cam.y) / cam.k;
+  const slack = 4 / cam.k;
+  return handles.find((h) => wx >= h.x - slack && wx <= h.x + h.w + slack && wy >= h.y - slack && wy <= h.y + h.h + slack);
 }
 
 export function hitTest(layout: Layout, cam: Camera, sx: number, sy: number): LayoutNode | undefined {

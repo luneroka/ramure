@@ -1,15 +1,33 @@
+import { useState } from 'react';
 import { formatDate } from '../gedcom/dates';
-import { displayName, findEvent, placeText, type Event, type Individual, type Tree } from '../gedcom/model';
+import { displayName, findEvent, placeText, type Event, type Family, type Individual, type Tree } from '../gedcom/model';
 import { eventLabel, t, type Lang } from '../i18n';
 import { isLiving } from '../canvas/renderer';
+import type { FamilyPatch, PersonPatch } from '../tree/edit';
+import { FamilyEditor, PersonEditor } from './PersonEditor';
+import { PersonPicker } from './PersonPicker';
 
-interface Props {
-  tree: Tree;
-  person: Individual;
-  lang: Lang;
+export interface PanelActions {
   onFocus(id: string): void;
   onSelect(id: string): void;
   onClose(): void;
+  onSavePerson(id: string, patch: PersonPatch): void;
+  onDeletePerson(id: string): void;
+  onSaveFamily(id: string, patch: FamilyPatch): void;
+  onAddChild(personId: string, familyId: string): void;
+  onLinkPartner(personId: string, partnerId: string): void;
+  onLinkChild(familyId: string, childId: string): void;
+  onUnlinkChild(familyId: string, childId: string): void;
+  onMerge(keepId: string, dropId: string): void;
+}
+
+interface Props extends PanelActions {
+  tree: Tree;
+  person: Individual;
+  lang: Lang;
+  /** Open directly in edit mode (after "add relative"). */
+  editing: boolean;
+  setEditing(v: boolean): void;
 }
 
 function EventRow({ e, lang, tree }: { e: Event; lang: Lang; tree: Tree }) {
@@ -36,33 +54,58 @@ function EventRow({ e, lang, tree }: { e: Event; lang: Lang; tree: Tree }) {
   );
 }
 
-export function PersonPanel({ tree, person, lang, onFocus, onSelect, onClose }: Props) {
-  const name = displayName(person);
+type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
+
+export function PersonPanel(props: Props) {
+  const { tree, person, lang, editing, setEditing, onFocus, onSelect, onClose } = props;
+  const [picking, setPicking] = useState<Picking>(null);
+  const [editingFamily, setEditingFamily] = useState<string | null>(null);
+  const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
   const sexGlyph = person.sex === 'M' ? '♂' : person.sex === 'F' ? '♀' : '';
   const living = isLiving(person);
 
-  const parentFamilies = person.childOf.map((l) => ({ link: l, fam: tree.families[l.familyId] })).filter((x) => x.fam);
+  const parentFamilies = person.childOf.map((l) => ({ link: l, fam: tree.families[l.familyId] })).filter((x): x is { link: typeof x.link; fam: Family } => !!x.fam);
   const parents = parentFamilies.flatMap(({ link, fam }) =>
-    [fam!.husbandId, fam!.wifeId].filter((id): id is string => !!id && !!tree.individuals[id]).map((id) => ({ id, pedigree: link.pedigree })),
+    [fam.husbandId, fam.wifeId].filter((id): id is string => !!id && !!tree.individuals[id]).map((id) => ({ id, pedigree: link.pedigree })),
   );
-  const siblings = parentFamilies.flatMap(({ fam }) => fam!.childIds.filter((c) => c !== person.id && tree.individuals[c]));
-  const unions = person.partnerIn.map((fid) => tree.families[fid]).filter((f): f is NonNullable<typeof f> => !!f);
+  const siblings = parentFamilies.flatMap(({ fam }) => fam.childIds.filter((c) => c !== person.id && tree.individuals[c]));
+  const unions = person.partnerIn.map((fid) => tree.families[fid]).filter((f): f is Family => !!f);
 
-  const Person = ({ id, tag }: { id: string; tag?: string }) => {
+  const Person = ({ id, tag, onRemove }: { id: string; tag?: string; onRemove?: () => void }) => {
     const p = tree.individuals[id]!;
     const b = findEvent(p.events, 'birth'), d = findEvent(p.events, 'death');
     const years = [b?.date?.date?.year, d?.date?.date?.year].filter((y) => y !== undefined).join('–');
     return (
-      <li>
+      <li className="person-row">
         <button className="link-person" onClick={() => onSelect(id)} onDoubleClick={() => onFocus(id)}>
           <span className={`sex-dot ${p.sex}`} aria-hidden="true" />
           <span className="link-name">{displayName(p)}</span>
           {years && <span className="link-years">{years}</span>}
           {tag && <span className="tag">{tag}</span>}
         </button>
+        {onRemove && <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>⨯</button>}
       </li>
     );
   };
+
+  if (editing) {
+    return (
+      <aside className="panel" aria-label={name}>
+        <header className="panel-head">
+          <h2 className="panel-name">{name}</h2>
+          <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>×</button>
+        </header>
+        <PersonEditor
+          tree={tree}
+          person={person}
+          lang={lang}
+          onSave={(patch) => { props.onSavePerson(person.id, patch); setEditing(false); }}
+          onCancel={() => setEditing(false)}
+          onDelete={() => { props.onDeletePerson(person.id); setEditing(false); }}
+        />
+      </aside>
+    );
+  }
 
   const lifeEvents = person.events.filter((e) => ['birth', 'baptism', 'death', 'burial', 'cremation'].includes(e.type));
   const otherEvents = person.events.filter((e) => !lifeEvents.includes(e));
@@ -82,7 +125,20 @@ export function PersonPanel({ tree, person, lang, onFocus, onSelect, onClose }: 
         <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>×</button>
       </header>
 
-      <button className="btn primary wide" onClick={() => onFocus(person.id)}>{t(lang, 'focusOn')}</button>
+      <div className="row panel-actions">
+        <button className="btn primary" onClick={() => onFocus(person.id)}>{t(lang, 'focusOn')}</button>
+        <button className="btn" onClick={() => setEditing(true)}>{t(lang, 'edit')}</button>
+      </div>
+
+      {picking?.kind === 'merge' && (
+        <PersonPicker tree={tree} lang={lang} exclude={[person.id]} hint={t(lang, 'mergeHint')} onCancel={() => setPicking(null)} onPick={(id) => { props.onMerge(person.id, id); setPicking(null); }} />
+      )}
+      {picking?.kind === 'partner' && (
+        <PersonPicker tree={tree} lang={lang} exclude={[person.id]} onCancel={() => setPicking(null)} onPick={(id) => { props.onLinkPartner(person.id, id); setPicking(null); }} />
+      )}
+      {picking?.kind === 'child' && (
+        <PersonPicker tree={tree} lang={lang} exclude={[person.id, ...(tree.families[picking.familyId]?.childIds ?? [])]} onCancel={() => setPicking(null)} onPick={(id) => { props.onLinkChild(picking.familyId, id); setPicking(null); }} />
+      )}
 
       {lifeEvents.length > 0 && <ul className="events">{lifeEvents.map((e, i) => <EventRow key={i} e={e} lang={lang} tree={tree} />)}</ul>}
 
@@ -98,28 +154,45 @@ export function PersonPanel({ tree, person, lang, onFocus, onSelect, onClose }: 
           <ul className="people">{siblings.map((id) => <Person key={id} id={id} />)}</ul>
         </section>
       )}
-      {unions.length > 0 && (
-        <section>
-          <h3>{t(lang, 'partners')}</h3>
-          {unions.map((f) => {
-            const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
-            const marr = findEvent(f.events, 'marriage'), div = findEvent(f.events, 'divorce');
-            const line = [marr && `${eventLabel(lang, 'marriage')} ${marr.date ? formatDate(marr.date, lang) : ''}${marr.place ? ', ' + placeText(marr.place) : ''}`, div && `${eventLabel(lang, 'divorce')} ${div.date ? formatDate(div.date, lang) : ''}`, f.unionType === 'unmarried' && t(lang, 'unmarried')].filter(Boolean).join(' · ');
-            return (
-              <div key={f.id} className="union">
-                <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{t(lang, 'unknownPerson')}</li>}</ul>
-                {line && <div className="union-line">{line}</div>}
-                {f.childIds.length > 0 && (
-                  <>
-                    <h4>{t(lang, 'children')}</h4>
-                    <ul className="people">{f.childIds.filter((c) => tree.individuals[c]).map((c) => <Person key={c} id={c} tag={tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted' ? t(lang, 'adopted') : undefined} />)}</ul>
-                  </>
-                )}
+      <section>
+        <h3>{t(lang, 'partners')}</h3>
+        {unions.map((f) => {
+          const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
+          const marr = findEvent(f.events, 'marriage'), div = findEvent(f.events, 'divorce');
+          const line = [
+            marr && `${eventLabel(lang, 'marriage')} ${marr.date ? formatDate(marr.date, lang) : ''}${marr.place ? ', ' + placeText(marr.place) : ''}`,
+            div && `${eventLabel(lang, 'divorce')} ${div.date ? formatDate(div.date, lang) : ''}`,
+            f.unionType === 'unmarried' && t(lang, 'unmarried'),
+            f.unionType === 'civil' && t(lang, 'civil'),
+          ].filter(Boolean).join(' · ');
+          return (
+            <div key={f.id} className="union">
+              <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{t(lang, 'unknownPerson')}</li>}</ul>
+              {editingFamily === f.id ? (
+                <FamilyEditor lang={lang} unionType={f.unionType} events={f.events} onCancel={() => setEditingFamily(null)} onSave={(patch) => { props.onSaveFamily(f.id, patch); setEditingFamily(null); }} />
+              ) : (
+                <div className="union-line">
+                  {line || <span className="muted">—</span>}
+                  <button className="link small" onClick={() => setEditingFamily(f.id)}>{t(lang, 'editUnion')}</button>
+                </div>
+              )}
+              <h4>{t(lang, 'children')}</h4>
+              <ul className="people">
+                {f.childIds.filter((c) => tree.individuals[c]).map((c) => (
+                  <Person key={c} id={c} tag={tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted' ? t(lang, 'adopted') : undefined} onRemove={() => props.onUnlinkChild(f.id, c)} />
+                ))}
+              </ul>
+              <div className="row small-actions">
+                <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>{t(lang, 'addChild')}</button>
+                <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>{t(lang, 'linkChild')}</button>
               </div>
-            );
-          })}
-        </section>
-      )}
+            </div>
+          );
+        })}
+        <div className="row small-actions">
+          <button className="btn small" onClick={() => setPicking({ kind: 'partner' })}>{t(lang, 'linkPartner')}</button>
+        </div>
+      </section>
       {otherEvents.length > 0 && (
         <section>
           <h3>{t(lang, 'events')}</h3>
@@ -132,6 +205,9 @@ export function PersonPanel({ tree, person, lang, onFocus, onSelect, onClose }: 
           {person.notes.map((n, i) => <p key={i} className="note">{n}</p>)}
         </section>
       )}
+      <section className="panel-footer">
+        <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>{t(lang, 'merge')}</button>
+      </section>
     </aside>
   );
 }
