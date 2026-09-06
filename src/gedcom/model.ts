@@ -206,6 +206,13 @@ export function newFamily(id: string): Family {
   return { id, childIds: [], unionType: 'unknown', events: [], notes: [], citations: [], mediaIds: [], extra: [] };
 }
 
+/** Place text for display: empty components (e.g. an unknown hamlet) are dropped. */
+export function placeText(p: Place | undefined): string {
+  if (!p) return '';
+  const parts = p.parts.filter((s) => s.length);
+  return parts.length ? parts.join(', ') : p.text;
+}
+
 /** Convenience: first event of a type. */
 export function findEvent(events: Event[], type: EventType): Event | undefined {
   return events.find((e) => e.type === type);
