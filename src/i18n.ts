@@ -64,8 +64,8 @@ const strings = {
   delete: { fr: 'Supprimer', en: 'Delete' },
   deletePerson: { fr: 'Supprimer cette personne', en: 'Delete this person' },
   confirmDelete: {
-    fr: 'Supprimer définitivement cette personne de l’arbre ? Ses liens familiaux seront retirés. Annulable avec ↶.',
-    en: 'Remove this person from the tree? Their family links are removed. Undo with ↶.',
+    fr: 'Supprimer définitivement cette personne de l’arbre ? Ses liens familiaux seront retirés. Une version de l’arbre est conservée juste avant, et l’action reste annulable avec le bouton Annuler.',
+    en: 'Remove this person from the tree? Their family links are removed. A version of the tree is kept just before, and the action can be undone with the Undo button.',
   },
   addFather: { fr: '+ Père', en: '+ Father' },
   addMother: { fr: '+ Mère', en: '+ Mother' },
