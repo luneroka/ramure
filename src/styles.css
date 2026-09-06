@@ -388,7 +388,7 @@ textarea:focus {
 .panel {
   grid-row: 2;
   grid-column: 2;
-  width: min(400px, 100vw);
+  width: min(460px, 100vw);
   min-height: 0;
   overflow: auto;
   background: var(--surface);
