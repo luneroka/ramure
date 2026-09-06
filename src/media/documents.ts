@@ -5,7 +5,8 @@
  */
 
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
-const MAX_IMAGE_SIDE = 1600;
+/** Images longer than this on a side are downsized; anything smaller is kept byte for byte. */
+const MAX_IMAGE_SIDE = 2400;
 
 export type DocumentError = 'too-big' | 'unsupported';
 
@@ -15,22 +16,47 @@ export function documentError(file: File): DocumentError | undefined {
   return undefined;
 }
 
-/** The blob to store and the GEDCOM FORM value. */
+function formatOf(type: string): string {
+  const sub = type.split('/')[1] ?? '';
+  return sub === 'jpeg' ? 'jpg' : sub === 'svg+xml' ? 'svg' : sub || 'bin';
+}
+
+/**
+ * The blob to store and the GEDCOM FORM value. A scan or a screenshot must
+ * stay readable, so the original bytes are kept whenever they fit; only
+ * very large pictures are downsized, losslessly when they came in as PNG.
+ */
 export async function prepareDocument(file: File): Promise<{ blob: Blob; format: string }> {
   if (file.type === 'application/pdf') return { blob: file, format: 'pdf' };
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+  const format = formatOf(file.type);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    // Formats the browser cannot decode (some TIFFs) are stored as they are.
+    return { blob: file, format };
+  }
+  const longest = Math.max(bitmap.width, bitmap.height);
+  if (longest <= MAX_IMAGE_SIDE) {
+    bitmap.close();
+    return { blob: file, format };
+  }
+  const scale = MAX_IMAGE_SIDE / longest;
   const w = Math.round(bitmap.width * scale),
     h = Math.round(bitmap.height * scale);
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  const lossless = file.type === 'image/png' || file.type === 'image/gif';
+  const blob = await new Promise<Blob | null>((resolve) =>
+    lossless ? canvas.toBlob(resolve, 'image/png') : canvas.toBlob(resolve, 'image/jpeg', 0.92),
+  );
   if (!blob) throw new Error('Image encoding failed');
-  return { blob, format: 'jpg' };
+  return { blob, format: lossless ? 'png' : 'jpg' };
 }
 
 export function isPdf(format: string | undefined): boolean {

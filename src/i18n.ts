@@ -329,7 +329,7 @@ const strings = {
   docKindOther: { fr: 'Autre document', en: 'Other document' },
   docTitle: { fr: 'Titre', en: 'Title' },
   docDate: { fr: 'Date du document', en: 'Document date' },
-  docHint: { fr: 'Image ou PDF, 10 Mo au plus. Les images sont réduites.', en: 'Image or PDF, up to 10 MB. Images are downsized.' },
+  docHint: { fr: 'Image ou PDF, 10 Mo au plus.', en: 'Image or PDF, up to 10 MB.' },
   fileTooBig: { fr: 'Fichier trop lourd : 10 Mo au plus.', en: 'File too large: 10 MB at most.' },
   fileUnsupported: { fr: 'Seuls les images et les PDF sont acceptés.', en: 'Only images and PDFs are accepted.' },
   documentAdded: { fr: 'Document ajouté', en: 'Document added' },
