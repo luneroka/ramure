@@ -345,6 +345,7 @@ const strings = {
     en: 'The tree returns to this state for every member. The current state stays in the history and the action can be undone.',
   },
   automaticVersion: { fr: 'Version automatique', en: 'Automatic version' },
+  versionN: { fr: 'version n°', en: 'version' },
   by: { fr: 'par', en: 'by' },
   memberRemoved: { fr: 'Membre retiré', en: 'Member removed' },
   roleChanged: { fr: 'Rôle modifié', en: 'Role changed' },

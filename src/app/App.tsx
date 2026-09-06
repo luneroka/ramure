@@ -1176,14 +1176,14 @@ export function App() {
                 <p className="muted">{t(lang, 'noSnapshots')}</p>
               ) : (
                 <ul className="snapshots">
-                  {snapshots.map((s) => (
+                  {snapshots.map((s, i) => (
                     <li key={s.id}>
                       <span className="mono">{new Date(s.created_at).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>
                       <span>
                         <strong>{s.label ?? t(lang, 'automaticVersion')}</strong>
                         <span className="muted small">
                           {' '}
-                          · v{s.version}
+                          · {t(lang, 'versionN')} {snapshots.length - i}
                           {s.by ? ` · ${t(lang, 'by')} ${s.by}` : ''}
                         </span>
                       </span>
