@@ -4,7 +4,7 @@
  * and exposes an imperative handle for fit / re-centre / zoom.
  */
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { Tree } from '../gedcom/model';
 import type { Lang } from '../i18n';
 import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
@@ -38,7 +38,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
   const size = useRef({ w: 0, h: 0, dpr: 1 });
   const theme = useRef<Theme | null>(null);
-  const [hoverId, setHoverId] = useState<string | undefined>();
+  const hoverId = useRef<string | undefined>(undefined);
   const raf = useRef(0);
   const anim = useRef<number | null>(null);
   const pendingFit = useRef(false);
@@ -54,11 +54,15 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!ctx) return;
       if (!theme.current) theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
-        layout, tree, camera: cam.current, selectedId, hoverId, lang, theme: theme.current, rowH: ROW_H,
+        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H,
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
     });
-  }, [layout, tree, selectedId, hoverId, lang, onBandChange]);
+  }, [layout, tree, selectedId, lang, onBandChange]);
+  // Effects that must not re-run when draw changes read it through this ref.
+  const drawRef = useRef(draw);
+  drawRef.current = draw;
+  const fitRef = useRef<(animate: boolean, readableOnly?: boolean) => void>(() => {});
 
   // Resize with the container; keep the world point at the centre fixed.
   useEffect(() => {
@@ -75,23 +79,23 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       canvas.height = Math.round(h * dpr);
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      if (pendingFit.current) { pendingFit.current = false; fitNow(false, true); }
-      draw();
+      if (pendingFit.current) { pendingFit.current = false; fitRef.current(false, true); }
+      drawRef.current();
     });
     ro.observe(parent);
     return () => ro.disconnect();
-  }, [draw]);
+  }, []);
 
   // Theme changes: re-read tokens.
   useEffect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => { theme.current = null; draw(); };
+    const onChange = () => { theme.current = null; drawRef.current(); };
     mq.addEventListener('change', onChange);
     const mo = new MutationObserver(onChange);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
     if (document.fonts?.ready) document.fonts.ready.then(onChange);
     return () => { mq.removeEventListener('change', onChange); mo.disconnect(); };
-  }, [draw]);
+  }, []);
 
   useEffect(() => { draw(); }, [draw]);
 
@@ -139,6 +143,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
     animateTo({ x: gutter + availW / 2 - cx * k, y: h / 2 - cy * k, k }, animate);
   }, [layout, animateTo]);
+  fitRef.current = fitNow;
 
   useImperativeHandle(ref, () => ({
     fit(animate = true) { fitNow(animate); },
@@ -187,7 +192,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (e.pointerType === 'mouse') {
         const h = hitTest(layout, cam.current, p.x, p.y);
         const id = h?.id;
-        if (id !== hoverId) setHoverId(id);
+        if (id !== hoverId.current) { hoverId.current = id; draw(); }
         canvasRef.current!.style.cursor = id ? 'pointer' : 'grab';
       }
       return;
