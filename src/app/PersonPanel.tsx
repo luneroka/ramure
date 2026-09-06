@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { formatDate } from '../gedcom/dates';
-import { displayName, findEvent, placeText, type Event, type Family, type Individual, type Tree } from '../gedcom/model';
+import { displayName, findEvent, placeText, type Event, type Family, type Individual, type MediaObject, type Tree } from '../gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { isLiving } from '../canvas/renderer';
-import type { FamilyPatch, PersonPatch } from '../tree/edit';
+import { nextId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '../tree/edit';
+import { mediaPut } from '../db';
+import { prepareImage } from '../media/portraits';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
 import { Medallion } from './fields/Portrait';
@@ -21,6 +23,8 @@ export interface PanelActions {
   onLinkChild(familyId: string, childId: string): void;
   onUnlinkChild(familyId: string, childId: string): void;
   onMerge(keepId: string, dropId: string): void;
+  /** Quick portrait change from the panel header. */
+  onSetPortrait(id: string, media: MediaObject | null): void;
 }
 
 interface Props extends PanelActions {
@@ -66,6 +70,19 @@ export function PersonPanel(props: Props) {
   const { tree, person, lang, editing, isDraft, setEditing, onFocus, onSelect, onClose } = props;
   const [picking, setPicking] = useState<Picking>(null);
   const [editingFamily, setEditingFamily] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const quickPhoto = async (file: File) => {
+    setPhotoBusy(true);
+    try {
+      const blob = await prepareImage(file);
+      const id = `${nextId(tree, 'M')}-${Date.now().toString(36)}`;
+      await mediaPut(id, blob);
+      props.onSetPortrait(person.id, { id, file: RAMURE_MEDIA_SCHEME + id, format: 'jpg', title: file.name.replace(/\.[^.]+$/, ''), notes: [], extra: [] });
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
   const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
   const sexGlyph = person.sex === 'M' ? '♂' : person.sex === 'F' ? '♀' : '';
   const living = isLiving(person);
@@ -123,7 +140,18 @@ export function PersonPanel(props: Props) {
   return (
     <aside className="panel" aria-label={name}>
       <header className="panel-head">
-        <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
+        <button
+          type="button"
+          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''}`}
+          onClick={() => photoInput.current?.click()}
+          disabled={photoBusy}
+          aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+          title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+        >
+          <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
+          <span className="medallion-badge" aria-hidden="true">{person.mediaIds[0] ? '✎' : '+'}</span>
+        </button>
+        <input ref={photoInput} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void quickPhoto(f); e.target.value = ''; }} />
         <div>
           <h2 className="panel-name">{name} <span className="panel-sex" aria-hidden="true">{sexGlyph}</span></h2>
           <div className="panel-tags">

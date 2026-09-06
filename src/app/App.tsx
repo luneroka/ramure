@@ -490,6 +490,7 @@ export function App() {
           onLinkChild={(fid, cid) => apply(() => linkChild(tree, fid, cid))}
           onUnlinkChild={(fid, cid) => apply(() => unlinkChild(tree, fid, cid))}
           onMerge={(keep, drop) => apply(() => mergePeople(tree, keep, drop))}
+          onSetPortrait={(id, media) => { if (draft) return; apply(() => updatePerson(tree, id, { portrait: media })); toast(t(lang, 'saved')); }}
         />
       )}
     </div>
