@@ -35,6 +35,8 @@ const strings = {
   unmarried: { fr: 'union libre', en: 'unmarried' },
   unknownPerson: { fr: 'Inconnu·e', en: 'Unknown' },
   importReport: { fr: 'Vérifications', en: 'Checks' },
+  checkPending: { fr: 'vérification', en: 'check' },
+  checksPending: { fr: 'vérifications', en: 'checks' },
   reportHint: { fr: 'mis à jour en direct', en: 'updated live' },
   reportEmpty: { fr: 'Rien à signaler.', en: 'Nothing to report.' },
   dismiss: { fr: 'Ignorer', en: 'Dismiss' },

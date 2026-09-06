@@ -847,6 +847,19 @@ export function App() {
                 <span className="sync-dot" />
                 <span className="sync-text">{syncLabel}</span>
               </button>
+              {reportNotes.length > 0 && (
+                <button
+                  className="sync-pill checks"
+                  onClick={() => setShowReport(true)}
+                  title={t(lang, 'importReport')}
+                  aria-label={t(lang, 'importReport')}
+                >
+                  <span className="sync-dot" />
+                  <span className="sync-text">
+                    {reportNotes.length} {t(lang, reportNotes.length === 1 ? 'checkPending' : 'checksPending')}
+                  </span>
+                </button>
+              )}
             </>
           )}
         </div>

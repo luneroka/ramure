@@ -1321,6 +1321,13 @@ label.check input {
 .sync-pill.readonly .sync-dot {
   background: var(--ink-3);
 }
+.sync-pill.checks {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+.sync-pill.checks .sync-dot {
+  background: var(--warn);
+}
 .member-list {
   list-style: none;
   margin: 0 0 8px;
