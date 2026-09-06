@@ -472,7 +472,8 @@ export function PersonPanel(props: Props) {
       onNotice={props.onNotice}
     />
   );
-  const docCount = person.mediaIds.filter((id) => tree.media[id] && id !== heroPortrait).length + sources.length;
+  // The badge counts documents only; citations are listed below them but are not files.
+  const docCount = person.mediaIds.filter((id) => tree.media[id] && id !== heroPortrait).length;
   const openLeads = (person.leads ?? []).filter((l) => !l.done).length;
 
   return (
