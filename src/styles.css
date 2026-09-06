@@ -1965,3 +1965,45 @@ label.check input {
 .modal .field {
   margin-top: 4px;
 }
+
+/* ---------- Rows that mix labelled fields and buttons align on the control's bottom edge ---------- */
+.row:has(> .field),
+.row:has(> label) {
+  align-items: flex-end;
+}
+.field input,
+.field select,
+.editor select,
+.signin input,
+.member-list select,
+.date-guided select,
+.date-triplet select {
+  height: 38px;
+  box-sizing: border-box;
+}
+.member-list select {
+  height: 32px;
+}
+.date-triplet select,
+.date-guided select {
+  height: 36px;
+}
+.field select,
+.editor select {
+  padding: 0 32px 0 10px;
+  font: 400 14px var(--body);
+  background: var(--ground);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 16px,
+    calc(100% - 11px) 16px;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
