@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { t, type Lang } from '../i18n';
+import { ApiError } from '../sync/api';
 import type { Auth } from './useAuth';
 
 interface Props {
@@ -22,8 +23,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     try {
       const link = await auth.requestLink(email.trim());
       setSent({ email: email.trim(), link });
-    } catch {
-      toast(t(lang, 'signinFailed'));
+    } catch (err) {
+      toast(t(lang, err instanceof ApiError && err.status === 429 ? 'signinThrottled' : 'signinFailed'));
     } finally {
       setBusy(false);
     }

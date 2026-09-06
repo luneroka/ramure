@@ -4,6 +4,10 @@ compatibility_date = "2026-06-01"
 compatibility_flags = ["nodejs_compat"]
 
 # The built app is served by the same Worker: one origin, no CORS, cookies just work.
+# Request logs and errors in the dashboard (Workers & Pages → ramure → Logs).
+[observability]
+enabled = true
+
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"

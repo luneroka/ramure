@@ -193,6 +193,10 @@ const strings = {
   devLink: { fr: 'Lien de développement (aucun courriel envoyé)', en: 'Development link (no email sent)' },
   otherEmail: { fr: 'Autre adresse', en: 'Other address' },
   signinFailed: { fr: 'Envoi impossible. Vérifiez l’adresse.', en: 'Could not send. Check the address.' },
+  signinThrottled: {
+    fr: 'Trop de demandes pour cette adresse. Réessayez dans un quart d’heure.',
+    en: 'Too many requests for this address. Try again in fifteen minutes.',
+  },
   signedIn: { fr: 'Connecté·e', en: 'Signed in' },
   signinExpired: {
     fr: 'Ce lien a expiré ou a déjà servi. Demandez-en un nouveau.',

@@ -51,6 +51,11 @@ auth.get('/me', (c) => c.json({ user: c.get('user') }));
 auth.post('/request', async (c) => {
   const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
   const email = normaliseEmail(body.email);
+  // At most three links per address per quarter hour: keeps a mistyped form or a bot from burning the mail quota.
+  const recent = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM magic_links WHERE email = ? AND expires_at > ?`)
+    .bind(email, now())
+    .first<{ n: number }>();
+  if ((recent?.n ?? 0) >= 3) throw new HttpError(429, 'too many requests, try again later');
   const token = randomToken();
   await c.env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at) VALUES (?, ?, ?)`)
     .bind(await sha256(token), email, now() + LINK_TTL_MS)
