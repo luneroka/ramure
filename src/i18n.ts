@@ -360,10 +360,6 @@ const strings = {
   deleteLead: { fr: 'Supprimer la piste', en: 'Delete the lead' },
   externalSearch: { fr: 'Recherches externes', en: 'External searches' },
   launchSearch: { fr: 'Lancer les recherches', en: 'Search the archives' },
-  launchSearchHint: {
-    fr: 'Ouvre Geneanet, FamilySearch, Filae et FranceArchives avec le nom et les années.',
-    en: 'Opens Geneanet, FamilySearch, Filae and FranceArchives with the name and years filled in.',
-  },
   popupBlocked: {
     fr: 'Le navigateur a bloqué certains onglets : ouvrez les liens un par un.',
     en: 'The browser blocked some tabs: open the links one by one.',

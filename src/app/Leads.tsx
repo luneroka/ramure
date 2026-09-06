@@ -196,7 +196,6 @@ export function LeadsTab(p: Props) {
                 {t(lang, 'launchSearch')}
               </button>
             </div>
-            <p className="muted small">{t(lang, 'launchSearchHint')}</p>
             <div className="search-links">
               {links.map((l) => (
                 <a key={l.id} className="chip" href={l.url} target="_blank" rel="noopener">
