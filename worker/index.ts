@@ -7,7 +7,8 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { auth, SESSION_COOKIE, userFromRequest } from './auth';
 import type { Env, Vars } from './env';
-import { invites, trees } from './trees';
+import { accounts, invites } from './accounts';
+import { trees } from './trees';
 import { HttpError } from './util';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -23,6 +24,7 @@ app.use('/api/*', async (c, next) => {
 
 app.get('/api/health', (c) => c.json({ ok: true, ts: Date.now() }));
 app.route('/api/auth', auth);
+app.route('/api/accounts', accounts);
 app.route('/api/trees', trees);
 app.route('/api/invites', invites);
 

@@ -13,12 +13,11 @@ import { serializeGedcom } from '../src/gedcom/serialize';
 import type { OpEnvelope } from '../src/tree/ops';
 import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
-import { HttpError, now, randomId, randomToken, sha256 } from './util';
+import { HttpError, now, randomId } from './util';
 
 const MAX_DOC_BYTES = 25 * 1024 * 1024;
 const MAX_OPS_PER_PUSH = 500;
 const SNAPSHOT_EVERY = 100;
-const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
 
 interface TreeRow {
@@ -32,16 +31,17 @@ interface TreeRow {
   updated_at: number;
 }
 
-function requireUser(user: User | null): User {
-  if (!user) throw new HttpError(401, 'sign in required');
-  return user;
-}
+import { requireAccountRole, requireUser } from './accounts';
 
+/** A tree's role derives from the account that owns it: account owners own, members edit. */
 async function roleOf(env: Env, treeId: string, userId: string): Promise<Role | null> {
-  const row = await env.DB.prepare(`SELECT role FROM tree_members WHERE tree_id = ? AND user_id = ?`)
+  const row = await env.DB.prepare(
+    `SELECT m.role FROM trees t JOIN account_members m ON m.account_id = t.account_id WHERE t.id = ? AND m.user_id = ?`,
+  )
     .bind(treeId, userId)
-    .first<{ role: Role }>();
-  return row?.role ?? null;
+    .first<{ role: 'owner' | 'member' }>();
+  if (!row) return null;
+  return row.role === 'owner' ? 'owner' : 'editor';
 }
 
 async function requireRole(env: Env, treeId: string, user: User, allowed: Role[]): Promise<Role> {
@@ -57,17 +57,22 @@ export const trees = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 trees.get('/', async (c) => {
   const user = requireUser(c.get('user'));
+  const accountId = c.req.query('account');
+  if (!accountId) throw new HttpError(400, 'account required');
+  const role = await requireAccountRole(c.env, accountId, user, ['owner', 'member']);
   const rows = await c.env.DB.prepare(
-    `SELECT t.id, t.name, t.version, t.people, t.updated_at, m.role FROM trees t JOIN tree_members m ON m.tree_id = t.id WHERE m.user_id = ? ORDER BY t.updated_at DESC`,
+    `SELECT id, name, version, people, updated_at FROM trees WHERE account_id = ? ORDER BY updated_at DESC`,
   )
-    .bind(user.id)
-    .all<{ id: string; name: string; version: number; people: number; updated_at: number; role: Role }>();
-  return c.json({ trees: rows.results });
+    .bind(accountId)
+    .all<{ id: string; name: string; version: number; people: number; updated_at: number }>();
+  return c.json({ trees: rows.results.map((r) => ({ ...r, role: role === 'owner' ? 'owner' : 'editor' })) });
 });
 
 trees.post('/', async (c) => {
   const user = requireUser(c.get('user'));
-  const body = await c.req.json<{ name?: string; gedcom?: string }>();
+  const body = await c.req.json<{ accountId?: string; name?: string; gedcom?: string }>();
+  const accountId = String(body.accountId ?? '');
+  const accRole = await requireAccountRole(c.env, accountId, user, ['owner', 'member']);
   const name =
     String(body.name ?? '')
       .trim()
@@ -79,13 +84,12 @@ trees.post('/', async (c) => {
   const doc = serializeGedcom(tree);
   const id = randomId('T');
   const ts = now();
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `INSERT INTO trees (id, name, owner_id, version, doc, people, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?)`,
-    ).bind(id, name, user.id, doc, Object.keys(tree.individuals).length, ts, ts),
-    c.env.DB.prepare(`INSERT INTO tree_members (tree_id, user_id, role, added_at) VALUES (?, ?, 'owner', ?)`).bind(id, user.id, ts),
-  ]);
-  return c.json({ id, name, version: 0, role: 'owner' as Role }, 201);
+  await c.env.DB.prepare(
+    `INSERT INTO trees (id, name, owner_id, account_id, version, doc, people, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+  )
+    .bind(id, name, user.id, accountId, doc, Object.keys(tree.individuals).length, ts, ts)
+    .run();
+  return c.json({ id, name, version: 0, role: (accRole === 'owner' ? 'owner' : 'editor') as Role }, 201);
 });
 
 // ---------- One tree ----------
@@ -251,89 +255,6 @@ trees.get('/:id/snapshots/:sid', async (c) => {
   return c.json(row);
 });
 
-// ---------- Members and invites ----------
-
-trees.get('/:id/members', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
-  const rows = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.name, m.role, m.added_at FROM tree_members m JOIN users u ON u.id = m.user_id WHERE m.tree_id = ? ORDER BY m.added_at`,
-  )
-    .bind(id)
-    .all<{ id: string; email: string; name: string | null; role: Role; added_at: number }>();
-  return c.json({ members: rows.results });
-});
-
-trees.patch('/:id/members/:userId', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner']);
-  const target = c.req.param('userId');
-  const body = await c.req.json<{ role?: Role }>();
-  if (target === user.id) throw new HttpError(400, 'cannot change your own role');
-  if (body.role !== 'editor' && body.role !== 'viewer') throw new HttpError(400, 'role must be editor or viewer');
-  await c.env.DB.prepare(`UPDATE tree_members SET role = ? WHERE tree_id = ? AND user_id = ? AND role != 'owner'`)
-    .bind(body.role, id, target)
-    .run();
-  return c.json({ ok: true });
-});
-
-trees.delete('/:id/members/:userId', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  const target = c.req.param('userId');
-  const role = await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
-  // Owners remove anyone but themselves; anyone can leave.
-  if (target !== user.id && role !== 'owner') throw new HttpError(403, 'not allowed');
-  if (target === user.id && role === 'owner') throw new HttpError(400, 'owner cannot leave; delete the tree instead');
-  await c.env.DB.prepare(`DELETE FROM tree_members WHERE tree_id = ? AND user_id = ? AND role != 'owner'`).bind(id, target).run();
-  return c.json({ ok: true });
-});
-
-trees.post('/:id/invites', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner']);
-  const body = await c.req.json<{ role?: Role }>().catch(() => ({}) as { role?: Role });
-  const role: Role = body.role === 'viewer' ? 'viewer' : 'editor';
-  const token = randomToken();
-  await c.env.DB.prepare(`INSERT INTO invites (token_hash, tree_id, role, created_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)`)
-    .bind(await sha256(token), id, role, user.id, now(), now() + INVITE_TTL_MS)
-    .run();
-  return c.json({ link: `${c.env.APP_ORIGIN}/?invite=${encodeURIComponent(token)}`, role, expiresAt: now() + INVITE_TTL_MS }, 201);
-});
-
-trees.get('/:id/invites', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner']);
-  const rows = await c.env.DB.prepare(
-    `SELECT token_hash, role, created_at, expires_at, revoked_at FROM invites WHERE tree_id = ? ORDER BY created_at DESC`,
-  )
-    .bind(id)
-    .all<{ token_hash: string; role: Role; created_at: number; expires_at: number; revoked_at: number | null }>();
-  return c.json({
-    invites: rows.results.map((r) => ({
-      id: r.token_hash.slice(0, 12),
-      role: r.role,
-      createdAt: r.created_at,
-      expiresAt: r.expires_at,
-      revoked: !!r.revoked_at,
-    })),
-  });
-});
-
-trees.delete('/:id/invites/:inviteId', async (c) => {
-  const user = requireUser(c.get('user'));
-  const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner']);
-  await c.env.DB.prepare(`UPDATE invites SET revoked_at = ? WHERE tree_id = ? AND token_hash LIKE ?`)
-    .bind(now(), id, c.req.param('inviteId') + '%')
-    .run();
-  return c.json({ ok: true });
-});
-
 // ---------- Media (portraits) in R2 ----------
 
 trees.put('/:id/media/:mediaId', async (c) => {
@@ -376,33 +297,4 @@ trees.delete('/:id/media/:mediaId', async (c) => {
   await c.env.MEDIA.delete(`trees/${id}/media/${c.req.param('mediaId')}`);
   await c.env.DB.prepare(`DELETE FROM media WHERE id = ? AND tree_id = ?`).bind(c.req.param('mediaId'), id).run();
   return c.json({ ok: true });
-});
-
-// ---------- Invite acceptance lives outside /trees ----------
-
-export const invites = new Hono<{ Bindings: Env; Variables: Vars }>();
-
-invites.get('/:token', async (c) => {
-  const row = await c.env.DB.prepare(
-    `SELECT i.tree_id, i.role, i.expires_at, i.revoked_at, t.name FROM invites i JOIN trees t ON t.id = i.tree_id WHERE i.token_hash = ?`,
-  )
-    .bind(await sha256(c.req.param('token')))
-    .first<{ tree_id: string; role: Role; expires_at: number; revoked_at: number | null; name: string }>();
-  if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
-  return c.json({ treeId: row.tree_id, treeName: row.name, role: row.role });
-});
-
-invites.post('/:token/accept', async (c) => {
-  const user = requireUser(c.get('user'));
-  const row = await c.env.DB.prepare(`SELECT tree_id, role, expires_at, revoked_at FROM invites WHERE token_hash = ?`)
-    .bind(await sha256(c.req.param('token')))
-    .first<{ tree_id: string; role: Role; expires_at: number; revoked_at: number | null }>();
-  if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
-  const existing = await roleOf(c.env, row.tree_id, user.id);
-  if (!existing) {
-    await c.env.DB.prepare(`INSERT INTO tree_members (tree_id, user_id, role, added_at) VALUES (?, ?, ?, ?)`)
-      .bind(row.tree_id, user.id, row.role, now())
-      .run();
-  }
-  return c.json({ treeId: row.tree_id, role: existing ?? row.role });
 });

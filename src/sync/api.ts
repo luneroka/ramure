@@ -51,11 +51,19 @@ export interface TreeSummary {
   role: Role;
 }
 
-export interface Member {
+export interface Account {
+  id: string;
+  name: string;
+  role: 'owner' | 'member';
+  members: number;
+  trees: number;
+}
+
+export interface AccountMember {
   id: string;
   email: string;
   name: string | null;
-  role: Role;
+  role: 'owner' | 'member';
   added_at: number;
 }
 
@@ -65,9 +73,24 @@ export const api = {
   logout: () => call<{ ok: true }>('POST', '/api/auth/logout', {}),
   rename: (name: string) => call<{ user: Me }>('PATCH', '/api/auth/me', { name }),
 
-  listTrees: () => call<{ trees: TreeSummary[] }>('GET', '/api/trees'),
-  createTree: (name: string, gedcom: string) =>
-    call<{ id: string; name: string; version: number; role: Role }>('POST', '/api/trees', { name, gedcom }),
+  accounts: () => call<{ accounts: Account[] }>('GET', '/api/accounts'),
+  createAccount: (name: string) => call<{ id: string; name: string; role: 'owner' }>('POST', '/api/accounts', { name }),
+  renameAccount: (id: string, name: string) => call<{ ok: true }>('PATCH', `/api/accounts/${id}`, { name }),
+  accountMembers: (id: string) => call<{ members: AccountMember[] }>('GET', `/api/accounts/${id}/members`),
+  setAccountRole: (id: string, userId: string, role: 'owner' | 'member') =>
+    call<{ ok: true }>('PATCH', `/api/accounts/${id}/members/${userId}`, { role }),
+  removeAccountMember: (id: string, userId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/members/${userId}`),
+  createAccountInvite: (id: string) => call<{ link: string; expiresAt: number }>('POST', `/api/accounts/${id}/invites`, {}),
+  listAccountInvites: (id: string) =>
+    call<{ invites: Array<{ id: string; createdAt: number; expiresAt: number }> }>('GET', `/api/accounts/${id}/invites`),
+  revokeAccountInvite: (id: string, inviteId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/invites/${inviteId}`),
+  inviteInfo: (token: string) => call<{ accountId: string; accountName: string }>('GET', `/api/invites/${encodeURIComponent(token)}`),
+  acceptInvite: (token: string) =>
+    call<{ accountId: string; role: 'owner' | 'member' }>('POST', `/api/invites/${encodeURIComponent(token)}/accept`, {}),
+
+  listTrees: (accountId: string) => call<{ trees: TreeSummary[] }>('GET', `/api/trees?account=${encodeURIComponent(accountId)}`),
+  createTree: (accountId: string, name: string, gedcom: string) =>
+    call<{ id: string; name: string; version: number; role: Role }>('POST', '/api/trees', { accountId, name, gedcom }),
   getTree: (id: string) =>
     call<{ id: string; name: string; version: number; doc: string; people: number; role: Role; updatedAt: number }>(
       'GET',
@@ -87,20 +110,6 @@ export const api = {
     call<{ snapshots: Array<{ id: string; version: number; created_at: number }> }>('GET', `/api/trees/${id}/snapshots`),
   getSnapshot: (id: string, sid: string) =>
     call<{ doc: string; version: number; created_at: number }>('GET', `/api/trees/${id}/snapshots/${sid}`),
-  members: (id: string) => call<{ members: Member[] }>('GET', `/api/trees/${id}/members`),
-  setRole: (id: string, userId: string, role: 'editor' | 'viewer') =>
-    call<{ ok: true }>('PATCH', `/api/trees/${id}/members/${userId}`, { role }),
-  removeMember: (id: string, userId: string) => call<{ ok: true }>('DELETE', `/api/trees/${id}/members/${userId}`),
-  createInvite: (id: string, role: 'editor' | 'viewer') =>
-    call<{ link: string; role: Role; expiresAt: number }>('POST', `/api/trees/${id}/invites`, { role }),
-  listInvites: (id: string) =>
-    call<{ invites: Array<{ id: string; role: Role; createdAt: number; expiresAt: number; revoked: boolean }> }>(
-      'GET',
-      `/api/trees/${id}/invites`,
-    ),
-  revokeInvite: (id: string, inviteId: string) => call<{ ok: true }>('DELETE', `/api/trees/${id}/invites/${inviteId}`),
-  inviteInfo: (token: string) => call<{ treeId: string; treeName: string; role: Role }>('GET', `/api/invites/${encodeURIComponent(token)}`),
-  acceptInvite: (token: string) => call<{ treeId: string; role: Role }>('POST', `/api/invites/${encodeURIComponent(token)}/accept`, {}),
 
   putMedia: (treeId: string, mediaId: string, blob: Blob) =>
     call<{ ok: true }>('PUT', `/api/trees/${treeId}/media/${mediaId}`, undefined, blob, blob.type || 'image/jpeg'),

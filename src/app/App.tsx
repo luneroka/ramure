@@ -1,31 +1,34 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { TreeCanvas, type TreeCanvasHandle } from '../canvas/TreeCanvas';
 import type { DetailBand, HandleKind } from '../canvas/renderer';
-import { mediaGet } from '../db';
-import { parseGedcom, serializeGedcom } from '../gedcom';
+import { serializeGedcom } from '../gedcom';
 import { displayName, type Tree } from '../gedcom/model';
 import { applyTheme, detectLang, loadTheme, saveLang, t, tg, type Lang, type ThemeChoice } from '../i18n';
 import { CloudMediaStore } from '../store/cloudMedia';
-import { setActiveMediaStore, treeStore, type SavedTree, type SnapshotMeta } from '../store';
-import { api, ApiError, type Role, type TreeSummary } from '../sync/api';
+import { setActiveMediaStore } from '../store';
+import { api, ApiError, type Account, type Role, type TreeSummary } from '../sync/api';
 import { SyncEngine, type SyncStatus } from '../sync/engine';
 import { diffTrees } from '../tree/diff';
-import { newTree, RAMURE_MEDIA_SCHEME, type EditResult, type FamilyPatch, type PersonPatch } from '../tree/edit';
+import { newTree, type EditResult, type FamilyPatch, type PersonPatch } from '../tree/edit';
 import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
-import sampleGedcom from '../../fixtures/geneanet/input-fixture.ged?raw';
+import { AccountDialog } from './AccountDialog';
 import { historyReducer, initialHistory } from './history';
-import { Library } from './Library';
+import { Home } from './Home';
+import { Login } from './Login';
 import { PersonPanel } from './PersonPanel';
-import { ShareDialog } from './ShareDialog';
 import { useAuth } from './useAuth';
 
 type ViewMode = 'all' | 'hourglass' | 'ancestors' | 'descendants';
 type AddKind = 'father' | 'mother' | 'partner' | 'child' | 'sibling';
 
-/** Where the open tree lives. */
-type Source = { kind: 'local' } | { kind: 'cloud'; id: string; name: string; role: Role };
+/** The open tree. Every tree lives in the account; the device keeps a synced copy. */
+interface Source {
+  id: string;
+  name: string;
+  role: Role;
+}
 
 /** A relative being added: previewed on the canvas, committed only on save. The op is built once so ids are stable. */
 interface Draft {
@@ -66,8 +69,8 @@ function defaultFocus(tree: Tree): string | undefined {
   return best;
 }
 
-const SNAPSHOT_EVERY_MS = 10 * 60 * 1000;
-const LAST_SOURCE_KEY = 'ramure.lastSource';
+const LAST_TREE_KEY = 'ramure.lastTree';
+const LAST_ACCOUNT_KEY = 'ramure.lastAccount';
 const INVITE_KEY = 'ramure.invite';
 
 function ThemeIcon({ choice }: { choice: ThemeChoice }) {
@@ -103,10 +106,6 @@ function ThemeIcon({ choice }: { choice: ThemeChoice }) {
   );
 }
 
-function countPeople(gedcom: string): number {
-  return (gedcom.match(/^0 @[^@]+@ INDI/gm) ?? []).length;
-}
-
 export function App() {
   const [lang, setLang] = useState<Lang>(detectLang);
   const [theme, setTheme] = useState<ThemeChoice>(loadTheme);
@@ -122,6 +121,13 @@ export function App() {
   const [sync, setSync] = useState<{ status: SyncStatus; pending: number }>({ status: 'synced', pending: 0 });
   const committing = useRef(false);
 
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [accountDialog, setAccountDialog] = useState(false);
+  const [homeRefresh, setHomeRefresh] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [pendingInvite, setPendingInvite] = useState<{ token: string; accountName: string } | null>(null);
+
   const [focusId, setFocusId] = useState<string | undefined>();
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [editing, setEditing] = useState(false);
@@ -132,23 +138,46 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [snapshots, setSnapshots] = useState<Array<SnapshotMeta & { cloudId?: string }> | null>(null);
-  const [share, setShare] = useState(false);
+  const [snapshots, setSnapshots] = useState<Array<{ id: string; version: number; created_at: number }> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [booting, setBooting] = useState(true);
-  const [localSummary, setLocalSummary] = useState<{ fileName: string; people: number } | null>(null);
-  const [libraryRefresh, setLibraryRefresh] = useState(0);
-  const [pendingInvite, setPendingInvite] = useState<{ token: string; treeName: string; role: string } | null>(null);
   const canvas = useRef<TreeCanvasHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const lastSnapshotAt = useRef(0);
 
   const toast = useCallback((msg: string) => {
     setNotice(msg);
     window.setTimeout(() => setNotice((m) => (m === msg ? null : m)), 3200);
   }, []);
 
-  const readOnly = source?.kind === 'cloud' && source.role === 'viewer';
+  const readOnly = source?.role === 'viewer';
+
+  // ---------- Accounts ----------
+
+  const loadAccounts = useCallback(async (preferId?: string): Promise<Account[]> => {
+    const r = await api.accounts();
+    setAccounts(r.accounts);
+    const wanted = preferId ?? localStorage.getItem(LAST_ACCOUNT_KEY) ?? undefined;
+    const pick = r.accounts.find((a) => a.id === wanted) ?? r.accounts[0] ?? null;
+    setAccount(pick);
+    if (pick) localStorage.setItem(LAST_ACCOUNT_KEY, pick.id);
+    return r.accounts;
+  }, []);
+
+  const selectAccount = (a: Account) => {
+    setAccount(a);
+    localStorage.setItem(LAST_ACCOUNT_KEY, a.id);
+  };
+
+  const createAccount = async (name: string) => {
+    setBusy(true);
+    try {
+      const created = await api.createAccount(name);
+      await loadAccounts(created.id);
+    } catch {
+      toast(t(lang, 'syncError'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // ---------- Opening and closing trees ----------
 
@@ -161,30 +190,8 @@ export function App() {
     setSelectedId(undefined);
     setDraft(null);
     setEditing(false);
-    setShare(false);
-    setLibraryRefresh((n) => n + 1);
-    treeStore
-      .loadCurrent()
-      .then((saved) => setLocalSummary(saved ? { fileName: saved.fileName, people: countPeople(saved.gedcom) } : null));
-  }, []);
-
-  const loadLocal = useCallback((gedcom: string, fileName: string, focus?: string) => {
-    engine.current?.dispose();
-    engine.current = null;
-    setActiveMediaStore(null);
-    const parsed = parseGedcom(gedcom);
-    const first = focus && parsed.individuals[focus] ? focus : defaultFocus(parsed);
-    dispatch({ type: 'load', tree: parsed, fileName });
-    setSource({ kind: 'local' });
-    setFocusId(first);
-    setSelectedId(undefined);
-    setEditing(false);
-    setDraft(null);
-    setShowReport(parsed.importNotes.some((n) => n.level === 'warning'));
-    lastSnapshotAt.current = Date.now();
-    void treeStore.saveCurrent({ gedcom, fileName, focusId: first, savedAt: Date.now() } satisfies SavedTree);
-    setLocalSummary({ fileName, people: Object.keys(parsed.individuals).length });
-    localStorage.setItem(LAST_SOURCE_KEY, JSON.stringify({ kind: 'local' }));
+    setHomeRefresh((n) => n + 1);
+    localStorage.removeItem(LAST_TREE_KEY);
   }, []);
 
   const openCloud = useCallback(
@@ -206,33 +213,31 @@ export function App() {
       });
       try {
         const opened = await eng.open();
-        setSource({ kind: 'cloud', id, name, role });
+        setSource({ id, name, role });
         dispatch({ type: 'load', tree: opened, fileName: name });
         setFocusId(defaultFocus(opened));
         setSelectedId(undefined);
         setEditing(false);
         setDraft(null);
         setShowReport(false);
-        localStorage.setItem(LAST_SOURCE_KEY, JSON.stringify({ kind: 'cloud', id, name, role }));
+        localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ id, name, role }));
       } catch (err) {
         eng.dispose();
         engine.current = null;
         setActiveMediaStore(null);
         toast(err instanceof ApiError && err.status === 404 ? t(lang, 'inviteInvalid') : t(lang, 'syncError'));
-        localStorage.removeItem(LAST_SOURCE_KEY);
-        setLibraryRefresh((n) => n + 1);
+        localStorage.removeItem(LAST_TREE_KEY);
       }
     },
     [lang, toast],
   );
 
-  // Boot: URL parameters (sign-in result, invite), then the last opened tree.
+  // Boot: URL parameters (sign-in result, invite).
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const signin = params.get('signin');
     const invite = params.get('invite');
     if (signin || invite) window.history.replaceState(null, '', location.pathname);
-    // Toasts are state updates: defer them out of the effect body.
     if (signin === 'ok') window.setTimeout(() => toast(t(lang, 'signedIn')), 0);
     if (signin === 'expired') window.setTimeout(() => toast(t(lang, 'signinExpired')), 0);
     if (invite) sessionStorage.setItem(INVITE_KEY, invite);
@@ -240,86 +245,57 @@ export function App() {
     if (token) {
       api
         .inviteInfo(token)
-        .then((info) => setPendingInvite({ token, treeName: info.treeName, role: info.role }))
+        .then((info) => setPendingInvite({ token, accountName: info.accountName }))
         .catch(() => {
           sessionStorage.removeItem(INVITE_KEY);
-          toast(t(lang, 'inviteInvalid'));
+          window.setTimeout(() => toast(t(lang, 'inviteInvalid')), 0);
         });
     }
-    (async () => {
-      const saved = await treeStore.loadCurrent();
-      setLocalSummary(saved ? { fileName: saved.fileName, people: countPeople(saved.gedcom) } : null);
-      let last: Source | null = null;
-      try {
-        last = JSON.parse(localStorage.getItem(LAST_SOURCE_KEY) ?? 'null') as Source | null;
-      } catch {
-        /* ignore */
-      }
-      if (!token && last?.kind === 'local' && saved?.gedcom) loadLocal(saved.gedcom, saved.fileName, saved.focusId);
-      setBooting(false);
-    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Once signed in: accept a pending invite, or reopen the last cloud tree.
-  const reopened = useRef(false);
+  // Signed in: accept a pending invite, load accounts, reopen the last tree.
+  const bootedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!auth.user || reopened.current) return;
-    reopened.current = true;
+    const user = auth.user;
+    if (!user) {
+      bootedFor.current = null;
+      return;
+    }
+    if (bootedFor.current === user.id) return;
+    bootedFor.current = user.id;
     (async () => {
+      let prefer: string | undefined;
       const token = sessionStorage.getItem(INVITE_KEY);
       if (token) {
         try {
           const r = await api.acceptInvite(token);
-          sessionStorage.removeItem(INVITE_KEY);
-          setPendingInvite(null);
-          const info = await api.getTree(r.treeId);
-          await openCloud(r.treeId, info.name, info.role);
+          prefer = r.accountId;
         } catch {
-          sessionStorage.removeItem(INVITE_KEY);
-          setPendingInvite(null);
           toast(t(lang, 'inviteInvalid'));
         }
-        return;
+        sessionStorage.removeItem(INVITE_KEY);
+        setPendingInvite(null);
       }
+      const list = await loadAccounts(prefer).catch(() => [] as Account[]);
+      if (prefer) return; // just joined: show the account's trees
       let last: Source | null = null;
       try {
-        last = JSON.parse(localStorage.getItem(LAST_SOURCE_KEY) ?? 'null') as Source | null;
+        last = JSON.parse(localStorage.getItem(LAST_TREE_KEY) ?? 'null') as Source | null;
       } catch {
         /* ignore */
       }
-      if (last?.kind === 'cloud' && !source) await openCloud(last.id, last.name, last.role);
+      if (last && list.length) await openCloud(last.id, last.name, last.role);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.user]);
+  }, [auth.user, loadAccounts, openCloud, lang, toast]);
 
-  // ---------- Local persistence: every edit (debounced) + periodic snapshots ----------
-  const lastSavedVersion = useRef(0);
-  useEffect(() => {
-    if (source?.kind !== 'local' || !tree || history.version === lastSavedVersion.current) return;
-    const timer = window.setTimeout(() => {
-      lastSavedVersion.current = history.version;
-      const gedcom = serializeGedcom(tree);
-      void treeStore.saveCurrent({ gedcom, fileName: history.fileName, focusId, savedAt: Date.now() } satisfies SavedTree);
-      setLocalSummary({ fileName: history.fileName, people: Object.keys(tree.individuals).length });
-      if (history.past.length > 0 && Date.now() - lastSnapshotAt.current > SNAPSHOT_EVERY_MS) {
-        lastSnapshotAt.current = Date.now();
-        void treeStore.saveSnapshot(gedcom, history.fileName, Object.keys(tree.individuals).length);
-      }
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [source, tree, history.version, history.fileName, history.past.length, focusId]);
-
-  useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState !== 'hidden' || source?.kind !== 'local' || !tree || history.past.length === 0) return;
-      if (Date.now() - lastSnapshotAt.current < 60 * 1000) return;
-      lastSnapshotAt.current = Date.now();
-      void treeStore.saveSnapshot(serializeGedcom(tree), history.fileName, Object.keys(tree.individuals).length);
-    };
-    document.addEventListener('visibilitychange', onHide);
-    return () => document.removeEventListener('visibilitychange', onHide);
-  }, [source, tree, history.fileName, history.past.length]);
+  const signOut = async () => {
+    setMenuOpen(false);
+    closeTree();
+    setAccounts(null);
+    setAccount(null);
+    await auth.logout();
+  };
 
   // ---------- Layout ----------
   const displayTree = draft ? draft.preview.tree : tree;
@@ -349,7 +325,7 @@ export function App() {
   const lastKey = useRef<string>('');
   const lastFocusRef = useRef<string | undefined>(undefined);
   const lastViewRef = useRef<ViewMode>(view);
-  const sourceKey = source ? (source.kind === 'local' ? 'local' : `cloud:${source.id}`) : '';
+  const sourceKey = source?.id ?? '';
   useEffect(() => {
     if (!layout || !tree) return;
     const loadedNew = lastKey.current !== sourceKey;
@@ -500,7 +476,7 @@ export function App() {
         setMenuOpen(false);
         setSnapshots(null);
         setAddMenu(null);
-        setShare(false);
+        setAccountDialog(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -508,6 +484,27 @@ export function App() {
   }, [undo, redo]);
 
   // ---------- Files and trees ----------
+  const createTreeFrom = async (name: string, gedcom: string, thenEdit?: boolean) => {
+    if (!account) return;
+    setBusy(true);
+    toast(t(lang, 'creatingTree'));
+    try {
+      const created = await api.createTree(account.id, name, gedcom);
+      await openCloud(created.id, created.name, created.role);
+      if (thenEdit) {
+        const first = engine.current?.current ? Object.keys(engine.current.current.individuals)[0] : undefined;
+        if (first) {
+          setSelectedId(first);
+          setEditing(true);
+        }
+      }
+    } catch {
+      toast(t(lang, 'syncError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openFile = async (file: File) => {
     const buf = await file.arrayBuffer();
     let text: string;
@@ -516,13 +513,13 @@ export function App() {
     } catch {
       text = new TextDecoder('windows-1252').decode(buf);
     }
-    loadLocal(text, file.name);
+    await createTreeFrom(file.name.replace(/\.(ged|gedcom)$/i, ''), text);
   };
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
-    if (f) void openFile(f);
+    if (f && auth.user && account) void openFile(f);
   };
 
   const exportGedcom = () => {
@@ -537,44 +534,19 @@ export function App() {
   };
 
   const startNewTree = () => {
-    if (tree && count > 0 && !window.confirm(t(lang, 'newTreeConfirm'))) return;
-    if (source?.kind === 'local' && tree) void treeStore.saveSnapshot(serializeGedcom(tree), history.fileName, count);
-    const r = newTree('', '', 'U');
-    loadLocal(serializeGedcom(r.tree), t(lang, 'newTreeName'), r.focusId);
-    setSelectedId(r.focusId);
-    setEditing(true);
     setMenuOpen(false);
-    lastSavedVersion.current = -1;
+    const name = window.prompt(t(lang, 'treeName'), account?.name ?? '');
+    if (name === null) return;
+    const r = newTree('', '', 'U');
+    void createTreeFrom(name.trim() || t(lang, 'newTreeName').replace(/\.ged$/, ''), serializeGedcom(r.tree), true);
   };
 
-  const uploadLocal = async () => {
-    const saved =
-      source?.kind === 'local' && tree ? { gedcom: serializeGedcom(tree), fileName: history.fileName } : await treeStore.loadCurrent();
-    if (!saved) return;
-    toast(t(lang, 'uploading'));
-    try {
-      const name = saved.fileName.replace(/\.ged$/i, '');
-      const created = await api.createTree(name, saved.gedcom);
-      // Portraits stored on this device go up too, best effort.
-      const parsed = parseGedcom(saved.gedcom);
-      for (const m of Object.values(parsed.media)) {
-        if (!m.file.startsWith(RAMURE_MEDIA_SCHEME)) continue;
-        const blob = await mediaGet(m.id);
-        if (blob) await api.putMedia(created.id, m.id, blob).catch(() => undefined);
-      }
-      await openCloud(created.id, created.name, created.role);
-      toast(t(lang, 'uploaded'));
-    } catch {
-      toast(t(lang, 'syncError'));
-    }
-  };
-
-  const deleteCloud = async (tr: TreeSummary) => {
+  const deleteTree = async (tr: TreeSummary) => {
     if (!window.confirm(t(lang, 'deleteTreeConfirm'))) return;
     try {
       await api.deleteTree(tr.id);
-      if (source?.kind === 'cloud' && source.id === tr.id) closeTree();
-      setLibraryRefresh((n) => n + 1);
+      if (source?.id === tr.id) closeTree();
+      setHomeRefresh((n) => n + 1);
     } catch {
       toast(t(lang, 'syncError'));
     }
@@ -582,17 +554,14 @@ export function App() {
 
   const openSnapshots = async () => {
     setMenuOpen(false);
-    if (source?.kind === 'cloud') {
-      const r = await api.listSnapshots(source.id);
-      setSnapshots(
-        r.snapshots.map((s) => ({ key: s.id, savedAt: s.created_at, fileName: `v${s.version}`, people: 0, cloudId: source.id })),
-      );
-    } else setSnapshots(await treeStore.listSnapshots());
+    if (!source) return;
+    const r = await api.listSnapshots(source.id);
+    setSnapshots(r.snapshots);
   };
-  const restoreSnapshot = async (key: string, cloudId?: string) => {
-    const gedcom = cloudId ? (await api.getSnapshot(cloudId, key)).doc : (await treeStore.loadSnapshot(key))?.gedcom;
-    if (!gedcom) return;
-    if (tree) commit(ops.replaceTree(gedcom), { select: false });
+  const restoreSnapshot = async (sid: string) => {
+    if (!source) return;
+    const s = await api.getSnapshot(source.id, sid);
+    if (tree) commit(ops.replaceTree(s.doc), { select: false });
     setSnapshots(null);
     setSelectedId(undefined);
     toast(t(lang, 'saved'));
@@ -640,6 +609,33 @@ export function App() {
               ? t(lang, 'syncReadonly')
               : t(lang, 'syncError');
 
+  // ---------- Gate: everything behind sign-in ----------
+  if (!auth.user) {
+    return (
+      <div className="app gate">
+        <Login lang={lang} auth={auth} pendingInvite={pendingInvite} toast={toast} />
+        <div className="gate-tools">
+          <button
+            className="btn icon"
+            onClick={cycleTheme}
+            aria-label={`${t(lang, 'theme')} : ${themeLabel}`}
+            title={`${t(lang, 'theme')} : ${themeLabel}`}
+          >
+            <ThemeIcon choice={theme} />
+          </button>
+          <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
+            {lang.toUpperCase()}
+          </button>
+        </div>
+        {notice && (
+          <div className="toast" role="status">
+            {notice}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="app" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
       <header className="topbar">
@@ -652,7 +648,7 @@ export function App() {
               {history.fileName} · {count} {t(lang, 'people')}
             </span>
           )}
-          {source?.kind === 'cloud' && (
+          {source && (
             <button
               className={`sync-pill ${sync.status}`}
               onClick={() => void engine.current?.sync()}
@@ -749,51 +745,43 @@ export function App() {
             </button>
             {menuOpen && (
               <ul className="menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
-                <li>
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      closeTree();
-                    }}
-                  >
-                    {t(lang, 'library')}
-                  </button>
-                </li>
-                {source?.kind === 'cloud' && (
+                {tree && (
                   <li>
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        setShare(true);
+                        closeTree();
                       }}
                     >
-                      {t(lang, 'share')}…
+                      {t(lang, 'library')}
                     </button>
                   </li>
                 )}
-                {source?.kind === 'local' && auth.user && (
+                {account && (
                   <li>
                     <button
                       onClick={() => {
                         setMenuOpen(false);
-                        void uploadLocal();
+                        setAccountDialog(true);
                       }}
                     >
-                      {t(lang, 'uploadLocal')}
+                      {t(lang, 'accountMembers')}
                     </button>
                   </li>
                 )}
                 <li className="sep" />
-                <li>
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      fileInput.current?.click();
-                    }}
-                  >
-                    {t(lang, 'openFile')}
-                  </button>
-                </li>
+                {account && (
+                  <li>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        fileInput.current?.click();
+                      }}
+                    >
+                      {t(lang, 'openFile')}
+                    </button>
+                  </li>
+                )}
                 {tree && (
                   <li>
                     <button
@@ -806,10 +794,11 @@ export function App() {
                     </button>
                   </li>
                 )}
-                <li className="sep" />
-                <li>
-                  <button onClick={startNewTree}>{t(lang, 'newTree')}</button>
-                </li>
+                {account && (
+                  <li>
+                    <button onClick={startNewTree}>{t(lang, 'newTree')}</button>
+                  </li>
+                )}
                 {tree && (
                   <li>
                     <button onClick={() => void openSnapshots()}>{t(lang, 'snapshots')}</button>
@@ -827,22 +816,12 @@ export function App() {
                     </button>
                   </li>
                 )}
-                {auth.user && (
-                  <>
-                    <li className="sep" />
-                    <li>
-                      <button
-                        onClick={() => {
-                          setMenuOpen(false);
-                          closeTree();
-                          void auth.logout();
-                        }}
-                      >
-                        {t(lang, 'signOut')} ({auth.user.email})
-                      </button>
-                    </li>
-                  </>
-                )}
+                <li className="sep" />
+                <li>
+                  <button onClick={() => void signOut()}>
+                    {t(lang, 'signOut')} ({auth.user.email})
+                  </button>
+                </li>
               </ul>
             )}
           </div>
@@ -974,21 +953,21 @@ export function App() {
               </div>
             )}
           </>
-        ) : booting ? null : (
-          <Library
+        ) : (
+          <Home
             lang={lang}
             auth={auth}
-            local={localSummary}
-            pendingInvite={pendingInvite}
-            refreshKey={libraryRefresh}
-            onOpenLocal={() => treeStore.loadCurrent().then((s) => s && loadLocal(s.gedcom, s.fileName, s.focusId))}
-            onOpenCloud={(tr) => void openCloud(tr.id, tr.name, tr.role)}
+            accounts={accounts}
+            account={account}
+            onSelectAccount={selectAccount}
+            onCreateAccount={createAccount}
+            onOpenTree={(tr) => void openCloud(tr.id, tr.name, tr.role)}
             onImport={() => fileInput.current?.click()}
             onNewTree={startNewTree}
-            onSample={() => loadLocal(sampleGedcom, 'exemple.ged')}
-            onUploadLocal={() => void uploadLocal()}
-            onDeleteCloud={(tr) => void deleteCloud(tr)}
-            toast={toast}
+            onDeleteTree={(tr) => void deleteTree(tr)}
+            onManageAccount={() => setAccountDialog(true)}
+            refreshKey={homeRefresh}
+            busy={busy}
           />
         )}
         {snapshots && (
@@ -1007,13 +986,10 @@ export function App() {
               ) : (
                 <ul className="snapshots">
                   {snapshots.map((s) => (
-                    <li key={s.key}>
-                      <span className="mono">{new Date(s.savedAt).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>
-                      <span>
-                        {s.fileName}
-                        {s.people ? ` · ${s.people} ${t(lang, 'people')}` : ''}
-                      </span>
-                      <button className="btn small" onClick={() => void restoreSnapshot(s.key, s.cloudId)} disabled={readOnly}>
+                    <li key={s.id}>
+                      <span className="mono">{new Date(s.created_at).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>
+                      <span>v{s.version}</span>
+                      <button className="btn small" onClick={() => void restoreSnapshot(s.id)} disabled={readOnly}>
                         {t(lang, 'restore')}
                       </button>
                     </li>
@@ -1023,18 +999,20 @@ export function App() {
             </div>
           </div>
         )}
-        {share && source?.kind === 'cloud' && auth.user && (
-          <ShareDialog
+        {accountDialog && account && (
+          <AccountDialog
             lang={lang}
-            treeId={source.id}
-            treeName={source.name}
-            role={source.role}
+            account={account}
             meId={auth.user.id}
-            onClose={() => setShare(false)}
+            onClose={() => setAccountDialog(false)}
+            onRenamed={(name) => {
+              setAccount({ ...account, name });
+              void loadAccounts(account.id);
+            }}
             onLeft={() => {
-              setShare(false);
-              void engine.current?.forget();
+              setAccountDialog(false);
               closeTree();
+              void loadAccounts();
             }}
             toast={toast}
           />
