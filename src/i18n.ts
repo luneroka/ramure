@@ -34,7 +34,11 @@ const strings = {
   adopted: { fr: 'adopté·e', en: 'adopted' },
   unmarried: { fr: 'union libre', en: 'unmarried' },
   unknownPerson: { fr: 'Inconnu·e', en: 'Unknown' },
-  importReport: { fr: 'Rapport d’import', en: 'Import report' },
+  importReport: { fr: 'Vérifications', en: 'Checks' },
+  reportHint: { fr: 'mis à jour en direct', en: 'updated live' },
+  reportEmpty: { fr: 'Rien à signaler.', en: 'Nothing to report.' },
+  dismiss: { fr: 'Ignorer', en: 'Dismiss' },
+  dismissHint: { fr: 'Ne plus afficher cette remarque sur cet appareil', en: 'Stop showing this note on this device' },
   importedFrom: { fr: 'Importé depuis', en: 'Imported from' },
   noTree: { fr: 'Aucun arbre chargé.', en: 'No tree loaded.' },
   dropHint: {

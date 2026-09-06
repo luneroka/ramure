@@ -120,7 +120,7 @@ export function TreeMenu(p: TreeMenuProps) {
         {item(t(lang, 'export'), p.onExport)}
         {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
         {item(t(lang, 'versionHistory'), p.onSnapshots)}
-        {p.hasImportReport && item(t(lang, 'importReport'), p.onReport)}
+        {item(t(lang, 'importReport'), p.onReport)}
         {p.owner && item(t(lang, 'deleteTree'), p.onDelete, 'danger')}
       </Dropdown>
     </div>

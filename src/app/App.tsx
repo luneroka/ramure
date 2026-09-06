@@ -13,6 +13,7 @@ import { newTree, type EditResult, type FamilyPatch, type PersonPatch } from '..
 import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
+import { auditTree, noteKey } from '../tree/audit';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
@@ -411,6 +412,36 @@ export function App() {
     return effectiveFocus ? layoutHourglass(displayTree, effectiveFocus, layoutOpts) : null;
   }, [displayTree, effectiveFocus, layoutOpts, view]);
   const count = tree ? Object.keys(tree.individuals).length : 0;
+
+  // The report is live: import notes about people who no longer exist drop out, checks are recomputed, dismissals stick per device.
+  const dismissKey = source ? `ramure.dismissed:${source.id}` : null;
+  const readDismissed = (key: string | null): Set<string> => {
+    if (!key) return new Set();
+    try {
+      return new Set(JSON.parse(localStorage.getItem(key) ?? '[]') as string[]);
+    } catch {
+      return new Set();
+    }
+  };
+  // Reloaded when the open tree changes (React's adjust-state-during-render pattern).
+  const [dismissedFor, setDismissedFor] = useState<{ key: string | null; set: Set<string> }>(() => ({
+    key: dismissKey,
+    set: readDismissed(dismissKey),
+  }));
+  if (dismissedFor.key !== dismissKey) setDismissedFor({ key: dismissKey, set: readDismissed(dismissKey) });
+  const dismissed = dismissedFor.set;
+  const setDismissed = (set: Set<string>) => setDismissedFor({ key: dismissKey, set });
+  const reportNotes = useMemo(() => {
+    if (!tree) return [];
+    const stillRelevant = tree.importNotes.filter((n) => !n.ids?.length || n.ids.some((id) => tree.individuals[id]));
+    return [...stillRelevant, ...auditTree(tree)].filter((n) => !dismissed.has(noteKey(n)));
+  }, [tree, dismissed]);
+  const dismissNote = (key: string) => {
+    const next = new Set(dismissed);
+    next.add(key);
+    setDismissed(next);
+    if (dismissKey) localStorage.setItem(dismissKey, JSON.stringify([...next]));
+  };
   const hiddenCount = tree && layout ? count - new Set(layout.nodes.map((n) => n.id)).size : 0;
 
   useEffect(() => {
@@ -810,7 +841,7 @@ export function App() {
                   current={source}
                   trees={treeList}
                   owner={source.role === 'owner'}
-                  hasImportReport={tree.importNotes.length > 0}
+                  hasImportReport={reportNotes.length > 0}
                   onSwitch={(tr) => void openCloud(tr.id, tr.name, tr.role)}
                   onNewTree={startNewTree}
                   onRename={() => setRenaming(source.name)}
@@ -1078,31 +1109,40 @@ export function App() {
                 </ul>
               </>
             )}
-            {showReport && tree.importNotes.length > 0 && (
+            {showReport && (
               <div className="report">
                 <div className="report-head">
                   <strong>{t(lang, 'importReport')}</strong>
                   <span className="muted">
-                    {t(lang, 'importedFrom')} {tree.header.sourceSystem ?? '?'} {tree.header.sourceVersion ?? ''}
+                    {reportNotes.length} · {t(lang, 'reportHint')}
                   </span>
                   <button className="icon-btn" onClick={() => setShowReport(false)} aria-label={t(lang, 'close')}>
                     ×
                   </button>
                 </div>
-                <ul>
-                  {tree.importNotes.map((n, i) => (
-                    <li key={i} className={n.level}>
-                      {n.message}
-                      {n.ids
-                        ?.filter((id) => tree.individuals[id])
-                        .map((id) => (
-                          <button key={id} className="link" onClick={() => focusOn(id)}>
-                            {displayName(tree.individuals[id]!)}
-                          </button>
-                        ))}
-                    </li>
-                  ))}
-                </ul>
+                {reportNotes.length === 0 ? (
+                  <p className="muted">{t(lang, 'reportEmpty')}</p>
+                ) : (
+                  <ul>
+                    {reportNotes.map((n) => (
+                      <li key={noteKey(n)} className={n.level}>
+                        <span className="report-text">
+                          {n.message}
+                          {n.ids
+                            ?.filter((id) => tree.individuals[id])
+                            .map((id) => (
+                              <button key={id} className="link" onClick={() => focusOn(id)}>
+                                {displayName(tree.individuals[id]!)}
+                              </button>
+                            ))}
+                        </span>
+                        <button className="btn small subtle" onClick={() => dismissNote(noteKey(n))} title={t(lang, 'dismissHint')}>
+                          {t(lang, 'dismiss')}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </>

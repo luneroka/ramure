@@ -2009,4 +2009,19 @@ label.check input {
 }
 
 /* The stage clips for the canvas; pages inside it (home, settings) scroll. */
-.stage.page { overflow: auto; -webkit-overflow-scrolling: touch; }
+.stage.page {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.report li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.report .report-text {
+  flex: 1;
+}
+.report .btn.small.subtle {
+  flex: none;
+}
