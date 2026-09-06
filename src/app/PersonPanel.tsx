@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { formatDate } from '../gedcom/dates';
+import { approximateYear, formatDate } from '../gedcom/dates';
+import { computeAge } from '../gedcom/age';
 import { displayName, findEvent, placeText, type Event, type Family, type Individual, type MediaObject, type Tree } from '../gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '../i18n';
-import { computeAge } from '../gedcom/age';
 import { isLiving } from '../canvas/renderer';
 import { nextId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '../tree/edit';
 import { mediaStore } from '../store';
@@ -40,53 +40,92 @@ interface Props extends PanelActions {
   setEditing(v: boolean): void;
 }
 
-function EventRow({ e, lang, tree, birth }: { e: Event; lang: Lang; tree: Tree; birth?: Event }) {
-  const bits: string[] = [];
-  if (e.value) bits.push(e.value);
-  if (e.date) bits.push(formatDate(e.date, lang));
-  if (e.place) bits.push(placeText(e.place));
-  const age = e.type === 'death' && !e.age ? computeAge(birth?.date, e.date) : undefined;
-  if (age) bits.push(formatAge(lang, age));
-  return (
-    <li className="event">
-      <span className="event-label">{eventLabel(lang, e.type, e.customType)}</span>
-      <span className="event-body">
-        {bits.join(' · ') || '—'}
-        {e.cause && (
-          <span className="event-extra">
-            {t(lang, 'cause')} : {e.cause}
-          </span>
-        )}
-        {e.age && (
-          <span className="event-extra">
-            {t(lang, 'age')} : {e.age}
-          </span>
-        )}
-        {e.address && (
-          <span className="event-extra">
-            {t(lang, 'address')} : {e.address}
-          </span>
-        )}
-        {e.notes.map((n, i) => (
-          <span key={i} className="event-note">
-            {n}
-          </span>
-        ))}
-        {e.citations.map((c, i) => {
-          const src = c.sourceId ? tree.sources[c.sourceId] : undefined;
-          const text = src ? [src.title, c.page].filter(Boolean).join(', ') : (c.flat ?? '');
-          return text ? (
-            <span key={i} className="event-cite">
-              {text}
-            </span>
-          ) : null;
-        })}
-      </span>
-    </li>
-  );
+type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
+
+/** One row of the life timeline: a person event, or a union event seen from this person. */
+interface Row {
+  key: string;
+  label: string;
+  date?: string;
+  year?: number;
+  lines: string[];
+  cause?: string;
+  age?: string;
 }
 
-type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
+function eventRows(tree: Tree, person: Individual, lang: Lang): Row[] {
+  const birth = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
+  // An undated, unplaced occupation is the subtitle of the hero, not a timeline row.
+  const rows: Row[] = person.events
+    .filter((e) => !(e.type === 'occupation' && !e.date && !e.place))
+    .map((e, i) => {
+      const lines: string[] = [];
+      if (e.value) lines.push(e.value);
+      if (e.place) lines.push(placeText(e.place));
+      if (e.address) lines.push(e.address);
+      lines.push(...e.notes);
+      const age =
+        e.type === 'death'
+          ? e.age
+            ? e.age.replace(/y$/, ' ' + (lang === 'fr' ? 'ans' : 'y'))
+            : (() => {
+                const a = computeAge(birth?.date, e.date);
+                return a ? formatAge(lang, a) : undefined;
+              })()
+          : undefined;
+      return {
+        key: `e${i}`,
+        label: eventLabel(lang, e.type, e.customType),
+        date: e.date ? formatDate(e.date, lang) : undefined,
+        year: approximateYear(e.date),
+        lines,
+        cause: e.cause,
+        age,
+      };
+    });
+  for (const fid of person.partnerIn) {
+    const f = tree.families[fid];
+    if (!f) continue;
+    const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
+    const partner = partnerId ? tree.individuals[partnerId] : undefined;
+    for (const e of f.events) {
+      if (e.type !== 'marriage' && e.type !== 'divorce' && e.type !== 'engagement' && e.type !== 'separation' && e.type !== 'annulment')
+        continue;
+      const lines: string[] = [];
+      if (partner) lines.push(`${t(lang, 'with')} ${displayName(partner)}`);
+      if (e.place) lines.push(placeText(e.place));
+      lines.push(...e.notes);
+      rows.push({
+        key: `f${fid}${e.type}`,
+        label: eventLabel(lang, e.type, e.customType),
+        date: e.date ? formatDate(e.date, lang) : undefined,
+        year: approximateYear(e.date),
+        lines,
+      });
+    }
+  }
+  // Chronological; undated rows keep their place after the dated ones, except a birth which always leads.
+  const order = (r: Row) => (r.label === eventLabel(lang, 'birth') ? -Infinity : (r.year ?? Infinity));
+  return rows.sort((a, b) => order(a) - order(b));
+}
+
+function sourceRows(tree: Tree, person: Individual, lang: Lang): Array<{ label: string; text: string }> {
+  const out: Array<{ label: string; text: string }> = [];
+  const push = (label: string, cites: Event['citations']) => {
+    for (const c of cites) {
+      const src = c.sourceId ? tree.sources[c.sourceId] : undefined;
+      const text = src ? [src.title, c.page, c.text].filter(Boolean).join(' · ') : [c.flat, c.text].filter(Boolean).join(' · ');
+      if (text) out.push({ label, text });
+    }
+  };
+  push(t(lang, 'identity'), person.citations);
+  for (const e of person.events) push(eventLabel(lang, e.type, e.customType), e.citations);
+  for (const fid of person.partnerIn) {
+    const f = tree.families[fid];
+    if (f) for (const e of f.events) push(eventLabel(lang, e.type, e.customType), e.citations);
+  }
+  return out;
+}
 
 export function PersonPanel(props: Props) {
   const { tree, person, lang, editing, isDraft, readOnly, setEditing, onFocus, onSelect, onClose } = props;
@@ -117,6 +156,7 @@ export function PersonPanel(props: Props) {
   const living = isLiving(person);
   const birthEvent = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
   const ageToday = living ? computeAge(birthEvent?.date, 'today') : undefined;
+  const occupation = person.events.find((e) => e.type === 'occupation' && e.value)?.value;
 
   const parentFamilies = person.childOf
     .map((l) => ({ link: l, fam: tree.families[l.familyId] }))
@@ -131,14 +171,26 @@ export function PersonPanel(props: Props) {
     const p = tree.individuals[id]!;
     const b = findEvent(p.events, 'birth'),
       d = findEvent(p.events, 'death');
-    const years = [b?.date?.date?.year, d?.date?.date?.year].filter((y) => y !== undefined).join('–');
+    const by = approximateYear(b?.date),
+      dy = approximateYear(d?.date);
+    const years = d ? `${by ?? '?'} – ${dy ?? '?'}` : by ? `${tg(lang, 'born', p.sex)} ${by}` : '';
+    const place = placeText(b?.place) || placeText(d?.place);
     return (
       <li className="person-row">
         <button className="link-person" onClick={() => onSelect(id)} onDoubleClick={() => onFocus(id)}>
-          <span className={`sex-dot ${p.sex}`} aria-hidden="true" />
-          <span className="link-name">{displayName(p)}</span>
-          {years && <span className="link-years">{years}</span>}
-          {tag && <span className="tag">{tag}</span>}
+          <Medallion mediaId={p.mediaIds[0]} size={40} className={`row-medallion ${p.sex}`} />
+          <span className="link-body">
+            <span className="link-name">
+              {displayName(p)}
+              {tag && <span className="tag">{tag}</span>}
+            </span>
+            {(years || place) && (
+              <span className="link-years">
+                {years}
+                {place ? ` · ${place}` : ''}
+              </span>
+            )}
+          </span>
         </button>
         {onRemove && (
           <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>
@@ -178,12 +230,12 @@ export function PersonPanel(props: Props) {
     );
   }
 
-  const lifeEvents = person.events.filter((e) => ['birth', 'baptism', 'death', 'burial', 'cremation'].includes(e.type));
-  const otherEvents = person.events.filter((e) => !lifeEvents.includes(e));
+  const rows = eventRows(tree, person, lang);
+  const sources = sourceRows(tree, person, lang);
 
   return (
     <aside className="panel" aria-label={name}>
-      <header className="panel-head">
+      <header className="panel-hero">
         <button
           type="button"
           className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
@@ -192,7 +244,7 @@ export function PersonPanel(props: Props) {
           aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
           title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         >
-          <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
+          <Medallion mediaId={person.mediaIds[0]} size={88} className="panel-medallion" />
           {!readOnly && (
             <span className="medallion-badge" aria-hidden="true">
               {person.mediaIds[0] ? '✎' : '+'}
@@ -210,13 +262,14 @@ export function PersonPanel(props: Props) {
             e.target.value = '';
           }}
         />
-        <div>
+        <div className="hero-text">
           <h2 className="panel-name">
             {name}{' '}
             <span className="panel-sex" aria-hidden="true">
               {sexGlyph}
             </span>
           </h2>
+          {occupation && <p className="hero-sub">{occupation}</p>}
           <div className="panel-tags">
             {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
             {person.names.slice(1).map((n, i) => (
@@ -288,17 +341,40 @@ export function PersonPanel(props: Props) {
         />
       )}
 
-      {lifeEvents.length > 0 && (
-        <ul className="events">
-          {lifeEvents.map((e, i) => (
-            <EventRow key={i} e={e} lang={lang} tree={tree} birth={birthEvent} />
-          ))}
-        </ul>
+      {rows.length > 0 && (
+        <section>
+          <h3 className="band">{t(lang, 'lifeEvents')}</h3>
+          <ul className="timeline">
+            {rows.map((r) => (
+              <li key={r.key} className="ev">
+                <div className="ev-head">
+                  <span className="ev-label">{r.label}</span>
+                  <span className="ev-date">{r.date ?? '—'}</span>
+                </div>
+                {r.lines.map((l, i) => (
+                  <div key={i} className="ev-line">
+                    {l}
+                  </div>
+                ))}
+                {r.cause && (
+                  <div className="ev-line muted">
+                    {t(lang, 'cause')} : {r.cause}
+                  </div>
+                )}
+                {r.age && (
+                  <div className="ev-line muted">
+                    {t(lang, 'age')} : {r.age}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {parents.length > 0 && (
         <section>
-          <h3>{t(lang, 'parents')}</h3>
+          <h3 className="band">{t(lang, 'parents')}</h3>
           <ul className="people">
             {parents.map((p) => (
               <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined} />
@@ -308,7 +384,7 @@ export function PersonPanel(props: Props) {
       )}
       {siblings.length > 0 && (
         <section>
-          <h3>{t(lang, 'siblings')}</h3>
+          <h3 className="band">{t(lang, 'siblings')}</h3>
           <ul className="people">
             {siblings.map((id) => (
               <Person key={id} id={id} />
@@ -316,8 +392,10 @@ export function PersonPanel(props: Props) {
           </ul>
         </section>
       )}
+
       <section>
-        <h3>{t(lang, 'partners')}</h3>
+        <h3 className="band">{t(lang, 'partners')}</h3>
+        {unions.length === 0 && <p className="muted small">—</p>}
         {unions.map((f) => {
           const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
           const marr = findEvent(f.events, 'marriage'),
@@ -362,7 +440,7 @@ export function PersonPanel(props: Props) {
                   )}
                 </div>
               )}
-              <h4>{t(lang, 'children')}</h4>
+              <h4 className="sub-band">{t(lang, 'children')}</h4>
               <ul className="people">
                 {f.childIds
                   .filter((c) => tree.individuals[c])
@@ -378,6 +456,7 @@ export function PersonPanel(props: Props) {
                       onRemove={readOnly ? undefined : () => props.onUnlinkChild(f.id, c)}
                     />
                   ))}
+                {f.childIds.filter((c) => tree.individuals[c]).length === 0 && <li className="muted small">—</li>}
               </ul>
               {!readOnly && (
                 <div className="row small-actions">
@@ -400,24 +479,27 @@ export function PersonPanel(props: Props) {
           </div>
         )}
       </section>
-      {otherEvents.length > 0 && (
-        <section>
-          <h3>{t(lang, 'events')}</h3>
-          <ul className="events">
-            {otherEvents.map((e, i) => (
-              <EventRow key={i} e={e} lang={lang} tree={tree} />
-            ))}
-          </ul>
-        </section>
-      )}
+
       {person.notes.length > 0 && (
         <section>
-          <h3>{t(lang, 'notes')}</h3>
+          <h3 className="band">{t(lang, 'notes')}</h3>
           {person.notes.map((n, i) => (
             <p key={i} className="note">
               {n}
             </p>
           ))}
+        </section>
+      )}
+      {sources.length > 0 && (
+        <section>
+          <h3 className="band">{t(lang, 'sources')}</h3>
+          <ul className="sources">
+            {sources.map((s, i) => (
+              <li key={i}>
+                <span className="src-label">{s.label} :</span> {s.text}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {!readOnly && (

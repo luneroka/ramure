@@ -32,6 +32,7 @@ export type HistoryAction =
   | { type: 'replace'; tree: Tree; keepHistory: boolean }
   | { type: 'undo'; tree: Tree }
   | { type: 'redo'; tree: Tree }
+  | { type: 'rename'; fileName: string }
   | { type: 'close' };
 
 const MAX_PAST = 200;
@@ -45,6 +46,8 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
       return { tree: action.tree, fileName: action.fileName, past: [], future: [], version: state.version + 1, log: [] };
     case 'close':
       return { ...initialHistory, version: state.version + 1 };
+    case 'rename':
+      return { ...state, fileName: action.fileName };
     case 'commit':
       return {
         ...state,

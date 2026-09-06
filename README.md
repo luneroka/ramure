@@ -1,6 +1,6 @@
 # Ramure
 
-A free family-tree builder whose whole point is the tree: one canvas, the entire lineage, pan and pinch anywhere. Built as an alternative to Geneanet's page-per-person viewer.
+Votre généalogie, sur une seule toile. A free family-tree builder whose whole point is the tree: one canvas, the entire lineage, pan and pinch anywhere. Built as an alternative to Geneanet's page-per-person viewer.
 
 Everything runs in the browser. A tree is a GEDCOM file kept in IndexedDB; nothing leaves the device.
 

@@ -4,7 +4,7 @@ export type Lang = 'fr' | 'en';
 
 const strings = {
   appName: { fr: 'Ramure', en: 'Ramure' },
-  tagline: { fr: 'Tout l’arbre, sur une seule toile.', en: 'The whole tree, on one canvas.' },
+  tagline: { fr: 'Votre généalogie, sur une seule toile.', en: 'Your family history, on one canvas.' },
   openFile: { fr: 'Importer un GEDCOM', en: 'Import a GEDCOM' },
   openShort: { fr: 'Importer', en: 'Import' },
   loadSample: { fr: 'Arbre d’exemple', en: 'Sample tree' },
@@ -290,6 +290,12 @@ const strings = {
   },
   creatingTree: { fr: 'Création de l’arbre…', en: 'Creating the tree…' },
   treeName: { fr: 'Nom de l’arbre', en: 'Tree name' },
+  renameTree: { fr: 'Renommer l’arbre', en: 'Rename tree' },
+  occupation: { fr: 'Profession', en: 'Occupation' },
+  with: { fr: 'avec', en: 'with' },
+  family: { fr: 'Famille', en: 'Family' },
+  identity: { fr: 'Identité', en: 'Identity' },
+  lifeEvents: { fr: 'Parcours', en: 'Life' },
   age: { fr: 'Âge', en: 'Age' },
   address: { fr: 'Adresse', en: 'Address' },
   event: {

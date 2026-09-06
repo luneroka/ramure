@@ -541,6 +541,22 @@ export function App() {
     void createTreeFrom(name.trim() || t(lang, 'newTreeName').replace(/\.ged$/, ''), serializeGedcom(r.tree), true);
   };
 
+  const renameTree = async () => {
+    setMenuOpen(false);
+    if (!source) return;
+    const name = window.prompt(t(lang, 'treeName'), source.name);
+    if (name === null || !name.trim() || name.trim() === source.name) return;
+    try {
+      await api.renameTree(source.id, name.trim());
+      setSource({ ...source, name: name.trim() });
+      dispatch({ type: 'rename', fileName: name.trim() });
+      localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ ...source, name: name.trim() }));
+      toast(t(lang, 'saved'));
+    } catch {
+      toast(t(lang, 'syncError'));
+    }
+  };
+
   const deleteTree = async (tr: TreeSummary) => {
     if (!window.confirm(t(lang, 'deleteTreeConfirm'))) return;
     try {
@@ -595,7 +611,9 @@ export function App() {
   }, []);
 
   const selected = displayTree && selectedId ? displayTree.individuals[selectedId] : undefined;
-  const themeLabel = theme === 'auto' ? t(lang, 'themeAuto') : theme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark');
+  // Both switches show what a click gives you, not the current state.
+  const nextTheme: ThemeChoice = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+  const themeLabel = `${t(lang, 'theme')} : ${nextTheme === 'auto' ? t(lang, 'themeAuto') : nextTheme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`;
   const syncLabel =
     sync.status === 'synced'
       ? t(lang, 'syncSynced')
@@ -618,13 +636,13 @@ export function App() {
           <button
             className="btn icon"
             onClick={cycleTheme}
-            aria-label={`${t(lang, 'theme')} : ${themeLabel}`}
-            title={`${t(lang, 'theme')} : ${themeLabel}`}
+            aria-label={themeLabel}
+            title={themeLabel}
           >
-            <ThemeIcon choice={theme} />
+            <ThemeIcon choice={nextTheme} />
           </button>
           <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
-            {lang.toUpperCase()}
+            {lang === 'fr' ? 'EN' : 'FR'}
           </button>
         </div>
         {notice && (
@@ -731,13 +749,13 @@ export function App() {
           <button
             className="btn icon"
             onClick={cycleTheme}
-            aria-label={`${t(lang, 'theme')} : ${themeLabel}`}
-            title={`${t(lang, 'theme')} : ${themeLabel}`}
+            aria-label={themeLabel}
+            title={themeLabel}
           >
-            <ThemeIcon choice={theme} />
+            <ThemeIcon choice={nextTheme} />
           </button>
           <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>
-            {lang.toUpperCase()}
+            {lang === 'fr' ? 'EN' : 'FR'}
           </button>
           <div className="menu-wrap">
             <button className="btn icon" onClick={() => setMenuOpen((v) => !v)} aria-label={t(lang, 'menu')} aria-expanded={menuOpen}>
@@ -797,6 +815,11 @@ export function App() {
                 {account && (
                   <li>
                     <button onClick={startNewTree}>{t(lang, 'newTree')}</button>
+                  </li>
+                )}
+                {tree && source?.role === 'owner' && (
+                  <li>
+                    <button onClick={() => void renameTree()}>{t(lang, 'renameTree')}…</button>
                   </li>
                 )}
                 {tree && (

@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: 'Ramure',
         short_name: 'Ramure',
-        description: 'Un arbre généalogique entier sur une seule toile.',
+        description: 'Votre généalogie, sur une seule toile.',
         lang: 'fr',
         start_url: '/',
         display: 'standalone',

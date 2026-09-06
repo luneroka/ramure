@@ -1487,3 +1487,34 @@ label.check input {
   display: flex;
   gap: 6px;
 }
+
+/* ---------- Person panel: hero, bands, timeline ---------- */
+.panel { padding-top: 0; }
+.panel-hero {
+  display: flex; align-items: flex-start; gap: 12px; margin: 0 -18px 12px; padding: 18px 18px 14px;
+  background: var(--accent-soft); border-bottom: 1px solid var(--line);
+}
+.hero-text { flex: 1; min-width: 0; }
+.hero-sub { margin: 0 0 6px; font-style: italic; color: var(--ink-2); font-size: 14px; }
+.panel-hero .panel-name { margin-bottom: 2px; }
+.panel-hero .icon-btn { margin: -6px -6px 0 0; }
+.panel .band {
+  margin: 18px -18px 8px; padding: 7px 18px; background: var(--surface-2); border-left: 3px solid var(--accent);
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600;
+}
+.panel .sub-band { margin: 10px 0 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; font-family: var(--mono); }
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ev { padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.ev-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.ev-label { color: var(--accent); font-weight: 600; font-size: 14px; }
+.ev-date { font-weight: 600; font-size: 14px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ev-line { font-size: 13.5px; color: var(--ink-2); margin-top: 2px; white-space: pre-wrap; }
+.ev-line.muted { color: var(--ink-3); }
+.row-medallion { flex: none; }
+.link-body { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.link-body .link-name { display: flex; align-items: center; gap: 6px; }
+.link-body .link-years { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.union { padding: 8px 0 6px; border-top: 1px solid var(--line); }
+.union:first-of-type { border-top: 0; padding-top: 0; }
+.sources { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.src-label { color: var(--accent); font-weight: 600; }
