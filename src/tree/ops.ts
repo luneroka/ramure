@@ -28,6 +28,7 @@ import {
   type PersonPatch,
 } from './edit';
 import { newId } from './ids';
+import { applyRecordPatch, type RecordPatch } from './diff';
 
 export type Op =
   | { t: 'createPerson'; id: string; data: NewPerson }
@@ -45,7 +46,9 @@ export type Op =
   /** Replace the whole tree (snapshot restore). Carries the GEDCOM text so it replays anywhere. */
   | { t: 'replaceTree'; gedcom: string }
   /** Several ops applied as one step (one undo, one sync record), e.g. "add child" then "fill in the card". */
-  | { t: 'batch'; ops: Op[] };
+  | { t: 'batch'; ops: Op[] }
+  /** Set or remove whole records: the generic inverse of any edit (undo / redo). */
+  | RecordPatch;
 
 /** An op with its identity and provenance, as stored in a log or sent to a server. */
 export interface OpEnvelope {
@@ -134,6 +137,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       return mergePeople(tree, op.keepId, op.dropId);
     case 'replaceTree':
       return { tree: parseGedcom(op.gedcom) };
+    case 'patchRecords':
+      return { tree: applyRecordPatch(tree, op) };
     case 'batch': {
       let r: EditResult = { tree };
       for (const inner of op.ops) {
@@ -197,6 +202,8 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
       return fr ? 'Doublons fusionnés' : 'Duplicates merged';
     case 'replaceTree':
       return fr ? 'Sauvegarde restaurée' : 'Snapshot restored';
+    case 'patchRecords':
+      return fr ? 'Annulation' : 'Undo';
     case 'batch':
       return op.ops.length ? describeOp(op.ops[0]!, lang) : fr ? 'Modification' : 'Change';
   }

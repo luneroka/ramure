@@ -1,0 +1,29 @@
+name = "ramure"
+main = "worker/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The built app is served by the same Worker: one origin, no CORS, cookies just work.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ramure"
+# Replace with the id printed by `wrangler d1 create ramure`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "ramure-media"
+
+[vars]
+APP_ORIGIN = "http://localhost:5174"
+# In local development sign-in links are returned by the API instead of emailed. Never set this in production.
+DEV_ECHO_LINKS = "1"
+MAIL_FROM = "Ramure <ramure@example.com>"
+
+# Secrets, set with `wrangler secret put`: RESEND_API_KEY
