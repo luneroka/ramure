@@ -2596,7 +2596,7 @@ textarea:focus {
   font-size: 12.5px;
   color: var(--ink-3);
 }
-.segmented {
+.seg-input {
   display: flex;
   gap: 2px;
   height: 36px;
@@ -2606,7 +2606,7 @@ textarea:focus {
   border-radius: 6px;
   background: var(--ground);
 }
-.segmented button {
+.seg-input button {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -2619,11 +2619,11 @@ textarea:focus {
   font: 500 13px var(--body);
   cursor: pointer;
 }
-.segmented button[aria-pressed='true'] {
+.seg-input button[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--accent);
 }
-.segmented button:focus-visible {
+.seg-input button:focus-visible {
   outline-offset: -2px;
 }
 .ev-draft {

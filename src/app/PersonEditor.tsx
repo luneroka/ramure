@@ -262,7 +262,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
                 </label>
                 <div className="ed-field">
                   <span>{t(lang, 'sex')}</span>
-                  <div className="segmented" role="radiogroup" aria-label={t(lang, 'sex')}>
+                  <div className="seg-input" role="radiogroup" aria-label={t(lang, 'sex')}>
                     {(['M', 'F', 'U'] as Sex[]).map((s) => (
                       <button
                         key={s}
