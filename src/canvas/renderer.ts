@@ -15,7 +15,7 @@ export interface Camera { x: number; y: number; k: number }
 export interface Theme {
   ground: string; surface: string; surface2: string; ink: string; ink2: string; ink3: string;
   line: string; line2: string; accent: string; focus: string; focusSoft: string; connector: string;
-  male: string; female: string; unknown: string; bodyFont: string; monoFont: string;
+  male: string; female: string; unknown: string; bodyFont: string; monoFont: string; accentInk: string;
 }
 
 export const MIN_ZOOM = 0.05;
@@ -27,46 +27,21 @@ export function detailBand(k: number): DetailBand {
   return k >= 0.6 ? 'cards' : k >= 0.26 ? 'names' : 'dots';
 }
 
-export type HandleKind = 'father' | 'mother' | 'partner' | 'child' | 'sibling';
+export type HandleKind = 'plus';
 
 export interface Handle {
   kind: HandleKind;
   personId: string;
   x: number; y: number; w: number; h: number;
-  label: string;
 }
 
-/** Add-relative pills around the selected card, in world coordinates. */
-export function computeHandles(layout: Layout, tree: Tree, selectedId: string | undefined, lang: Lang): Handle[] {
+/** One round (+) button on the right edge of the selected card, in world coordinates. */
+export function computeHandles(layout: Layout, tree: Tree, selectedId: string | undefined): Handle[] {
   if (!selectedId) return [];
   const n = layout.nodes.find((x) => x.id === selectedId);
-  const ind = tree.individuals[selectedId];
-  if (!n || !ind) return [];
-  const fr = lang === 'fr';
-  const labels: Record<HandleKind, string> = fr
-    ? { father: '+ Père', mother: '+ Mère', partner: '+ Conjoint·e', child: '+ Enfant', sibling: '+ Frère / sœur' }
-    : { father: '+ Father', mother: '+ Mother', partner: '+ Partner', child: '+ Child', sibling: '+ Sibling' };
-  const birth = ind.childOf.find((l) => l.pedigree === 'birth') ?? ind.childOf[0];
-  const fam = birth ? tree.families[birth.familyId] : undefined;
-  const out: Handle[] = [];
-  const H = 24;
-  const widthFor = (label: string) => 18 + label.length * 7.2;
-  const pill = (kind: HandleKind, cx: number, cy: number) => {
-    const w = widthFor(labels[kind]);
-    out.push({ kind, personId: selectedId, x: cx - w / 2, y: cy - H / 2, w, h: H, label: labels[kind] });
-  };
-  const topY = n.y - 18;
-  const needFather = !fam?.husbandId, needMother = !fam?.wifeId;
-  if (needFather && needMother) { pill('father', n.x + n.w * 0.28, topY); pill('mother', n.x + n.w * 0.72, topY); }
-  else if (needFather) pill('father', n.x + n.w / 2, topY);
-  else if (needMother) pill('mother', n.x + n.w / 2, topY);
-  const bottomY = n.y + n.h + 18;
-  const row: HandleKind[] = ['child', 'partner', 'sibling'];
-  const widths = row.map((k) => widthFor(labels[k]));
-  const total = widths.reduce((a, b) => a + b, 0) + 8 * (row.length - 1);
-  let x = n.x + n.w / 2 - total / 2;
-  row.forEach((k, i) => { pill(k, x + widths[i]! / 2, bottomY); x += widths[i]! + 8; });
-  return out;
+  if (!n || !tree.individuals[selectedId]) return [];
+  const d = 30;
+  return [{ kind: 'plus', personId: selectedId, x: n.x + n.w - d / 2 + 6, y: n.y - d / 2 + 8, w: d, h: d }];
 }
 
 export interface RenderState {
@@ -88,7 +63,7 @@ export function readTheme(el: HTMLElement): Theme {
   return {
     ground: v('--ground'), surface: v('--surface'), surface2: v('--surface-2'), ink: v('--ink'), ink2: v('--ink-2'), ink3: v('--ink-3'),
     line: v('--line'), line2: v('--line-2'), accent: v('--accent'), focus: v('--focus'), focusSoft: v('--focus-soft'),
-    connector: v('--connector'), male: v('--male'), female: v('--female'), unknown: v('--unknown'),
+    connector: v('--connector'), male: v('--male'), female: v('--female'), unknown: v('--unknown'), accentInk: v('--accent-ink') || '#fff',
     bodyFont: v('--body') || 'system-ui, sans-serif', monoFont: v('--mono') || 'ui-monospace, monospace',
   };
 }
@@ -240,17 +215,24 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     }
   }
 
-  // Add-relative handles on the selected card.
+  // The (+) button on the selected card.
   if (band === 'cards' && s.handles?.length) {
     for (const hd of s.handles) {
-      roundRect(ctx, hd.x, hd.y, hd.w, hd.h, hd.h / 2);
+      const cx = hd.x + hd.w / 2, cy = hd.y + hd.h / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, hd.w / 2, 0, Math.PI * 2);
       ctx.fillStyle = T.accent;
       ctx.fill();
-      ctx.fillStyle = T.ground;
-      ctx.font = `600 11.5px ${T.bodyFont}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(hd.label, hd.x + hd.w / 2, hd.y + hd.h / 2 + 0.5);
+      ctx.lineWidth = 2 / Math.max(k, 0.6);
+      ctx.strokeStyle = T.ground;
+      ctx.stroke();
+      ctx.strokeStyle = T.accentInk;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
+      ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
+      ctx.stroke();
     }
   }
 
@@ -262,13 +244,13 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   for (const g of layout.rows) {
     const y = cam.y + (-g * s.rowH) * cam.k;
     if (y < -12 || y > height + 12) continue;
-    const label = generationLabel(g, lang).toUpperCase();
+    const label = (layout.rowLabels?.get(g) ?? generationLabel(g, lang)).toUpperCase();
     const w = ctx.measureText(label).width + 12;
     ctx.fillStyle = T.ground;
     ctx.globalAlpha = 0.88;
     ctx.fillRect(8, y - 10, w, 20);
     ctx.globalAlpha = 1;
-    ctx.fillStyle = g === 0 ? T.focus : T.ink3;
+    ctx.fillStyle = g === 0 && !layout.rowLabels ? T.focus : T.ink3;
     ctx.fillText(label, 14, y);
   }
 }

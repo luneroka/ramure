@@ -60,6 +60,8 @@ export interface Layout {
   /** True when the ancestor side was cut by maxUp, or the descendant side by maxDown. */
   truncatedUp: boolean;
   truncatedDown: boolean;
+  /** Row labels for layouts where generations are absolute rather than relative to a focus. */
+  rowLabels?: Map<number, string>;
 }
 
 export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions = DEFAULT_LAYOUT): Layout {

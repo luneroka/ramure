@@ -29,7 +29,7 @@ export interface TreeCanvasProps {
   onFocus(id: string): void;
   onBandChange?(band: DetailBand, zoom: number): void;
   /** Tap on an add-relative handle of the selected card. */
-  onHandle?(kind: HandleKind, personId: string): void;
+  onHandle?(kind: HandleKind, personId: string, at: { x: number; y: number }): void;
   /** Show add-relative handles on the selected card. */
   editable?: boolean;
 }
@@ -38,7 +38,7 @@ const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
   const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable } = props;
-  const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId, lang) : []), [editable, layout, tree, selectedId, lang]);
+  const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId) : []), [editable, layout, tree, selectedId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
   const size = useRef({ w: 0, h: 0, dpr: 1 });
@@ -182,7 +182,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (anim.current) { cancelAnimationFrame(anim.current); anim.current = null; }
-    canvasRef.current!.setPointerCapture(e.pointerId);
+    try { canvasRef.current!.setPointerCapture(e.pointerId); } catch { /* synthetic events have no capturable pointer */ }
     ptrs.current.set(e.pointerId, pos(e));
     if (ptrs.current.size === 1) { gesture.current.moved = 0; gesture.current.downAt = performance.now(); }
     if (ptrs.current.size === 2) {
@@ -233,7 +233,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       const quick = gesture.current.moved < 6 && performance.now() - (gesture.current.downAt ?? 0) < 600;
       if (quick) {
         const hd = hitHandle(handles, cam.current, p.x, p.y);
-        if (hd) { onHandle?.(hd.kind, hd.personId); return; }
+        if (hd) { onHandle?.(hd.kind, hd.personId, { x: (hd.x + hd.w) * cam.current.k + cam.current.x, y: (hd.y + hd.h / 2) * cam.current.k + cam.current.y }); return; }
         const h = hitTest(layout, cam.current, p.x, p.y);
         if (h) {
           const now = performance.now();

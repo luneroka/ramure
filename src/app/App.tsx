@@ -7,11 +7,13 @@ import { displayName, type Tree } from '../gedcom/model';
 import { applyTheme, detectLang, loadTheme, saveLang, t, type Lang, type ThemeChoice } from '../i18n';
 import { addChild, addParent, addPartner, addSibling, deletePerson, linkChild, linkPartner, mergePeople, newTree, unlinkChild, updateFamily, updatePerson, type EditResult, type FamilyPatch } from '../tree/edit';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
+import { layoutEverything } from '../tree/layoutAll';
 import sampleGedcom from '../../fixtures/geneanet/input-fixture.ged?raw';
 import { historyReducer, initialHistory } from './history';
 import { PersonPanel } from './PersonPanel';
 
-type ViewMode = 'hourglass' | 'ancestors' | 'descendants';
+type ViewMode = 'all' | 'hourglass' | 'ancestors' | 'descendants';
+type AddKind = 'father' | 'mother' | 'partner' | 'child' | 'sibling';
 
 /** Pick a sensible first focus: the person with the most relatives on both sides. */
 function defaultFocus(tree: Tree): string | undefined {
@@ -44,6 +46,7 @@ export function App() {
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [snapshots, setSnapshots] = useState<Array<Omit<Snapshot, 'gedcom'>> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -103,20 +106,29 @@ export function App() {
   // ---------- Layout ----------
   const layoutOpts = useMemo(() => ({ ...DEFAULT_LAYOUT, maxUp: view === 'descendants' ? 0 : DEFAULT_LAYOUT.maxUp, maxDown: view === 'ancestors' ? 0 : DEFAULT_LAYOUT.maxDown }), [view]);
   const effectiveFocus = tree && focusId && tree.individuals[focusId] ? focusId : tree ? defaultFocus(tree) : undefined;
-  const layout = useMemo(() => (tree && effectiveFocus ? layoutHourglass(tree, effectiveFocus, layoutOpts) : null), [tree, effectiveFocus, layoutOpts]);
+  const layout = useMemo(() => {
+    if (!tree) return null;
+    if (view === 'all') return Object.keys(tree.individuals).length ? layoutEverything(tree) : null;
+    return effectiveFocus ? layoutHourglass(tree, effectiveFocus, layoutOpts) : null;
+  }, [tree, effectiveFocus, layoutOpts, view]);
+  const hiddenCount = tree && layout ? Object.keys(tree.individuals).length - new Set(layout.nodes.map((n) => n.id)).size : 0;
 
   // Opening view when a tree is loaded; glide to the focus when it changes.
   const lastDocRef = useRef<typeof doc>(null);
   const lastFocusRef = useRef<string | undefined>(undefined);
+  const lastViewRef = useRef<ViewMode>(view);
   useEffect(() => {
     if (!layout || !doc) return;
     const loadedNew = lastDocRef.current === null || (lastDocRef.current.fileName !== doc.fileName && history.past.length === 0);
-    const focusChanged = lastFocusRef.current !== layout.focusId;
+    const viewChanged = lastViewRef.current !== view;
+    const focusChanged = lastFocusRef.current !== effectiveFocus;
     lastDocRef.current = doc;
-    lastFocusRef.current = layout.focusId;
+    lastFocusRef.current = effectiveFocus;
+    lastViewRef.current = view;
     if (loadedNew) requestAnimationFrame(() => canvas.current?.initialView());
-    else if (focusChanged) requestAnimationFrame(() => canvas.current?.centerOn(layout.focusId, true));
-  }, [layout, doc, history.past.length]);
+    else if (viewChanged && view === 'all') requestAnimationFrame(() => (effectiveFocus ? canvas.current?.centerOn(effectiveFocus, true) : canvas.current?.fit(true)));
+    else if (viewChanged || focusChanged) requestAnimationFrame(() => effectiveFocus && canvas.current?.centerOn(effectiveFocus, true));
+  }, [layout, doc, history.past.length, view, effectiveFocus]);
 
   // ---------- Editing ----------
   const apply = useCallback((fn: () => EditResult, opts: { select?: boolean; edit?: boolean; focus?: boolean } = {}) => {
@@ -135,8 +147,14 @@ export function App() {
     }
   }, [lang, toast]);
 
-  const onHandle = useCallback((kind: HandleKind, id: string) => {
+  const onHandle = useCallback((_kind: HandleKind, id: string, at: { x: number; y: number }) => {
+    setSelectedId(id);
+    setAddMenu((m) => (m && m.id === id ? null : { id, x: at.x, y: at.y }));
+  }, []);
+
+  const addRelative = (kind: AddKind, id: string) => {
     if (!tree) return;
+    setAddMenu(null);
     switch (kind) {
       case 'father': apply(() => addParent(tree, id, 'father'), { edit: true }); break;
       case 'mother': apply(() => addParent(tree, id, 'mother'), { edit: true }); break;
@@ -144,7 +162,20 @@ export function App() {
       case 'child': apply(() => addChild(tree, id), { edit: true }); break;
       case 'sibling': apply(() => addSibling(tree, id), { edit: true }); break;
     }
-  }, [tree, apply]);
+  };
+
+  const addOptions = (id: string): Array<{ kind: AddKind; label: string }> => {
+    if (!tree) return [];
+    const ind = tree.individuals[id];
+    if (!ind) return [];
+    const birth = ind.childOf.find((l) => l.pedigree === 'birth') ?? ind.childOf[0];
+    const fam = birth ? tree.families[birth.familyId] : undefined;
+    const out: Array<{ kind: AddKind; label: string }> = [];
+    if (!fam?.husbandId) out.push({ kind: 'father', label: t(lang, 'addFather') });
+    if (!fam?.wifeId) out.push({ kind: 'mother', label: t(lang, 'addMother') });
+    out.push({ kind: 'partner', label: t(lang, 'addPartner') }, { kind: 'child', label: t(lang, 'addChild') }, { kind: 'sibling', label: t(lang, 'addSibling') });
+    return out;
+  };
 
   const undo = useCallback(() => { if (history.past.length) { dispatch({ type: 'undo' }); setEditing(false); } }, [history.past.length]);
   const redo = useCallback(() => { if (history.future.length) { dispatch({ type: 'redo' }); setEditing(false); } }, [history.future.length]);
@@ -156,7 +187,7 @@ export function App() {
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
-      else if (e.key === 'Escape') { setMenuOpen(false); setSnapshots(null); }
+      else if (e.key === 'Escape') { setMenuOpen(false); setSnapshots(null); setAddMenu(null); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -225,7 +256,7 @@ export function App() {
     return Object.values(tree.individuals).filter((i) => displayName(i).toLowerCase().includes(q)).slice(0, 8);
   }, [tree, query]);
 
-  const focusOn = (id: string) => { setFocusId(id); setSelectedId(id); setEditing(false); };
+  const focusOn = (id: string) => { setFocusId(id); setSelectedId(id); setEditing(false); setAddMenu(null); if (view === 'all') setView('hourglass'); };
   const switchLang = () => { const next: Lang = lang === 'fr' ? 'en' : 'fr'; setLang(next); saveLang(next); };
   const cycleTheme = () => setTheme((c) => (c === 'auto' ? 'light' : c === 'light' ? 'dark' : 'auto'));
   const onBandChange = useCallback((b: DetailBand, zoom: number) => {
@@ -297,16 +328,16 @@ export function App() {
               selectedId={selectedId}
               lang={lang}
               editable={!editing}
-              onSelect={(id) => { setSelectedId(id); setEditing(false); }}
+              onSelect={(id) => { setSelectedId(id); setEditing(false); setAddMenu(null); }}
               onFocus={focusOn}
               onHandle={onHandle}
               onBandChange={onBandChange}
             />
             <div className="canvas-tools">
               <div className="segmented" role="radiogroup" aria-label={t(lang, 'view')}>
-                {(['hourglass', 'ancestors', 'descendants'] as ViewMode[]).map((v) => (
-                  <button key={v} role="radio" aria-checked={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)}>
-                    {t(lang, v === 'hourglass' ? 'viewHourglass' : v === 'ancestors' ? 'viewAncestors' : 'viewDescendants')}
+                {(['all', 'hourglass', 'ancestors', 'descendants'] as ViewMode[]).map((v) => (
+                  <button key={v} role="radio" aria-checked={view === v} className={view === v ? 'on' : ''} onClick={() => { setView(v); setAddMenu(null); }}>
+                    {t(lang, v === 'all' ? 'viewAll' : v === 'hourglass' ? 'viewHourglass' : v === 'ancestors' ? 'viewAncestors' : 'viewDescendants')}
                   </button>
                 ))}
               </div>
@@ -316,10 +347,18 @@ export function App() {
               <button className="btn" onClick={() => canvas.current?.centerOn(layout.focusId, true)}>{t(lang, 'recentre')}</button>
             </div>
             <div className="hud">
-              {Math.round(band.zoom * 100)}% · {layout.nodes.length} {t(lang, 'onCanvas')} · {t(lang, band.band === 'cards' ? 'fullCards' : band.band === 'names' ? 'namesOnly' : 'dots')}
+              {Math.round(band.zoom * 100)}% · {hiddenCount > 0 ? <>{count - hiddenCount} / {count} {t(lang, 'shown')} · <button className="link" onClick={() => setView('all')}>{t(lang, 'showAll')}</button></> : <>{count} {t(lang, 'people')}</>} · {t(lang, band.band === 'cards' ? 'fullCards' : band.band === 'names' ? 'namesOnly' : 'dots')}
               {layout.truncatedUp && <span className="hud-warn"> · ↑ {t(lang, 'moreAbove')}</span>}
               {layout.truncatedDown && <span className="hud-warn"> · ↓ {t(lang, 'moreBelow')}</span>}
             </div>
+            {addMenu && (
+              <>
+                <div className="add-backdrop" onPointerDown={() => setAddMenu(null)} />
+                <ul className="add-menu" role="menu" aria-label={t(lang, 'addRelative')} style={{ left: Math.min(addMenu.x + 8, window.innerWidth - 220), top: addMenu.y }}>
+                  {addOptions(addMenu.id).map((o) => <li key={o.kind}><button onClick={() => addRelative(o.kind, addMenu.id)}>{o.label}</button></li>)}
+                </ul>
+              </>
+            )}
             {showReport && tree.importNotes.length > 0 && (
               <div className="report">
                 <div className="report-head">
