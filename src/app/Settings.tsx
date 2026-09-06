@@ -1,8 +1,9 @@
 /** Settings page: the family account, your profile, and preferences. */
 
 import { useEffect, useState } from 'react';
+import { formatBytes } from '../media/documents';
 import { t, type Lang, type ThemeChoice } from '../i18n';
-import { api, type Account, type AccountMember, type AccountRole, type Me } from '../sync/api';
+import { api, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
 import type { AskSpec } from './Modal';
 
 export type DefaultView = 'all' | 'hourglass';
@@ -37,6 +38,7 @@ export function Settings(p: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member');
   const [refresh, setRefresh] = useState(0);
+  const [storage, setStorage] = useState<StorageReport | null>(null);
   const owner = account?.role === 'owner';
   const ownerCount = members.filter((m) => m.role === 'owner').length;
   const lastOwner = owner && ownerCount <= 1;
@@ -46,6 +48,10 @@ export function Settings(p: Props) {
     let alive = true;
     api.accountMembers(account.id).then((r) => alive && setMembers(r.members));
     if (owner) api.listAccountInvites(account.id).then((r) => alive && setInvites(r.invites));
+    api
+      .accountStorage(account.id)
+      .then((r) => alive && setStorage(r))
+      .catch(() => alive && setStorage(null));
     return () => {
       alive = false;
     };
@@ -242,6 +248,35 @@ export function Settings(p: Props) {
           </>
         )}
       </section>
+
+      {account && (
+        <section className="home-card" id="settings-storage">
+          <h2>{t(lang, 'storage')}</h2>
+          {storage ? (
+            <>
+              <p className="storage-total">
+                <strong>{formatBytes(storage.bytes, lang)}</strong> {t(lang, 'storageUsed')} · {storage.files}{' '}
+                {t(lang, storage.files === 1 ? 'file' : 'files')}
+              </p>
+              {storage.trees.length > 1 && (
+                <ul className="storage-trees">
+                  {storage.trees.map((tr) => (
+                    <li key={tr.id}>
+                      <span>{tr.name}</span>
+                      <span className="muted">
+                        {formatBytes(tr.bytes, lang)} · {tr.files} {t(lang, tr.files === 1 ? 'file' : 'files')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="muted small">{t(lang, 'storageHint')}</p>
+            </>
+          ) : (
+            <p className="muted small">…</p>
+          )}
+        </section>
+      )}
 
       <section className="home-card" id="settings-profile">
         <h2>{t(lang, 'profile')}</h2>

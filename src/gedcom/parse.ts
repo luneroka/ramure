@@ -16,6 +16,8 @@ import {
   type EventType,
   type Family,
   type Individual,
+  type Lead,
+  type MediaKind,
   type MediaObject,
   type Name,
   type Pedigree,
@@ -161,6 +163,18 @@ function parseHeader(ctx: Ctx, r: GedcomRecord): void {
   const plac = child(r, 'PLAC');
   if (plac) h.placeFormat = childValue(plac, 'FORM');
   h.notes = notesOf(ctx, r);
+  ctx.tree.resources = leadsOf(r);
+}
+
+/** _LINK <url> / 2 TITL / 2 NOTE / 2 _DONE Y : a research lead or resource. */
+function leadsOf(r: GedcomRecord): Lead[] {
+  return children(r, '_LINK').map((l, i) => ({
+    id: childValue(l, '_ID') ?? `L${i + 1}`,
+    url: l.value,
+    title: childValue(l, 'TITL') ?? l.value,
+    note: childValue(l, 'NOTE') || undefined,
+    done: childValue(l, '_DONE') === 'Y' || undefined,
+  }));
 }
 
 function notesOf(ctx: Ctx, r: GedcomRecord): string[] {
@@ -353,7 +367,7 @@ function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
       ind.restriction = c.value.trim().toLowerCase();
       continue;
     }
-    if (c.tag === 'NOTE' || c.tag === 'SOUR' || c.tag === 'OBJE') continue;
+    if (c.tag === 'NOTE' || c.tag === 'SOUR' || c.tag === 'OBJE' || c.tag === '_LINK') continue;
     const et = INDI_EVENT_TAGS[c.tag];
     if (et) {
       ind.events.push(parseEvent(ctx, c, et));
@@ -364,6 +378,7 @@ function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
   ind.notes = notesOf(ctx, r);
   ind.citations = citationsOf(ctx, r);
   ind.mediaIds = mediaOf(ctx, r);
+  ind.leads = leadsOf(r);
   return ind;
 }
 
@@ -458,7 +473,12 @@ function parseMedia(ctx: Ctx, id: string, r: GedcomRecord): MediaObject {
   const m: MediaObject = { id, file: fileRec?.value ?? '', notes: notesOf(ctx, r), extra: [] };
   m.format = (fileRec && childValue(fileRec, 'FORM')) ?? childValue(r, 'FORM');
   m.title = (fileRec && childValue(fileRec, 'TITL')) ?? childValue(r, 'TITL');
-  for (const c of r.children) if (!['FILE', 'FORM', 'TITL', 'NOTE'].includes(c.tag)) m.extra.push(c);
+  const kind = childValue(r, '_KIND');
+  if (kind && ['birth', 'marriage', 'death', 'photo', 'other'].includes(kind)) m.kind = kind as MediaKind;
+  const date = childValue(r, '_DATE');
+  if (date) m.date = parseDate(date);
+  if (childValue(r, '_PRIM') === 'Y') m.primary = true;
+  for (const c of r.children) if (!['FILE', 'FORM', 'TITL', 'NOTE', '_KIND', '_DATE', '_PRIM'].includes(c.tag)) m.extra.push(c);
   return m;
 }
 

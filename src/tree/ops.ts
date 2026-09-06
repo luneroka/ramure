@@ -7,7 +7,7 @@
  * is what sync, history and "who changed what" are built on.
  */
 
-import type { Tree } from '../gedcom/model';
+import type { Lead, Tree } from '../gedcom/model';
 import { parseGedcom } from '../gedcom/parse';
 import {
   addChild,
@@ -19,6 +19,7 @@ import {
   linkChild,
   linkPartner,
   mergePeople,
+  setResources,
   unlinkChild,
   updateFamily,
   updatePerson,
@@ -43,6 +44,7 @@ export type Op =
   | { t: 'linkPartner'; personId: string; partnerId: string; familyId: string }
   | { t: 'updateFamily'; id: string; patch: FamilyPatch }
   | { t: 'mergePeople'; keepId: string; dropId: string }
+  | { t: 'setResources'; resources: Lead[] }
   /** Replace the whole tree (snapshot restore). Carries the GEDCOM text so it replays anywhere. */
   | { t: 'replaceTree'; gedcom: string }
   /** Several ops applied as one step (one undo, one sync record), e.g. "add child" then "fill in the card". */
@@ -104,6 +106,7 @@ export const ops = {
   linkPartner: (personId: string, partnerId: string): Op => ({ t: 'linkPartner', personId, partnerId, familyId: newId('F') }),
   updateFamily: (id: string, patch: FamilyPatch): Op => ({ t: 'updateFamily', id, patch }),
   mergePeople: (keepId: string, dropId: string): Op => ({ t: 'mergePeople', keepId, dropId }),
+  setResources: (resources: Lead[]): Op => ({ t: 'setResources', resources }),
   replaceTree: (gedcom: string): Op => ({ t: 'replaceTree', gedcom }),
   batch: (list: Op[]): Op => ({ t: 'batch', ops: list }),
 };
@@ -135,6 +138,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       return updateFamily(tree, op.id, op.patch);
     case 'mergePeople':
       return mergePeople(tree, op.keepId, op.dropId);
+    case 'setResources':
+      return setResources(tree, op.resources);
     case 'replaceTree':
       return { tree: parseGedcom(op.gedcom) };
     case 'patchRecords':
@@ -200,6 +205,8 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
       return fr ? 'Union modifiée' : 'Union edited';
     case 'mergePeople':
       return fr ? 'Doublons fusionnés' : 'Duplicates merged';
+    case 'setResources':
+      return fr ? 'Ressources modifiées' : 'Resources edited';
     case 'replaceTree':
       return fr ? 'Sauvegarde restaurée' : 'Snapshot restored';
     case 'patchRecords':

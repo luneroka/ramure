@@ -8,7 +8,7 @@
  * become ordinary ops that sync like everything else.
  */
 
-import type { Family, Individual, MediaObject, Tree } from '../gedcom/model';
+import type { Family, Individual, Lead, MediaObject, Tree } from '../gedcom/model';
 
 export interface RecordPatch {
   t: 'patchRecords';
@@ -16,6 +16,8 @@ export interface RecordPatch {
   individuals: Record<string, Individual | null>;
   families: Record<string, Family | null>;
   media: Record<string, MediaObject | null>;
+  /** Tree-wide resources, when they changed. */
+  resources?: Lead[];
 }
 
 function diffTable<T>(from: Record<string, T>, to: Record<string, T>): Record<string, T | null> {
@@ -32,11 +34,17 @@ export function diffTrees(from: Tree, to: Tree): RecordPatch {
     individuals: diffTable(from.individuals, to.individuals),
     families: diffTable(from.families, to.families),
     media: diffTable(from.media, to.media),
+    ...(from.resources !== to.resources ? { resources: to.resources } : {}),
   };
 }
 
 export function isEmptyPatch(p: RecordPatch): boolean {
-  return Object.keys(p.individuals).length === 0 && Object.keys(p.families).length === 0 && Object.keys(p.media).length === 0;
+  return (
+    Object.keys(p.individuals).length === 0 &&
+    Object.keys(p.families).length === 0 &&
+    Object.keys(p.media).length === 0 &&
+    p.resources === undefined
+  );
 }
 
 function applyTable<T>(table: Record<string, T>, patch: Record<string, T | null>): Record<string, T> {
@@ -54,5 +62,6 @@ export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
     individuals: applyTable(tree.individuals, p.individuals),
     families: applyTable(tree.families, p.families),
     media: applyTable(tree.media, p.media),
+    ...(p.resources ? { resources: p.resources } : {}),
   };
 }

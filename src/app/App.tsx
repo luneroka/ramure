@@ -5,7 +5,7 @@ import { serializeGedcom } from '../gedcom';
 import { displayName, type Tree } from '../gedcom/model';
 import { applyTheme, detectLang, loadTheme, saveLang, t, tg, type Lang, type ThemeChoice } from '../i18n';
 import { CloudMediaStore } from '../store/cloudMedia';
-import { setActiveMediaStore } from '../store';
+import { mediaStore, setActiveMediaStore } from '../store';
 import { api, ApiError, type Account, type Role, type TreeSummary } from '../sync/api';
 import { SyncEngine, type SyncStatus } from '../sync/engine';
 import { diffTrees } from '../tree/diff';
@@ -22,6 +22,7 @@ import { TreeMenu, UserMenu } from './Menus';
 import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
 import { PersonPanel } from './PersonPanel';
+import { ResourcesDialog } from './Resources';
 import { useAuth } from './useAuth';
 
 type ViewMode = 'all' | 'hourglass' | 'ancestors' | 'descendants';
@@ -150,6 +151,7 @@ export function App() {
   const [band, setBand] = useState<{ band: DetailBand; zoom: number }>({ band: 'cards', zoom: 1 });
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
+  const [showResources, setShowResources] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<{
@@ -852,6 +854,7 @@ export function App() {
                   onSaveVersion={() => void saveVersion()}
                   readOnly={readOnly}
                   onReport={() => setShowReport(true)}
+                  onResources={() => setShowResources(true)}
                   onDelete={() =>
                     void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
                   }
@@ -1209,6 +1212,17 @@ export function App() {
             busy={busy}
           />
         )}
+        {showResources && tree && (
+          <ResourcesDialog
+            lang={lang}
+            resources={tree.resources ?? []}
+            readOnly={readOnly}
+            onSave={(r) => {
+              if (commit(ops.setResources(r))) toast(t(lang, 'resourceSaved'));
+            }}
+            onClose={() => setShowResources(false)}
+          />
+        )}
         {snapshots && (
           <div className="dialog-backdrop" onClick={() => setSnapshots(null)}>
             <div className="dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t(lang, 'snapshots')}>
@@ -1317,6 +1331,42 @@ export function App() {
             if (draft) return;
             if (commit(ops.updatePerson(id, { portrait: media }))) toast(t(lang, 'photoSaved'));
           }}
+          onSaveDocument={(id, media) => {
+            if (draft) return;
+            const person = tree.individuals[id];
+            if (!person) return;
+            const mediaIds = person.mediaIds.includes(media.id) ? person.mediaIds : [...person.mediaIds, media.id];
+            if (commit(ops.updatePerson(id, { media: [media], mediaIds })))
+              toast(t(lang, person.mediaIds.includes(media.id) ? 'saved' : 'documentAdded'));
+          }}
+          onDeleteDocument={(id, mediaId) => {
+            if (draft) return;
+            void (async () => {
+              const answer = await ask({
+                title: t(lang, 'deleteDocument'),
+                message: t(lang, 'deleteDocumentMessage'),
+                confirmLabel: t(lang, 'delete'),
+                danger: true,
+              });
+              if (!answer) return;
+              const person = tree.individuals[id];
+              if (!person) return;
+              if (commit(ops.updatePerson(id, { mediaIds: person.mediaIds.filter((m) => m !== mediaId) }))) {
+                void mediaStore.delete(mediaId);
+                toast(t(lang, 'documentDeleted'));
+              }
+            })();
+          }}
+          onChoosePortrait={(id, mediaId) => {
+            if (draft) return;
+            const media = tree.media[mediaId];
+            if (media && commit(ops.updatePerson(id, { portrait: media }))) toast(t(lang, 'photoSaved'));
+          }}
+          onSaveLeads={(id, leads) => {
+            if (draft) return;
+            if (commit(ops.updatePerson(id, { leads }))) toast(t(lang, 'saved'));
+          }}
+          onNotice={toast}
         />
       )}
     </div>

@@ -1,15 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { approximateYear, formatDate } from '../gedcom/dates';
 import { computeAge } from '../gedcom/age';
-import { displayName, findEvent, placeText, type Event, type Family, type Individual, type MediaObject, type Tree } from '../gedcom/model';
+import {
+  displayName,
+  findEvent,
+  placeText,
+  type Event,
+  type Family,
+  type Individual,
+  type Lead,
+  type MediaObject,
+  type Tree,
+} from '../gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '../i18n';
 import { isLiving } from '../canvas/renderer';
-import { nextId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '../tree/edit';
+import { nextId, portraitId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '../tree/edit';
 import { mediaStore } from '../store';
 import { prepareImage } from '../media/portraits';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
 import { SplitPanes } from './SplitPanes';
+import { DocumentsTab } from './Documents';
+import { LeadsTab } from './Leads';
 import { Medallion } from './fields/Portrait';
 
 export interface PanelActions {
@@ -26,6 +38,13 @@ export interface PanelActions {
   onMerge(keepId: string, dropId: string): void;
   /** Quick portrait change from the panel header. */
   onSetPortrait(id: string, media: MediaObject | null): void;
+  /** Documents: a stored media record to attach or update, one to remove, one to promote. */
+  onSaveDocument(id: string, media: MediaObject): void;
+  onDeleteDocument(id: string, mediaId: string): void;
+  onChoosePortrait(id: string, mediaId: string): void;
+  onSaveLeads(id: string, leads: Lead[]): void;
+  /** A short message for the user (toast). */
+  onNotice(message: string): void;
 }
 
 interface Props extends PanelActions {
@@ -177,6 +196,7 @@ export function PersonPanel(props: Props) {
   };
 
   const name = displayName(person) === '?' ? t(lang, 'newPersonName') : displayName(person);
+  const heroPortrait = portraitId(person, tree);
   const sexGlyph = person.sex === 'M' ? '♂' : person.sex === 'F' ? '♀' : '';
   const living = isLiving(person);
   const birthEvent = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
@@ -204,7 +224,7 @@ export function PersonPanel(props: Props) {
     return (
       <li className="person-row">
         <button className="link-person" onClick={() => onSelect(id)} onDoubleClick={() => onFocus(id)}>
-          <Medallion mediaId={p.mediaIds[0]} size={40} className={`row-medallion ${p.sex}`} />
+          <Medallion mediaId={portraitId(p, tree)} size={40} className={`row-medallion ${p.sex}`} />
           <span className="link-body">
             <span className="link-name">
               {displayName(p)}
@@ -462,41 +482,47 @@ export function PersonPanel(props: Props) {
   );
 
   const renderDocuments = () => (
-    <>
-      {sources.length > 0 ? (
-        <section>
-          <h3 className="band">{t(lang, 'sources')}</h3>
-          <ul className="sources">
-            {sources.map((s, i) => (
-              <li key={i}>
-                <span className="src-label">{s.label} :</span> {s.text}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : (
-        <p className="muted small">{t(lang, 'noDocumentsYet')}</p>
-      )}
-    </>
+    <DocumentsTab
+      tree={tree}
+      person={person}
+      lang={lang}
+      readOnly={readOnly}
+      isDraft={isDraft}
+      sources={sources}
+      onSaveDocument={(m) => props.onSaveDocument(person.id, m)}
+      onDeleteDocument={(mid) => props.onDeleteDocument(person.id, mid)}
+      onSetPortrait={(mid) => props.onChoosePortrait(person.id, mid)}
+      onError={props.onNotice}
+    />
   );
 
-  const renderRecherches = () => <p className="muted small">{t(lang, 'noLeadsYet')}</p>;
+  const renderRecherches = () => (
+    <LeadsTab
+      person={person}
+      lang={lang}
+      readOnly={readOnly || isDraft}
+      onSaveLeads={(l) => props.onSaveLeads(person.id, l)}
+      onNotice={props.onNotice}
+    />
+  );
+  const docCount = person.mediaIds.filter((id) => tree.media[id]).length + sources.length;
+  const openLeads = (person.leads ?? []).filter((l) => !l.done).length;
 
   return (
     <aside className="panel" aria-label={name}>
       <header className="panel-hero">
         <button
           type="button"
-          className={`medallion-btn ${person.mediaIds[0] ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
+          className={`medallion-btn ${heroPortrait ? 'has-photo' : ''} ${readOnly ? 'static' : ''}`}
           onClick={() => !readOnly && photoInput.current?.click()}
           disabled={photoBusy || readOnly}
-          aria-label={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
-          title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+          aria-label={heroPortrait ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+          title={heroPortrait ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         >
-          <Medallion mediaId={person.mediaIds[0]} size={88} className="panel-medallion" />
+          <Medallion mediaId={heroPortrait} size={88} className="panel-medallion" />
           {!readOnly && (
             <span className="medallion-badge" aria-hidden="true">
-              {person.mediaIds[0] ? '✎' : '+'}
+              {heroPortrait ? '✎' : '+'}
             </span>
           )}
         </button>
@@ -566,8 +592,8 @@ export function PersonPanel(props: Props) {
         }}
         bottom={{
           tabs: [
-            { id: 'documents', label: t(lang, 'tabDocuments'), count: sources.length },
-            { id: 'recherches', label: t(lang, 'tabRecherches') },
+            { id: 'documents', label: t(lang, 'tabDocuments'), count: docCount },
+            { id: 'recherches', label: t(lang, 'tabRecherches'), count: openLeads },
           ],
           active: bottomTab,
           onSelect: setBottomTab,

@@ -19,7 +19,7 @@ import { HttpError, now, randomId } from './util';
 const MAX_DOC_BYTES = 25 * 1024 * 1024;
 const MAX_OPS_PER_PUSH = 500;
 const SNAPSHOT_EVERY = 100;
-const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
+const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
 
 interface TreeRow {
   id: string;
@@ -310,7 +310,7 @@ trees.get('/:id/snapshots/:sid', async (c) => {
   return c.json(row);
 });
 
-// ---------- Media (portraits) in R2 ----------
+// ---------- Media (portraits and documents) in R2 ----------
 
 trees.put('/:id/media/:mediaId', async (c) => {
   const user = requireUser(c.get('user'));
@@ -319,9 +319,9 @@ trees.put('/:id/media/:mediaId', async (c) => {
   const mediaId = c.req.param('mediaId');
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(mediaId)) throw new HttpError(400, 'bad media id');
   const type = c.req.header('content-type') ?? 'application/octet-stream';
-  if (!type.startsWith('image/')) throw new HttpError(415, 'images only');
+  if (!type.startsWith('image/') && type !== 'application/pdf') throw new HttpError(415, 'images and PDFs only');
   const bytes = await c.req.arrayBuffer();
-  if (bytes.byteLength > MAX_MEDIA_BYTES) throw new HttpError(413, 'image too large');
+  if (bytes.byteLength > MAX_MEDIA_BYTES) throw new HttpError(413, 'file too large');
   await c.env.MEDIA.put(`trees/${id}/media/${mediaId}`, bytes, { httpMetadata: { contentType: type } });
   await c.env.DB.prepare(
     `INSERT OR REPLACE INTO media (id, tree_id, uploaded_by, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`,

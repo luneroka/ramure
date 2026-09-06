@@ -85,6 +85,26 @@ accounts.get('/:id/members', async (c) => {
   return c.json({ members: rows.results });
 });
 
+/** Storage used by the account's trees: every file in R2, per tree. */
+accounts.get('/:id/storage', async (c) => {
+  const user = requireUser(c.get('user'));
+  const id = c.req.param('id');
+  await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
+  const rows = await c.env.DB.prepare(
+    `SELECT t.id, t.name, COUNT(m.id) AS files, COALESCE(SUM(m.size), 0) AS bytes
+       FROM trees t LEFT JOIN media m ON m.tree_id = t.id
+      WHERE t.account_id = ? GROUP BY t.id ORDER BY bytes DESC`,
+  )
+    .bind(id)
+    .all<{ id: string; name: string; files: number; bytes: number }>();
+  const trees = rows.results;
+  return c.json({
+    bytes: trees.reduce((n, r) => n + r.bytes, 0),
+    files: trees.reduce((n, r) => n + r.files, 0),
+    trees,
+  });
+});
+
 accounts.patch('/:id/members/:userId', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');

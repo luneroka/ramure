@@ -11,7 +11,7 @@
 const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 const LENGTH = 11;
 
-export type IdPrefix = 'I' | 'F' | 'S' | 'R' | 'M' | 'T';
+export type IdPrefix = 'I' | 'F' | 'S' | 'R' | 'M' | 'T' | 'L';
 
 export function newId(prefix: IdPrefix): string {
   const bytes = new Uint8Array(LENGTH);
@@ -24,5 +24,5 @@ export function newId(prefix: IdPrefix): string {
 
 /** True for ids Ramure generated (as opposed to imported GEDCOM xrefs). */
 export function isGeneratedId(id: string): boolean {
-  return /^[IFSRMT][0-9a-z]{11}$/.test(id);
+  return /^[IFSRMTL][0-9a-z]{11}$/.test(id);
 }

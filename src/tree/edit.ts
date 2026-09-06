@@ -12,6 +12,7 @@ import {
   type EventType,
   type Family,
   type Individual,
+  type Lead,
   type MediaObject,
   type Name,
   type Sex,
@@ -102,27 +103,48 @@ export interface PersonPatch {
   restriction?: string | undefined;
   /** New portrait media record to attach as the main picture; null removes the current one. */
   portrait?: MediaObject | null;
+  /** Research leads, replaced wholesale. */
+  leads?: Lead[];
+  /** Media records to add or update in the tree (documents). */
+  media?: MediaObject[];
+  /** Attached media, in order; index 0 is the portrait. */
+  mediaIds?: string[];
 }
 
 /** Media stored by Ramure itself use this scheme in FILE; the blob lives in IndexedDB under the media id. */
 export const RAMURE_MEDIA_SCHEME = 'ramure:';
 
 /** The main picture of a person: the first attached media. */
-export function portraitId(ind: Individual): string | undefined {
-  return ind.mediaIds[0];
+export function portraitId(ind: Individual, tree?: Tree): string | undefined {
+  if (!tree) return ind.mediaIds[0];
+  const flagged = ind.mediaIds.find((id) => tree.media[id]?.primary);
+  if (flagged) return flagged;
+  // Imported trees: the first attached picture without a document kind.
+  return ind.mediaIds.find((id) => {
+    const m = tree.media[id];
+    return !m || m.kind === undefined || m.kind === 'photo';
+  });
 }
 
 export function updatePerson(tree: Tree, id: string, patch: PersonPatch): EditResult {
   const ind = must(tree, id);
-  const { portrait, ...rest } = patch;
+  const { portrait, media, ...rest } = patch;
   const next: Individual = { ...ind, ...rest };
   if (patch.restriction === undefined && 'restriction' in patch) delete next.restriction;
   let t = tree;
+  if (media?.length) {
+    const table = { ...t.media };
+    for (const m of media) table[m.id] = m;
+    t = { ...t, media: table };
+  }
   if (portrait === null) {
-    next.mediaIds = ind.mediaIds.slice(1);
+    const current = portraitId(ind, t);
+    next.mediaIds = (rest.mediaIds ?? ind.mediaIds).filter((m) => m !== current);
   } else if (portrait) {
-    t = { ...t, media: { ...t.media, [portrait.id]: portrait } };
-    next.mediaIds = [portrait.id, ...ind.mediaIds.filter((m) => m !== portrait.id)];
+    const table = { ...t.media, [portrait.id]: { ...portrait, primary: true } };
+    for (const id of ind.mediaIds) if (id !== portrait.id && table[id]?.primary) table[id] = { ...table[id]!, primary: false };
+    t = { ...t, media: table };
+    next.mediaIds = [portrait.id, ...(rest.mediaIds ?? ind.mediaIds).filter((m) => m !== portrait.id)];
   }
   return { tree: withIndividual(t, next), focusId: id };
 }
@@ -312,6 +334,11 @@ export function linkPartner(tree: Tree, personId: string, partnerId: string, ids
   return { tree: t, focusId: partnerId };
 }
 
+/** Replace the tree-wide research resources. */
+export function setResources(tree: Tree, resources: Lead[]): EditResult {
+  return { tree: { ...tree, resources } };
+}
+
 export interface FamilyPatch {
   events?: Event[];
   notes?: string[];
@@ -467,6 +494,7 @@ export function newTree(given: string, surname: string, sex: Sex, id?: string): 
     media: {},
     extra: [],
     importNotes: [],
+    resources: [],
   };
   return createPerson(tree, { given, surname, sex }, id);
 }

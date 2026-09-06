@@ -11,6 +11,7 @@ import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
 import { formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { drawMedallion } from '../media/portraits';
+import { portraitId } from '../tree/edit';
 
 export interface Camera {
   x: number;
@@ -299,7 +300,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       // Medallion portrait on the left: an oval like an old locket.
       const MW = 42,
         MH = 54;
-      const mediaId = ind.mediaIds[0];
+      const mediaId = portraitId(ind, tree);
       const img = mediaId && s.portrait ? s.portrait(mediaId) : undefined;
       drawMedallion(ctx, n.x + 13, n.y + (n.h - MH) / 2, MW, MH, img, { ring: T.line2, fill: T.surface2, silhouette: T.ink3 });
       const tx = n.x + 13 + MW + 12;

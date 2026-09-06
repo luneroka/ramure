@@ -122,6 +122,8 @@ export interface Individual {
   partnerIn: string[];
   /** GEDCOM RESN: privacy, locked, confidential. */
   restriction?: string;
+  /** Research leads about this person. */
+  leads: Lead[];
   extra: GedcomRecord[];
 }
 
@@ -163,13 +165,31 @@ export interface Repository {
   extra: GedcomRecord[];
 }
 
+/** Kinds of documents a person can carry. */
+export type MediaKind = 'birth' | 'marriage' | 'death' | 'photo' | 'other';
+
 export interface MediaObject {
   id: string;
   file: string;
   format?: string;
   title?: string;
+  /** What the document is (custom tag _KIND). */
+  kind?: MediaKind;
+  /** Date of the record itself, not the upload (custom tag _DATE). */
+  date?: GDate;
+  /** The person's main picture (_PRIM Y). */
+  primary?: boolean;
   notes: string[];
   extra: GedcomRecord[];
+}
+
+/** A research lead or resource: a link worth coming back to (custom tag _LINK). */
+export interface Lead {
+  id: string;
+  url: string;
+  title: string;
+  note?: string;
+  done?: boolean;
 }
 
 export interface Header {
@@ -202,6 +222,8 @@ export interface Tree {
   /** Top-level records we do not model (SUBM, SUBN, unknown), preserved. */
   extra: GedcomRecord[];
   importNotes: ImportNote[];
+  /** Research resources shared by the whole tree (custom _LINK records under HEAD). */
+  resources: Lead[];
 }
 
 export function emptyTree(): Tree {
@@ -214,6 +236,7 @@ export function emptyTree(): Tree {
     media: {},
     extra: [],
     importNotes: [],
+    resources: [],
   };
 }
 
@@ -222,7 +245,7 @@ export function newEvent(type: EventType, tag: string): Event {
 }
 
 export function newIndividual(id: string): Individual {
-  return { id, names: [], sex: 'U', events: [], notes: [], citations: [], mediaIds: [], childOf: [], partnerIn: [], extra: [] };
+  return { id, names: [], sex: 'U', events: [], notes: [], citations: [], mediaIds: [], childOf: [], partnerIn: [], leads: [], extra: [] };
 }
 
 export function newFamily(id: string): Family {

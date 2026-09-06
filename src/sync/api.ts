@@ -36,6 +36,12 @@ async function call<T>(method: string, path: string, body?: unknown, raw?: BodyI
 
 export type Role = 'owner' | 'editor' | 'viewer';
 
+export interface StorageReport {
+  bytes: number;
+  files: number;
+  trees: Array<{ id: string; name: string; files: number; bytes: number }>;
+}
+
 export interface Me {
   id: string;
   email: string;
@@ -79,6 +85,7 @@ export const api = {
   createAccount: (name: string) => call<{ id: string; name: string; role: 'owner' }>('POST', '/api/accounts', { name }),
   renameAccount: (id: string, name: string) => call<{ ok: true }>('PATCH', `/api/accounts/${id}`, { name }),
   accountMembers: (id: string) => call<{ members: AccountMember[] }>('GET', `/api/accounts/${id}/members`),
+  accountStorage: (id: string) => call<StorageReport>('GET', `/api/accounts/${id}/storage`),
   setAccountRole: (id: string, userId: string, role: AccountRole) =>
     call<{ ok: true }>('PATCH', `/api/accounts/${id}/members/${userId}`, { role }),
   removeAccountMember: (id: string, userId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/members/${userId}`),

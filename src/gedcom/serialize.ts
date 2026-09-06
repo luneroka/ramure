@@ -8,7 +8,7 @@
  */
 
 import { formatGedcomDate } from './dates';
-import type { Citation, Event, Family, Individual, MediaObject, Name, Place, Repository, Source, Tree } from './model';
+import type { Citation, Event, Family, Individual, Lead, MediaObject, Name, Place, Repository, Source, Tree } from './model';
 import type { GedcomRecord } from './tokenizer';
 
 const MAX_LINE = 248;
@@ -121,6 +121,17 @@ function writeHeader(w: Writer, tree: Tree, o: SerializeOptions): void {
     w.line(2, 'FORM', tree.header.placeFormat);
   }
   for (const n of tree.header.notes) w.line(1, 'NOTE', n);
+  writeLeads(w, 1, tree.resources ?? []);
+}
+
+function writeLeads(w: Writer, level: number, leads: Lead[]): void {
+  for (const l of leads) {
+    w.line(level, '_LINK', l.url);
+    w.line(level + 1, '_ID', l.id);
+    if (l.title && l.title !== l.url) w.line(level + 1, 'TITL', l.title);
+    if (l.note) w.line(level + 1, 'NOTE', l.note);
+    if (l.done) w.line(level + 1, '_DONE', 'Y');
+  }
 }
 
 function writeName(w: Writer, n: Name): void {
@@ -201,6 +212,7 @@ function writeIndividual(w: Writer, ind: Individual): void {
   for (const n of ind.notes) w.line(1, 'NOTE', n);
   writeCitations(w, 1, ind.citations);
   for (const m of ind.mediaIds) w.line(1, 'OBJE', ptr(m));
+  writeLeads(w, 1, ind.leads ?? []);
   for (const x of ind.extra) w.raw(x, 1);
 }
 
@@ -250,6 +262,9 @@ function writeMedia(w: Writer, m: MediaObject): void {
   w.line(1, 'FILE', m.file);
   if (m.format) w.line(2, 'FORM', m.format);
   if (m.title) w.line(2, 'TITL', m.title);
+  if (m.kind) w.line(1, '_KIND', m.kind);
+  if (m.date) w.line(1, '_DATE', formatGedcomDate(m.date));
+  if (m.primary) w.line(1, '_PRIM', 'Y');
   for (const n of m.notes) w.line(1, 'NOTE', n);
   for (const x of m.extra) w.raw(x, 1);
 }

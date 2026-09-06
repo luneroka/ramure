@@ -12,7 +12,7 @@ import {
   type Tree,
 } from '../gedcom/model';
 import { eventLabel, t, type Lang } from '../i18n';
-import { blankEvent, nextId, type PersonPatch } from '../tree/edit';
+import { blankEvent, nextId, type PersonPatch, portraitId } from '../tree/edit';
 import { PortraitPicker } from './fields/Portrait';
 import { mediaStore } from '../store';
 import { DateField } from './fields/DateField';
@@ -211,7 +211,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       }}
     >
       <h3>{t(lang, 'portrait')}</h3>
-      <PortraitPicker lang={lang} current={person.mediaIds[0]} allocateId={allocateMediaId} onChange={setPortrait} />
+      <PortraitPicker lang={lang} current={portraitId(person, tree)} allocateId={allocateMediaId} onChange={setPortrait} />
 
       <div className="grid2">
         <label>
