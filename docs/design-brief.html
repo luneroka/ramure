@@ -1,0 +1,697 @@
+<title>Ramure Design Brief</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #F5F6F3;
+    --surface: #FFFFFF;
+    --surface-2: #ECEEE9;
+    --ink: #1F2328;
+    --ink-2: #4B5158;
+    --ink-3: #7A8189;
+    --line: #D6D9D2;
+    --line-2: #B9BEB5;
+    --accent: #2F7A6D;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DCEBE6;
+    --focus: #D99A2B;
+    --focus-soft: #F7E7C4;
+    --connector: #8C7B62;
+    --male: #4C7FA8;
+    --female: #B5606F;
+    --shadow: 0 1px 2px rgba(31,35,40,.08), 0 8px 24px rgba(31,35,40,.06);
+    --display: "Newsreader", "Iowan Old Style", Georgia, serif;
+    --body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #15181B;
+      --surface: #1E2327;
+      --surface-2: #262C31;
+      --ink: #E8E6E0;
+      --ink-2: #B4B8BC;
+      --ink-3: #848A90;
+      --line: #333A40;
+      --line-2: #465058;
+      --accent: #5FB8A6;
+      --accent-ink: #0F1A17;
+      --accent-soft: #1F3A35;
+      --focus: #E5B25A;
+      --focus-soft: #3D3320;
+      --connector: #A18F72;
+      --male: #7FA9CC;
+      --female: #D08795;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #15181B;
+    --surface: #1E2327;
+    --surface-2: #262C31;
+    --ink: #E8E6E0;
+    --ink-2: #B4B8BC;
+    --ink-3: #848A90;
+    --line: #333A40;
+    --line-2: #465058;
+    --accent: #5FB8A6;
+    --accent-ink: #0F1A17;
+    --accent-soft: #1F3A35;
+    --focus: #E5B25A;
+    --focus-soft: #3D3320;
+    --connector: #A18F72;
+    --male: #7FA9CC;
+    --female: #D08795;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .page { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+  .col { max-width: 68ch; }
+
+  header.masthead {
+    padding: 56px 0 28px;
+    border-bottom: 1px solid var(--line);
+    display: grid; gap: 14px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  h1 {
+    font-family: var(--display); font-weight: 500; font-size: clamp(38px, 5.5vw, 60px);
+    line-height: 1.02; margin: 0; letter-spacing: -.01em; text-wrap: balance;
+  }
+  .lede { font-size: 19px; line-height: 1.5; color: var(--ink-2); margin: 0; max-width: 60ch; text-wrap: pretty; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); }
+
+  section { padding: 40px 0 8px; }
+  h2 {
+    font-family: var(--display); font-weight: 500; font-size: 30px; line-height: 1.15;
+    margin: 0 0 16px; letter-spacing: -.005em; text-wrap: balance;
+  }
+  h3 { font-family: var(--body); font-weight: 600; font-size: 16px; margin: 26px 0 8px; }
+  p { margin: 0 0 14px; text-wrap: pretty; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--ink-3); }
+  strong { font-weight: 600; }
+  code { font-family: var(--mono); font-size: .9em; background: var(--surface-2); padding: 1px 5px; border-radius: 3px; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px; margin: 18px 0 22px; border-radius: 0 6px 6px 0;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  .tablewrap { overflow-x: auto; margin: 10px 0 20px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  .num { font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; font-family: var(--mono); font-size: 11.5px; padding: 2px 7px; border-radius: 3px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+  .tag.free { background: var(--accent-soft); color: var(--accent); }
+  .tag.paid { background: var(--focus-soft); color: var(--ink-2); }
+
+  /* ===== Live sketch ===== */
+  .sketch {
+    margin: 22px calc(50% - 50vw) 8px; padding: 0 24px;
+  }
+  @media (min-width: 1168px) { .sketch { margin-left: -24px; margin-right: -24px; padding: 0; } }
+  .sketch-frame {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .sketch-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--surface);
+  }
+  .sketch-bar .title { font-family: var(--display); font-size: 17px; font-weight: 500; margin-right: auto; }
+  .sketch-bar button, .sketch-bar input {
+    font: 500 13px var(--body); color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 7px 11px; cursor: pointer; min-height: 36px;
+  }
+  .sketch-bar input { cursor: text; min-width: 190px; }
+  .sketch-bar button:hover { border-color: var(--line-2); }
+  .sketch-bar button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .stage { position: relative; height: min(70vh, 620px); min-height: 380px; background: var(--ground); }
+  canvas#tree { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas#tree.dragging { cursor: grabbing; }
+  .hud {
+    position: absolute; left: 12px; bottom: 12px; pointer-events: none;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    padding: 5px 8px; border-radius: 4px;
+  }
+  .hint {
+    position: absolute; right: 12px; top: 12px; pointer-events: none; max-width: 260px;
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.4;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    border: 1px solid var(--line); padding: 8px 10px; border-radius: 6px;
+  }
+  .sketch-note { font-size: 13px; color: var(--ink-3); padding: 10px 14px; border-top: 1px solid var(--line); }
+
+  /* ===== Phases ===== */
+  .phases { display: grid; gap: 14px; margin: 16px 0 6px; }
+  .phase {
+    display: grid; grid-template-columns: 96px 1fr; gap: 0 20px;
+    padding: 18px 0; border-top: 1px solid var(--line);
+  }
+  .phase:last-child { border-bottom: 1px solid var(--line); }
+  .phase .when { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); line-height: 1.5; padding-top: 3px; }
+  .phase .when b { display: block; color: var(--ink); font-weight: 500; font-size: 13px; }
+  .phase h3 { margin: 0 0 6px; font-size: 17px; }
+  .phase p { margin-bottom: 8px; }
+  .phase ul { margin-bottom: 8px; }
+  .done { font-size: 14px; color: var(--ink-2); }
+  .done b { font-family: var(--mono); font-weight: 500; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-right: 6px; }
+  @media (max-width: 560px) { .phase { grid-template-columns: 1fr; } .phase .when { margin-bottom: 6px; } }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 32px; }
+  .stack { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+  .stack h3 { margin: 0 0 8px; }
+  .stack ul { margin: 0; padding-left: 18px; font-size: 15px; }
+  dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 15px; }
+  dt { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); padding-top: 2px; }
+  dd { margin: 0; }
+  footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--ink-3); }
+  footer ul { padding-left: 18px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow">Design brief · working name</div>
+    <h1>Ramure</h1>
+    <p class="lede">A free family-tree builder whose whole point is the tree: one canvas, the entire lineage, pan and pinch anywhere. Geneanet shows a tree one page at a time. We show it all at once.</p>
+    <div class="meta"><span>Brief v1 · 6 Sept 2026</span><span>GEDCOM native</span><span>FR + EN from day one</span><span>Static PWA first, accounts later</span></div>
+  </header>
+
+  <section class="col">
+    <h2>What Geneanet actually is</h2>
+    <p>Geneanet is a French freemium site built on top of the open-source GeneWeb engine. Its tree builder is free and unlimited in size, with 1 GB of media storage. The paid tier sells search and records, not tree features.</p>
+    <div class="tablewrap"><table>
+      <tr><th>Feature</th><th>Tier</th><th>Notes</th></tr>
+      <tr><td>Tree of any size, GEDCOM import and export</td><td><span class="tag free">free</span></td><td>This is how we get your friend's data out.</td></tr>
+      <tr><td>Tree viewer</td><td><span class="tag free">free</span></td><td>Page-per-person. The chart shows a fixed 4 to 7 generations from the current person, then you click someone to recenter and the page reloads. This is the "chunks" problem.</td></tr>
+      <tr><td>Printable charts (PDF)</td><td><span class="tag free">free</span></td><td>Classic and fan charts, 4 to 7 generations.</td></tr>
+      <tr><td>Browsing 1M+ member trees, collaborative indexes</td><td><span class="tag free">free</span></td><td>The community asset. Not something we can or should clone.</td></tr>
+      <tr><td>Advanced search, automatic tree matching, weekly alerts</td><td><span class="tag paid">premium</span></td><td>Depends on their database of a billion indexed people.</td></tr>
+      <tr><td>Genealogy library, partner society indexes, 10 GB media</td><td><span class="tag paid">premium</span></td><td>Licensed content.</td></tr>
+    </table></div>
+    <div class="callout">
+      <p><strong>The honest framing.</strong> We are not replacing Geneanet's record search. We are replacing the tree builder and viewer, which is exactly the part that frustrates your friend and exactly the part where a small team can be much better. The friend keeps using Geneanet for research and imports their finds into Ramure.</p>
+    </div>
+    <p>Two open-source projects already do the builder part well and are worth an afternoon each before committing: <a href="https://www.gramps-project.org/web/">Gramps Web</a> and <a href="https://webtrees.net/">webtrees</a>. Both are self-hosted, GEDCOM-based, and mature on data entry. Neither has a canvas that feels like a map on a phone. If the canvas is the product, building our own is justified. If it is not, host webtrees and stop.</p>
+  </section>
+
+  <section class="col">
+    <h2>The design idea: the tree is a map</h2>
+    <p>Treat the lineage like a map application treats a city. The full tree is laid out once, and the viewport is the only thing that moves. Zooming out collapses cards into names, then into dots, so a 3,000-person tree still reads. Zooming in reveals photos and dates. Nothing ever reloads.</p>
+    <h3>Principles</h3>
+    <ul>
+      <li><strong>Everything is on one surface.</strong> Ancestors above the focus person, descendants below, in an hourglass. Tapping a person re-centres the hourglass with an animation. The old centre stays visible so you never lose your place.</li>
+      <li><strong>Level of detail, not pagination.</strong> Three zoom bands: full card, name only, dot. The generation ruler on the left stays fixed so you always know which generation you are looking at.</li>
+      <li><strong>Touch is the first input.</strong> One finger pans, two fingers pinch, tap selects, long press opens the add menu, double tap re-centres. Tap targets are at least 44 px at the default zoom.</li>
+      <li><strong>Editing happens on the canvas.</strong> Every card has plus handles for parent, spouse, child and sibling. The person panel slides in from the right. Every edit is undoable.</li>
+      <li><strong>The data is always yours.</strong> GEDCOM export is one tap and never gated. The app works offline.</li>
+    </ul>
+    <h3>Views</h3>
+    <div class="tablewrap"><table>
+      <tr><th>View</th><th>Shows</th><th>When</th></tr>
+      <tr><td>Hourglass</td><td>Ancestors up, descendants down, from a focus person</td><td>Default. This is the launch view.</td></tr>
+      <tr><td>Pedigree</td><td>Ancestors only, binary tree to the right</td><td>Research mode: which lines are still empty.</td></tr>
+      <tr><td>Descendants</td><td>All descendants of one couple with spouses</td><td>Family reunions and cousin-finding.</td></tr>
+      <tr><td>Fan</td><td>Ancestors in concentric arcs</td><td>Printing and sharing; the only view Geneanet does well.</td></tr>
+      <tr><td>Timeline</td><td>Lifespans as bars against years and events</td><td>Later phase.</td></tr>
+    </table></div>
+  </section>
+
+  <div class="sketch">
+    <div class="sketch-frame">
+      <div class="sketch-bar">
+        <span class="title">Live sketch · hourglass view</span>
+        <input id="q" type="search" placeholder="Find a person…" aria-label="Find a person" list="names">
+        <datalist id="names"></datalist>
+        <button id="zout" aria-label="Zoom out">−</button>
+        <button id="zin" aria-label="Zoom in">+</button>
+        <button id="fit">Fit</button>
+        <button id="home" class="primary">Re-centre</button>
+      </div>
+      <div class="stage">
+        <canvas id="tree"></canvas>
+        <div class="hint">Drag to pan, scroll or pinch to zoom, tap a person to re-centre on them. Zoom out until the cards become names.</div>
+        <div class="hud" id="hud"></div>
+      </div>
+      <div class="sketch-note">Example family, invented for this sketch. Cards, connectors and the generation ruler are drawn on a Canvas 2D element, the same approach proposed for the product.</div>
+    </div>
+  </div>
+
+  <section class="col">
+    <h2>What we store</h2>
+    <p>The model follows GEDCOM 7 so that import and export are lossless and so the vocabulary matches what genealogists already know. Individuals never point at each other directly. They connect through families, which is what makes step-parents, second marriages and unknown fathers representable.</p>
+    <dl>
+      <dt>Individual</dt><dd>Names (several, with type), sex, living flag, events, notes, media, citations.</dd>
+      <dt>Family</dt><dd>Two partners at most, a union event (marriage, civil union, none), an ordered list of children with relationship type (birth, adopted, foster).</dd>
+      <dt>Event</dt><dd>Type, date, place, description, citations. Dates are GEDCOM dates: exact, approximate, ranges, "before 1850", French Republican calendar.</dd>
+      <dt>Place</dt><dd>Hierarchical (hamlet, commune, department, country) with optional coordinates.</dd>
+      <dt>Source and citation</dt><dd>A source is a register or book. A citation is the page in it, with a quality grade.</dd>
+      <dt>Media</dt><dd>Photos and scans, attached to people, events or sources. Object storage, not the database.</dd>
+      <dt>Tree</dt><dd>Owner, collaborators with roles, privacy rule for living people, default focus person.</dd>
+    </dl>
+  </section>
+
+  <section class="col">
+    <h2>How it is built</h2>
+    <p>Two decisions shape everything else. First, the app is local-first: the whole tree lives in the browser, layout runs in a worker, and the server is only for accounts, sync and sharing. That is why the canvas is instant and why hosting can stay free. Second, we ship a viewer before we ship an editor, because a viewer over a Geneanet export is already the feature your friend is missing.</p>
+    <div class="two">
+      <div class="stack">
+        <h3>Client</h3>
+        <ul>
+          <li>TypeScript, Vite, React for panels and forms.</li>
+          <li>Canvas 2D for the tree. Cards are drawn, not DOM nodes, so ten thousand people stay smooth. Selected card gets a DOM overlay for accessibility.</li>
+          <li>Layout in a Web Worker, per view, from the focus person. Recomputed only when the tree changes.</li>
+          <li>Gestures with pointer events, so mouse, trackpad, pen and touch share one code path.</li>
+          <li>IndexedDB for the tree, a GEDCOM parser we own, PWA manifest for install and offline.</li>
+          <li>i18n with French and English strings from the first commit.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <h3>Server, phase 3 onward</h3>
+        <ul>
+          <li>Postgres on Supabase's free tier: auth, row-level security, storage for media, 500 MB database and 1 GB files.</li>
+          <li>Sync as an append-only change log per tree. Last-writer-wins per field is enough for a family of editors.</li>
+          <li>Static hosting on Cloudflare Pages, free, no server to maintain.</li>
+          <li>Escape hatch: the schema is plain Postgres, so moving off Supabase is a dump and restore.</li>
+        </ul>
+      </div>
+    </div>
+    <h3>Why not SVG or a graph library</h3>
+    <p>SVG with one element per person works to a few hundred cards, then pinch-zoom on a phone stutters. General graph libraries such as Cytoscape or React Flow lay out arbitrary graphs and fight you on the hourglass shape. The layouts we need are simple trees from a focus person, which is a few hundred lines we can own and tune for touch.</p>
+  </section>
+
+  <section class="col">
+    <h2>Execution plan</h2>
+    <p>Five phases, each one usable on its own. Weeks assume one developer part time. Phase 1 is the moment your friend stops being frustrated.</p>
+    <div class="phases">
+      <div class="phase">
+        <div class="when"><b>Phase 0</b>Week 1</div>
+        <div>
+          <h3>Get the real data in hand</h3>
+          <ul>
+            <li>Your friend exports their tree from Geneanet as GEDCOM. Keep the raw file as the test fixture for everything that follows.</li>
+            <li>Write the GEDCOM 5.5.1 and 7 parser and serialiser with round-trip tests on that file. Geneanet adds custom tags; preserve unknown ones untouched.</li>
+            <li>Define the TypeScript model above and the layout output shape.</li>
+          </ul>
+          <p class="done"><b>Done when</b>Import then export gives back a file Geneanet accepts without loss.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><b>Phase 1</b>Weeks 2 to 4</div>
+        <div>
+          <h3>The canvas viewer</h3>
+          <ul>
+            <li>Hourglass layout in a worker, Canvas 2D renderer with three detail bands, generation ruler.</li>
+            <li>Pan, pinch, wheel zoom, tap to re-centre with animation, fit to screen, minimap.</li>
+            <li>Search box that flies to a person. Read-only person panel with events, sources and photos.</li>
+            <li>Load a GEDCOM from disk, keep it in IndexedDB, deploy as a static PWA.</li>
+          </ul>
+          <p class="done"><b>Done when</b>Your friend opens their full tree on a phone and browses it end to end without a page load.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><b>Phase 2</b>Weeks 5 to 7</div>
+        <div>
+          <h3>Editing on the canvas</h3>
+          <ul>
+            <li>Add parent, spouse, child, sibling from card handles. Edit names, events, places, notes in the panel.</li>
+            <li>Undo and redo across every edit. Merge two duplicate people.</li>
+            <li>GEDCOM export, one tap. Automatic local snapshots so nothing is ever lost.</li>
+            <li>Pedigree and descendants views.</li>
+          </ul>
+          <p class="done"><b>Done when</b>Your friend builds in Ramure and only visits Geneanet to search records.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><b>Phase 3</b>Weeks 8 to 10</div>
+        <div>
+          <h3>Accounts, sync and sharing</h3>
+          <ul>
+            <li>Sign in with email link. Trees sync across devices through the change log.</li>
+            <li>Invite family as viewer or editor. Public read-only link with living people hidden.</li>
+            <li>Photo and document upload to object storage, shown on cards at high zoom.</li>
+          </ul>
+          <p class="done"><b>Done when</b>Two relatives edit the same tree from two phones and both see the result.</p>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="when"><b>Phase 4</b>Ongoing</div>
+        <div>
+          <h3>The things that make it better, not just free</h3>
+          <ul>
+            <li>Fan chart and print-quality PDF at any generation depth.</li>
+            <li>Relationship calculator: how are these two people related, drawn as a path on the canvas.</li>
+            <li>Consistency checks: born after a parent's death, married at nine, two birth events.</li>
+            <li>Map of places and a timeline view. Gramps and webtrees import for people switching from those.</li>
+          </ul>
+          <p class="done"><b>Done when</b>Never. Pick from this list based on what your friend asks for next.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="col">
+    <h2>Risks and open decisions</h2>
+    <ul>
+      <li><strong>Pedigree collapse.</strong> When cousins marry, one person appears twice in the ancestor tree. The hourglass draws them twice and links the duplicates with a dotted line. That is what paper charts do and it is fine.</li>
+      <li><strong>Very wide descendant trees.</strong> Eight children each with eight children is wide. Branches collapse with a tap and the minimap shows where you are.</li>
+      <li><strong>Geneanet's GEDCOM quirks.</strong> Their export mixes encodings and custom tags. Phase 0 exists to find out how bad it is before anything is built on it.</li>
+      <li><strong>Free-tier hosting limits.</strong> Supabase pauses idle free projects after a week. Acceptable for a family, and the local-first design means the app still works while the server wakes up.</li>
+      <li><strong>Decision needed: name.</strong> Ramure is a placeholder. It is a French word for the branches of a tree, and it is short. Check the domain before growing attached.</li>
+      <li><strong>Decision needed: scope of "clone".</strong> This brief deliberately drops record search and community trees. If those matter to your friend, the answer is a Geneanet link from each person's panel, not a rebuild.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <div>Sources consulted for the Geneanet comparison</div>
+    <ul>
+      <li><a href="https://en.geneanet.org/genealogyblog/post/2019/01/geneanet-free-or-paid-explanations">Geneanet, Free or Paid? Explanations</a>, including their 2024 reply on free-tier limits.</li>
+      <li><a href="https://en.geneanet.org/genealogyblog/post/2015/06/how-to-change-your-geneanet-family-tree-display-mode">How To Change Your Geneanet Family Tree Display Mode</a></li>
+      <li><a href="https://en.geneanet.org/help/printable-family-tree-template">Printable Family Tree Template</a> and <a href="https://familytreemagazine.com/websites/geneanet/">Family Tree Magazine's guide to Geneanet</a></li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // ---------- Example data (invented) ----------
+  const P = {};
+  function add(id, name, sex, birth, death) { P[id] = { id, name, sex, birth, death, father: null, mother: null, spouse: null, children: [] }; return P[id]; }
+  function parents(child, father, mother) { P[child].father = father; P[child].mother = mother; if (father) P[father].children.push(child); if (mother) P[mother].children.push(child); if (father && mother) { P[father].spouse = mother; P[mother].spouse = father; } }
+
+  add('m', 'Marguerite Lenoir', 'F', 1952, null);
+  add('h', 'Henri Lenoir', 'M', 1921, 1998);      add('j', 'Jeanne Marchal', 'F', 1925, 2010);
+  add('a', 'Auguste Lenoir', 'M', 1889, 1954);    add('mb', 'Marie Bréhier', 'F', 1893, 1971);
+  add('pm', 'Paul Marchal', 'M', 1897, 1966);     add('lv', 'Louise Vidal', 'F', 1899, 1980);
+  add('jb', 'Jean-Baptiste Lenoir', 'M', 1858, 1923); add('rg', 'Rosalie Guérin', 'F', 1862, 1930);
+  add('pb', 'Pierre Bréhier', 'M', 1860, 1917);   add('al', 'Anne Le Goff', 'F', 1866, 1940);
+  add('cm', 'Claude Marchal', 'M', 1870, 1935);   add('md', 'Marguerite Dumont', 'F', 1872, 1950);
+  add('ev', 'Étienne Vidal', 'M', 1868, 1914);    add('cr', 'Célestine Roux', 'F', 1874, 1939);
+  add('mi', 'Michel Aubry', 'M', 1949, null);
+  add('cl', 'Claire Aubry', 'F', 1976, null);     add('nf', 'Nicolas Ferrand', 'M', 1974, null);
+  add('th', 'Thomas Aubry', 'M', 1979, null);     add('so', 'Sophie Aubry', 'F', 1984, null);
+  add('le', 'Léa Ferrand', 'F', 2004, null);      add('hu', 'Hugo Ferrand', 'M', 2007, null);
+  add('in', 'Inès Aubry', 'F', 2010, null);
+  add('yl', 'Yvonne Lenoir', 'F', 1924, 2001);    add('rl', 'Robert Lenoir', 'M', 1928, 1944);
+
+  parents('m', 'h', 'j'); parents('yl', 'h', 'j'); parents('rl', 'h', 'j');
+  parents('h', 'a', 'mb'); parents('j', 'pm', 'lv');
+  parents('a', 'jb', 'rg'); parents('mb', 'pb', 'al'); parents('pm', 'cm', 'md'); parents('lv', 'ev', 'cr');
+  P.m.spouse = 'mi'; P.mi.spouse = 'm';
+  parents('cl', 'mi', 'm'); parents('th', 'mi', 'm'); parents('so', 'mi', 'm');
+  P.cl.spouse = 'nf'; P.nf.spouse = 'cl';
+  parents('le', 'nf', 'cl'); parents('hu', 'nf', 'cl');
+  parents('in', 'th', null);
+
+  // ---------- Layout ----------
+  const CW = 172, CH = 56, ROW = 112, GAP = 18, SP = 10; // card w/h, row height, sibling gap, spouse gap
+  const MAXUP = 3, MAXDOWN = 3;
+  let nodes = [], links = [], rows = [], focusId = 'm';
+
+  function layout(fid) {
+    nodes = []; links = []; rows = [];
+    const f = P[fid];
+    const place = (id, x, y, gen) => { const n = { id, x, y, w: CW, h: CH, gen }; nodes.push(n); return n; };
+
+    // Ancestors: classic pedigree slots. gen g has 2^g slots across total width TW.
+    const TW = Math.pow(2, MAXUP) * (CW + GAP);
+    const slotX = (g, i) => (i + 0.5) * TW / Math.pow(2, g) - TW / 2;
+    const anc = (id, g, i, childNode) => {
+      if (!id || g > MAXUP) return;
+      const n = place(id, slotX(g, i) - CW / 2, -g * ROW - CH / 2, g);
+      if (childNode) links.push({ from: n, to: childNode, kind: 'anc' });
+      anc(P[id].father, g + 1, i * 2, n);
+      anc(P[id].mother, g + 1, i * 2 + 1, n);
+    };
+    // Focus and spouse sit on row 0, centred as a couple.
+    const hasSp = !!f.spouse;
+    const coupleW = hasSp ? CW * 2 + SP : CW;
+    const fx = -coupleW / 2;
+    const fn = place(fid, fx, -CH / 2, 0);
+    let sn = null;
+    if (hasSp) sn = place(f.spouse, fx + CW + SP, -CH / 2, 0);
+    anc(f.father, 1, 0, fn); anc(f.mother, 1, 1, fn);
+
+    // Descendants: subtree widths, then assign x centred under the couple.
+    const kids = id => P[id].children.filter(c => P[c]);
+    const width = (id, d) => {
+      const own = (P[id].spouse && d > 0 ? CW * 2 + SP : (d === 0 ? coupleW : CW));
+      if (d >= MAXDOWN) return own;
+      const ks = kids(id); if (!ks.length) return own;
+      let sum = 0; ks.forEach((k, i) => { sum += width(k, d + 1) + (i ? GAP : 0); });
+      return Math.max(own, sum);
+    };
+    const desc = (id, d, left, parentMid, parentBottom) => {
+      const W = width(id, d);
+      const sp = P[id].spouse;
+      const own = (d === 0 ? coupleW : (sp ? CW * 2 + SP : CW));
+      const x = left + (W - own) / 2;
+      let n;
+      if (d === 0) { n = fn; }
+      else {
+        n = place(id, x, d * ROW - CH / 2, -d);
+        if (sp) place(sp, x + CW + SP, d * ROW - CH / 2, -d);
+        links.push({ kind: 'desc', x1: parentMid, y1: parentBottom, x2: x + CW / 2, y2: n.y });
+      }
+      const mid = x + own / 2;
+      if (d >= MAXDOWN) return;
+      const ks = kids(id); if (!ks.length) return;
+      let cx = left + (W - ks.reduce((s, k, i) => s + width(k, d + 1) + (i ? GAP : 0), 0)) / 2;
+      ks.forEach(k => { const kw = width(k, d + 1); desc(k, d + 1, cx, mid, n.y + CH); cx += kw + GAP; });
+    };
+    desc(fid, 0, fx - (width(fid, 0) - coupleW) / 2, 0, 0);
+
+    const seen = new Set();
+    nodes.forEach(n => { if (!seen.has(n.gen)) { seen.add(n.gen); rows.push(n.gen); } });
+  }
+
+  // ---------- Camera and rendering ----------
+  const canvas = document.getElementById('tree');
+  const ctx = canvas.getContext('2d');
+  const stage = canvas.parentElement;
+  const hud = document.getElementById('hud');
+  let dpr = 1, vw = 0, vh = 0;
+  const cam = { x: 0, y: 0, k: 1 };
+  let hover = null, selected = null;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  const genLabel = { 3: 'Great-grandparents', 2: 'Grandparents', 1: 'Parents', 0: 'Focus', '-1': 'Children', '-2': 'Grandchildren', '-3': 'Great-grandchildren' };
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    vw = stage.clientWidth; vh = stage.clientHeight;
+    canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
+    draw();
+  }
+
+  function draw() {
+    const T = { ground: tok('--ground'), surface: tok('--surface'), ink: tok('--ink'), ink2: tok('--ink-2'), ink3: tok('--ink-3'),
+      line: tok('--line'), line2: tok('--line-2'), accent: tok('--accent'), focus: tok('--focus'), focusSoft: tok('--focus-soft'),
+      conn: tok('--connector'), male: tok('--male'), female: tok('--female'), surface2: tok('--surface-2') };
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = T.ground; ctx.fillRect(0, 0, vw, vh);
+
+    // Generation bands in screen space: alternate faint bands per row.
+    rows.forEach(g => {
+      const y = cam.y + (-g * ROW - ROW / 2) * cam.k;
+      if (g % 2 === 0) { ctx.fillStyle = T.surface2; ctx.globalAlpha = .45; ctx.fillRect(0, y, vw, ROW * cam.k); ctx.globalAlpha = 1; }
+    });
+
+    ctx.setTransform(dpr * cam.k, 0, 0, dpr * cam.k, dpr * cam.x, dpr * cam.y);
+    const k = cam.k;
+    const band = k >= 0.62 ? 2 : k >= 0.28 ? 1 : 0;
+
+    // Connectors
+    ctx.strokeStyle = T.conn; ctx.lineWidth = 1.5 / Math.max(k, .35); ctx.lineJoin = 'round';
+    links.forEach(l => {
+      ctx.beginPath();
+      if (l.kind === 'anc') {
+        const cx = l.to.x + l.to.w / 2, cy = l.to.y;
+        const px = l.from.x + l.from.w / 2, py = l.from.y + l.from.h;
+        const my = (cy + py) / 2;
+        ctx.moveTo(cx, cy); ctx.lineTo(cx, my); ctx.lineTo(px, my); ctx.lineTo(px, py);
+      } else {
+        const my = (l.y1 + l.y2) / 2;
+        ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x1, my); ctx.lineTo(l.x2, my); ctx.lineTo(l.x2, l.y2);
+      }
+      ctx.stroke();
+    });
+    // Couple ties on row 0 and spouse pairs
+    ctx.strokeStyle = T.line2;
+    nodes.forEach(n => {
+      const sp = P[n.id].spouse; if (!sp) return;
+      const s = nodes.find(o => o.id === sp && o.gen === n.gen && Math.abs(o.y - n.y) < 1 && o.x > n.x && o.x - (n.x + n.w) < SP + 1);
+      if (!s) return;
+      ctx.beginPath(); ctx.moveTo(n.x + n.w, n.y + n.h / 2); ctx.lineTo(s.x, s.y + s.h / 2); ctx.stroke();
+    });
+
+    // Cards
+    nodes.forEach(n => {
+      const p = P[n.id];
+      const isFocus = n.id === focusId, isSel = n.id === selected, isHover = n.id === hover;
+      const sexColor = p.sex === 'M' ? T.male : T.female;
+      if (band === 0) {
+        ctx.fillStyle = sexColor; ctx.beginPath(); ctx.arc(n.x + n.w / 2, n.y + n.h / 2, isFocus ? 14 : 10, 0, Math.PI * 2); ctx.fill();
+        if (isFocus) { ctx.strokeStyle = T.focus; ctx.lineWidth = 4 / k; ctx.stroke(); }
+        return;
+      }
+      const r = 6;
+      ctx.beginPath(); roundRect(n.x, n.y, n.w, n.h, r);
+      ctx.fillStyle = isFocus ? T.focusSoft : T.surface; ctx.fill();
+      ctx.lineWidth = (isFocus || isSel ? 2 : 1) / Math.max(k, .5);
+      ctx.strokeStyle = isFocus ? T.focus : isSel ? T.accent : isHover ? T.line2 : T.line; ctx.stroke();
+      // sex stripe
+      ctx.fillStyle = sexColor; ctx.beginPath(); roundRect(n.x, n.y, 4, n.h, [r, 0, 0, r]); ctx.fill();
+      ctx.fillStyle = T.ink; ctx.textBaseline = 'middle';
+      if (band === 1) {
+        ctx.font = '600 16px ' + tok('--body'); ctx.textAlign = 'center';
+        fitText(p.name, n.x + n.w / 2 + 2, n.y + n.h / 2, n.w - 18);
+      } else {
+        ctx.font = '600 14px ' + tok('--body'); ctx.textAlign = 'left';
+        fitText(p.name, n.x + 14, n.y + 20, n.w - 24);
+        ctx.font = '400 12.5px ' + tok('--mono'); ctx.fillStyle = T.ink2;
+        ctx.fillText(p.death ? p.birth + ' – ' + p.death : 'b. ' + p.birth, n.x + 14, n.y + 40);
+        if (!p.death) { ctx.fillStyle = T.accent; ctx.beginPath(); ctx.arc(n.x + n.w - 14, n.y + 40, 3, 0, Math.PI * 2); ctx.fill(); }
+      }
+    });
+
+    // Generation ruler: fixed x, tracks y.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = '500 11px ' + tok('--mono'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    rows.forEach(g => {
+      const y = cam.y + (-g * ROW) * cam.k;
+      if (y < -10 || y > vh + 10) return;
+      ctx.fillStyle = T.ground; ctx.globalAlpha = .85; ctx.fillRect(8, y - 9, 130, 18); ctx.globalAlpha = 1;
+      ctx.fillStyle = g === 0 ? T.focus : T.ink3;
+      ctx.fillText((genLabel[g] || ('Gen ' + g)).toUpperCase(), 12, y);
+    });
+    hud.textContent = 'zoom ' + Math.round(cam.k * 100) + '% · ' + nodes.length + ' people on canvas · ' + (band === 2 ? 'full cards' : band === 1 ? 'names only' : 'dots');
+  }
+  function roundRect(x, y, w, h, r) { if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; } const rr = Array.isArray(r) ? r[0] : r; ctx.moveTo(x + rr, y); ctx.arcTo(x + w, y, x + w, y + h, rr); ctx.arcTo(x + w, y + h, x, y + h, rr); ctx.arcTo(x, y + h, x, y, rr); ctx.arcTo(x, y, x + w, y, rr); ctx.closePath(); }
+  function fitText(t, x, y, maxW) { let s = t; while (s.length > 3 && ctx.measureText(s).width > maxW) s = s.slice(0, -2); if (s !== t) s = s.slice(0, -1) + '…'; ctx.fillText(s, x, y); }
+
+  // ---------- Camera helpers ----------
+  function centerOn(wx, wy, k, animate) {
+    if (!isFinite(k) || k <= 0) k = 0.7;
+    const target = { x: vw / 2 - wx * k, y: vh / 2 - wy * k, k };
+    if (!animate || reduced) { Object.assign(cam, target); draw(); return; }
+    const from = { ...cam }; const t0 = performance.now(); const D = 380;
+    (function step(now) {
+      const t = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - t, 3);
+      cam.x = from.x + (target.x - from.x) * e; cam.y = from.y + (target.y - from.y) * e; cam.k = from.k + (target.k - from.k) * e;
+      draw(); if (t < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function zoomAt(sx, sy, factor) {
+    const k2 = Math.min(3, Math.max(0.08, cam.k * factor));
+    cam.x = sx - (sx - cam.x) * (k2 / cam.k); cam.y = sy - (sy - cam.y) * (k2 / cam.k); cam.k = k2; draw();
+  }
+  function fit(animate) {
+    const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+    const minX = Math.min(...xs) - 40, maxX = Math.max(...nodes.map(n => n.x + n.w)) + 40;
+    const minY = Math.min(...ys) - 40, maxY = Math.max(...nodes.map(n => n.y + n.h)) + 40;
+    if (!nodes.length || vw < 10 || vh < 10) return;
+    const k = Math.min(3, Math.max(0.08, Math.min(vw / (maxX - minX), vh / (maxY - minY))));
+    centerOn((minX + maxX) / 2, (minY + maxY) / 2, k, animate);
+  }
+  function refocus(id, animate) {
+    const before = nodes.find(n => n.id === id);
+    focusId = id; selected = id;
+    layout(id);
+    const after = nodes.find(n => n.id === id);
+    if (before && animate && !reduced) {
+      // Keep the tapped card where it was on screen, then glide it to the centre.
+      cam.x += (before.x - after.x) * cam.k; cam.y += (before.y - after.y) * cam.k;
+    }
+    centerOn(after.x + after.w / 2, after.y + after.h / 2, Math.max(cam.k, 0.7), animate);
+  }
+  function hit(sx, sy) {
+    const wx = (sx - cam.x) / cam.k, wy = (sy - cam.y) / cam.k;
+    for (let i = nodes.length - 1; i >= 0; i--) { const n = nodes[i]; if (wx >= n.x && wx <= n.x + n.w && wy >= n.y && wy <= n.y + n.h) return n; }
+    return null;
+  }
+
+  // ---------- Gestures ----------
+  const ptrs = new Map(); let pinch0 = null, downAt = null, moved = 0;
+  const pos = e => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, pos(e)); canvas.classList.add('dragging');
+    if (ptrs.size === 1) { downAt = pos(e); moved = 0; }
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), k: cam.k }; }
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = pos(e);
+    if (!ptrs.has(e.pointerId)) { const h = hit(p.x, p.y); const id = h ? h.id : null; if (id !== hover) { hover = id; canvas.style.cursor = id ? 'pointer' : 'grab'; draw(); } return; }
+    const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, p);
+    if (ptrs.size === 1) { cam.x += p.x - prev.x; cam.y += p.y - prev.y; moved += Math.hypot(p.x - prev.x, p.y - prev.y); draw(); }
+    else if (ptrs.size === 2 && pinch0) {
+      const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const k2 = Math.min(3, Math.max(0.08, pinch0.k * d / pinch0.d));
+      const pm = { x: (a.x + b.x) / 2 - ((p.x - prev.x) / 2), y: (a.y + b.y) / 2 - ((p.y - prev.y) / 2) };
+      cam.x = mid.x - (pm.x - cam.x) * (k2 / cam.k); cam.y = mid.y - (pm.y - cam.y) * (k2 / cam.k); cam.k = k2; moved = 99; draw();
+    }
+  });
+  const up = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    const p = ptrs.get(e.pointerId); ptrs.delete(e.pointerId);
+    if (ptrs.size === 0) { canvas.classList.remove('dragging'); pinch0 = null;
+      if (downAt && moved < 5) { const h = hit(p.x, p.y); if (h) refocus(h.id, true); else { selected = null; draw(); } }
+      downAt = null; }
+    if (ptrs.size < 2) pinch0 = null;
+  };
+  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+  canvas.addEventListener('wheel', e => { e.preventDefault(); const p = pos(e); zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0022))); }, { passive: false });
+  canvas.addEventListener('dblclick', e => { const p = pos(e); zoomAt(p.x, p.y, 1.6); });
+
+  // ---------- Toolbar ----------
+  document.getElementById('zin').onclick = () => zoomAt(vw / 2, vh / 2, 1.3);
+  document.getElementById('zout').onclick = () => zoomAt(vw / 2, vh / 2, 1 / 1.3);
+  document.getElementById('fit').onclick = () => fit(true);
+  document.getElementById('home').onclick = () => refocus('m', true);
+  const q = document.getElementById('q'), dl = document.getElementById('names');
+  Object.values(P).sort((a, b) => a.name.localeCompare(b.name)).forEach(p => { const o = document.createElement('option'); o.value = p.name; dl.appendChild(o); });
+  q.addEventListener('change', () => { const s = q.value.trim().toLowerCase(); if (!s) return; const m = Object.values(P).find(p => p.name.toLowerCase().includes(s)); if (m) refocus(m.id, true); });
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); q.dispatchEvent(new Event('change')); } });
+
+  // ---------- Boot ----------
+  layout(focusId); selected = focusId;
+  let fitted = false;
+  const settle = () => { resize(); if (!fitted && vw >= 10 && vh >= 10) { fitted = true; fit(false); } };
+  new ResizeObserver(settle).observe(stage);
+  settle();
+  window.addEventListener('load', settle); setTimeout(settle, 250); setTimeout(settle, 1200);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>

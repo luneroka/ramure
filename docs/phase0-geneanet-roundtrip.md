@@ -1,0 +1,65 @@
+# Phase 0: Geneanet GEDCOM round trip
+
+Input: `ramure-fixture.ged` (33 people, 13 families, hand-written GEDCOM 5.5.1 UTF-8).
+Output: `geneanet-export-2026-09-06.ged` (Geneanet export, "Web links to main photo" and "Images of the family book" both checked).
+
+Geneanet's exporter is GeneWeb 7.0.0. Everything below follows from GeneWeb's internal model, which is much narrower than GEDCOM.
+
+## Kept intact
+
+- All 33 individuals, in the same order, with the same I-numbers (coincidence of ordering, not a guarantee).
+- Names with accents, apostrophes and Vietnamese diacritics. UTF-8 in and out, no BOM.
+- Nicknames (NICK).
+- Dates: exact, year only, ABT, BEF, EST, BET/AND, and the French Republican calendar escape `@#DFRENCH R@ 15 VEND 3`.
+- Birth, baptism, marriage, divorce, death, burial, occupation, custom EVEN with TYPE, all with date, place and event notes.
+- Person notes, family notes, event notes. Text content is unchanged.
+- Family structure: two marriages for Henri, twins, stillborn child, one-parent families (father only, mother only).
+- Child order inside a family.
+
+## Changed (recoverable with rules)
+
+| Input | Output | Rule for our importer |
+|---|---|---|
+| Family IDs F1..F13 | Renumbered by first reference from individuals; F1 became F4, F2 became F1, F5 became F2 | Never persist Geneanet xrefs. Match records by content. |
+| `2 GIVN` / `2 SURN` | Dropped | Derive given and surname from the `/SURN/` slashes in NAME. |
+| `1 NAME /LENOIR/` (no first name) | `1 NAME X /LENOIR/` | Treat given name `X` or `x` as empty. |
+| `1 CHR` | `1 BAPM` | Accept both as baptism. |
+| `2 DATE FROM 1973 TO 2012` | `2 DATE BET 1973 AND 2012` | Period becomes range. Cannot be undone. |
+| `2 DATE CAL 1798` | `2 DATE ABT 1798` | Calculated becomes about. |
+| `4 FEB 1921` | `04 FEB 1921` | Zero-padded days. |
+| `2 PLAC , Quimper, Finistère, ...` | `2 PLAC Quimper, Finistère, ...` | Empty components are stripped, so hierarchy position is lost. Parse places right-to-left from country. |
+| `2 PLAC , Đà Nẵng, , , Viêt Nam` | `2 PLAC Đà Nẵng, Viêt Nam` | Same. |
+| `2 CAUS Insuffisance cardiaque` | `2 NOTE Cause: Insuffisance cardiaque` | Recognise `Cause: ` prefix in a death note and lift it back to a cause. |
+| `1 OCCU Institutrice` + DATE + PLAC | `1 OCCU` event with `2 NOTE Institutrice` **plus** a second bare `1 OCCU Institutrice` | Dated occupation is split in two. De-duplicate on import. |
+| `1 RESI` with `2 ADDR` / `3 ADR1 12 rue de Siam` | `2 NOTE Address: ` / `3 CONT Address: , Brest, 29200, France` | Street line is lost. City, postcode, country survive inside a note. |
+| Source records `@S1@`, `@S2@` with REPO, CALN, citations with PAGE, QUAY, DATA/DATE, DATA/TEXT | One flat text line per citation: title - author - abbr - publisher - call number - source note - page - date - text, joined with ` - ` | GeneWeb stores sources as strings. Keep the flat text verbatim; do not try to re-split it reliably. Our own model keeps structured sources; the flat text is a fallback. |
+| Citation `4 DATE 5 FEB 1921` | `5 february 1921` inside the flat text | English lowercase month inside French text. Cosmetic. |
+| Shared note `@N1@` referenced from Henri | Inlined as Henri's own `1 NOTE` | Shared notes become copies. |
+| `1 NAME Jeanne /LENOIR/` + `2 TYPE married` | `1 NAME Jeanne LENOIR` (no slashes, no type) | Alternate names lose surname delimiters and type. Treat a slash-less second NAME as an alias string. |
+| Sophie: `1 FAMC @F5@` + `2 PEDI adopted` | FAMC removed. Sophie is no longer a CHIL of her parents' family. A **duplicate family** `@F14@` (same HUSB and WIFE, no children) was created and referenced via `1 ADOP` / `2 FAMC @F14@` / `3 ADOP BOTH`. Note gains "Family child Pedigree linkage type: adopted". | On import: for each ADOP/FAMC family, find the existing family with the same partners, merge, and re-add the child with pedigree adopted. This is the most damaging transformation and it affects real trees. |
+| Rosalie GUERIN (I33), unlinked | Attached as CHIL of a new family `@F15@` with no partners | Families with no HUSB and no WIFE are GeneWeb artefacts. Drop them and leave the person unlinked. |
+| Family F13 (mother only, no MARR) | Gains `1 EVEN` / `2 TYPE unmarried` | GeneWeb relation kind leaks as an event. Map `TYPE unmarried` to union type, not to an event. F12 (father only) did not get it. |
+| Notes longer than ~72 characters | Split with CONC, sometimes mid-word, and CONC lines may start with a space | Join CONC with no separator and never trim CONC content. Join CONT with a newline. |
+| `2 PLAC` empty lieu-dit in header `1 PLAC` / `2 FORM` | Dropped | Ignore. |
+
+## Lost entirely
+
+- `RESN privacy`. Geneanet does not export any per-person privacy flag. Living-person hiding is a global rule on their side.
+- `MAP` / `LATI` / `LONG` coordinates.
+- `QUAY` source quality grades.
+- `REPO` records: repository name, address, website, call number all gone except the call number folded into the flat citation text.
+- `AGE` on death.
+- `SEX U`: the stillborn child has no SEX line at all. Absent SEX means unknown.
+- `OBJE`: both the referenced missing file and the picture uploaded through the site. Nothing in the export mentions media, despite "Web links to main photo of individuals" being checked. Open question: was the picture set as Henri's main portrait, or only attached to the album? If the former, Geneanet's export option does not do what it says.
+- `SUBM`, `LANG`, header `PLAC FORM`.
+- `ADR1` street line of the residence address.
+- `TYPE married` on the alternate name.
+- `PEDI adopted` as such (replaced by the ADOP structure above).
+
+## Consequences for the plan
+
+1. **Our parser has to be a GeneWeb-dialect parser first.** The rules above are deterministic and testable. This file pair is the fixture for that.
+2. **Import from Geneanet is lossy in ways users will not notice** (adoptions, coordinates, source structure, addresses). The importer should produce a report: "3 adoptions repaired, 2 coordinates missing, 5 sources stored as text". Honest > silent.
+3. **Our own export must be richer than Geneanet's**, and our own format is GEDCOM 7 with structured sources and places. Round-tripping through Ramure should be lossless; round-tripping through Geneanet never will be.
+4. **Fixture correction to make in the repo copy** (not in the imported tree): Perrine L'HARIDON born about 1798 is too old for a son born 1857 to 1859. Move Jean-Baptiste's birth to `BET 1827 AND 1829` and Jean LENOIR's death to `BEF 1860` stays valid.
+5. **Max line length in the export is 513 characters**, above the 255 the GEDCOM 5.5.1 spec allows. Do not enforce the limit when reading.

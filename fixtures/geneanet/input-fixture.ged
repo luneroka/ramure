@@ -1,0 +1,532 @@
+0 HEAD
+1 SOUR RAMURE
+2 VERS 0.0.1
+2 NAME Ramure fixture generator
+1 DEST ANY
+1 DATE 6 SEP 2026
+1 SUBM @SUBM1@
+1 FILE ramure-fixture.ged
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG French
+1 PLAC
+2 FORM Lieu-dit, Commune, Département, Région, Pays
+1 NOTE Arbre entièrement fictif créé pour tester l'import et l'export GEDCOM de Geneanet.
+2 CONT Toute ressemblance avec des personnes réelles serait fortuite.
+0 @SUBM1@ SUBM
+1 NAME Ramure fixture
+0 @I1@ INDI
+1 NAME Marguerite /LENOIR/
+2 GIVN Marguerite
+2 SURN LENOIR
+2 NICK Margot
+1 SEX F
+1 BIRT
+2 DATE 12 MAR 1952
+2 PLAC , Quimper, Finistère, Bretagne, France
+3 MAP
+4 LATI N47.9960
+4 LONG W4.1024
+2 SOUR @S2@
+3 PAGE Page 3, enfants du mariage
+3 QUAY 3
+1 CHR
+2 DATE 20 MAR 1952
+2 PLAC , Quimper, Finistère, Bretagne, France
+2 NOTE Baptisée à la cathédrale Saint-Corentin. Parrain : Robert LENOIR, marraine : Louise VIDAL.
+1 OCCU Institutrice
+2 DATE FROM 1973 TO 2012
+2 PLAC , Brest, Finistère, Bretagne, France
+1 RESI
+2 DATE 1990
+2 PLAC , Brest, Finistère, Bretagne, France
+2 ADDR
+3 ADR1 12 rue de Siam
+3 CITY Brest
+3 POST 29200
+3 CTRY France
+1 NOTE Personne de référence de l'arbre de test. Vivante.
+2 CONT Sa fiche sert à vérifier : surnom (NICK), profession avec période, résidence avec adresse,
+2 CONC deux mariages successifs dans l'arbre (ses parents), un divorce (le sien).
+1 FAMC @F2@
+1 FAMS @F5@
+0 @I2@ INDI
+1 NAME Henri Marie /LENOIR/
+2 GIVN Henri Marie
+2 SURN LENOIR
+1 SEX M
+1 BIRT
+2 DATE 4 FEB 1921
+2 PLAC Kerguelen, Plouguerneau, Finistère, Bretagne, France
+3 MAP
+4 LATI N48.6064
+4 LONG W4.5033
+2 SOUR @S1@
+3 PAGE Registre des naissances 1921, acte n° 17, vue 42/118
+3 QUAY 3
+3 DATA
+4 DATE 5 FEB 1921
+4 TEXT Le quatre février mil neuf cent vingt et un, à six heures du matin, est né au lieu-dit Kerguelen Henri Marie, fils d'Auguste LENOIR, cultivateur, et de Marie BRÉHIER, son épouse.
+1 OCCU Marin-pêcheur
+1 DEAT
+2 DATE 17 NOV 1998
+2 PLAC , Brest, Finistère, Bretagne, France
+2 CAUS Insuffisance cardiaque
+2 AGE 77y
+1 BURI
+2 DATE 20 NOV 1998
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+2 NOTE Cimetière communal, carré 4.
+1 EVEN
+2 TYPE Service militaire
+2 DATE BET 1941 AND 1943
+2 PLAC , Toulon, Var, Provence-Alpes-Côte d'Azur, France
+1 OBJE @O1@
+1 NOTE @N1@
+1 FAMC @F3@
+1 FAMS @F1@
+1 FAMS @F2@
+0 @I3@ INDI
+1 NAME Jeanne /MARCHAL/
+2 TYPE birth
+2 GIVN Jeanne
+2 SURN MARCHAL
+1 NAME Jeanne /LENOIR/
+2 TYPE married
+1 SEX F
+1 BIRT
+2 DATE 1925
+2 PLAC , Cahors, Lot, Occitanie, France
+1 DEAT
+2 DATE 3 JAN 2010
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 BURI
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 OCCU Couturière
+1 FAMC @F4@
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Yvonne /KERGOAT/
+1 SEX F
+1 BIRT
+2 DATE ABT 1920
+2 PLAC , Landerneau, Finistère, Bretagne, France
+1 DEAT
+2 DATE 9 SEP 1946
+2 PLAC , Brest, Finistère, Bretagne, France
+2 CAUS Tuberculose
+1 NOTE Première épouse d'Henri LENOIR. Décédée deux ans avant son remariage.
+1 FAMS @F1@
+0 @I5@ INDI
+1 NAME Robert /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE 30 MAY 1944
+2 PLAC , Brest, Finistère, Bretagne, France
+1 NOTE Fils du premier mariage d'Henri. Demi-frère de Marguerite.
+1 FAMC @F1@
+0 @I6@ INDI
+1 NAME Yvonne /LENOIR/
+1 SEX F
+1 BIRT
+2 DATE 3 JUL 1955
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 NOTE Jumelle d'Yves LENOIR. Prénommée d'après la première épouse de son père.
+1 FAMC @F2@
+0 @I7@ INDI
+1 NAME Yves /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE 3 JUL 1955
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 NOTE Jumeau d'Yvonne LENOIR.
+1 FAMC @F2@
+0 @I8@ INDI
+1 NAME /LENOIR/
+1 SEX U
+1 BIRT
+2 DATE 2 OCT 1949
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 DEAT
+2 DATE 2 OCT 1949
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 NOTE Enfant sans vie, sans prénom. Sexe non déclaré sur l'acte.
+1 FAMC @F2@
+0 @I9@ INDI
+1 NAME Auguste /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE 1889
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 OCCU Cultivateur
+1 DEAT
+2 DATE 1954
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 FAMC @F6@
+1 FAMS @F3@
+0 @I10@ INDI
+1 NAME Marie /BRÉHIER/
+1 SEX F
+1 BIRT
+2 DATE 11 AUG 1893
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 DEAT
+2 DATE 1971
+1 FAMC @F7@
+1 FAMS @F3@
+0 @I11@ INDI
+1 NAME Paul /MARCHAL/
+1 SEX M
+1 BIRT
+2 DATE 1897
+2 PLAC , Cahors, Lot, Occitanie, France
+1 OCCU Tonnelier
+1 DEAT
+2 DATE 1966
+2 PLAC , Cahors, Lot, Occitanie, France
+1 FAMC @F8@
+1 FAMS @F4@
+0 @I12@ INDI
+1 NAME Louise /VIDAL/
+1 SEX F
+1 BIRT
+2 DATE 1899
+2 PLAC Lo Puèg, Cahors, Lot, Occitanie, France
+1 DEAT
+2 DATE 1980
+1 FAMC @F9@
+1 FAMS @F4@
+0 @I13@ INDI
+1 NAME Jean-Baptiste /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE BET 1857 AND 1859
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+2 NOTE Date déduite de l'âge déclaré au mariage et au décès, qui ne concordent pas.
+1 OCCU Goémonier
+1 DEAT
+2 DATE 1923
+1 FAMC @F10@
+1 FAMS @F6@
+0 @I14@ INDI
+1 NAME Rosalie /GUÉRIN/
+1 SEX F
+1 BIRT
+2 DATE 1862
+2 PLAC , Lannilis, Finistère, Bretagne, France
+2 SOUR @S1@
+3 PAGE Table décennale 1853-1862, GUÉRIN Rosalie
+3 QUAY 2
+1 DEAT
+2 DATE 1930
+1 FAMS @F6@
+0 @I15@ INDI
+1 NAME Pierre /BRÉHIER/
+1 SEX M
+1 BIRT
+2 DATE ABT 1860
+1 DEAT
+2 DATE 1917
+1 FAMS @F7@
+0 @I16@ INDI
+1 NAME Anne /LE GOFF/
+2 GIVN Anne
+2 SURN LE GOFF
+1 SEX F
+1 BIRT
+2 DATE EST 1866
+2 PLAC , Lannilis, Finistère, Bretagne, France
+1 DEAT
+2 DATE 1940
+1 FAMS @F7@
+0 @I17@ INDI
+1 NAME Claude /MARCHAL/
+1 SEX M
+1 BIRT
+2 DATE 1870
+2 PLAC , Cahors, Lot, Occitanie, France
+1 DEAT
+2 DATE 1935
+1 FAMS @F8@
+0 @I18@ INDI
+1 NAME Marguerite /DUMONT/
+1 SEX F
+1 BIRT
+2 DATE 1872
+1 DEAT
+2 DATE 1950
+1 NOTE Homonyme partiel de la personne de référence (même prénom), pour tester la recherche par prénom.
+1 FAMS @F8@
+0 @I19@ INDI
+1 NAME Étienne /VIDAL/
+1 SEX M
+1 BIRT
+2 DATE 1868
+2 PLAC , Cahors, Lot, Occitanie, France
+1 DEAT
+2 DATE 22 AUG 1914
+2 PLAC , Bertrix, Luxembourg, Wallonie, Belgique
+2 CAUS Tué à l'ennemi
+1 EVEN
+2 TYPE Mort pour la France
+2 DATE 22 AUG 1914
+2 NOTE Mention marginale sur l'acte de décès transcrit à Cahors en 1920.
+1 FAMS @F9@
+0 @I20@ INDI
+1 NAME Célestine /ROUX/
+1 SEX F
+1 BIRT
+2 DATE 1874
+1 DEAT
+2 DATE 1939
+1 FAMS @F9@
+0 @I21@ INDI
+1 NAME Jean /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE @#DFRENCH R@ 15 VEND 3
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+2 NOTE Né le 15 vendémiaire an III (6 octobre 1794). Teste le calendrier républicain.
+1 OCCU Laboureur
+1 DEAT
+2 DATE BEF 1860
+1 NOTE Homonyme de Jean LENOIR (1891-1915), son arrière-petit-fils.
+1 FAMS @F10@
+0 @I22@ INDI
+1 NAME Perrine /L'HARIDON/
+2 GIVN Perrine
+2 SURN L'HARIDON
+1 SEX F
+1 BIRT
+2 DATE CAL 1798
+1 DEAT
+2 DATE 1861
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 FAMS @F10@
+0 @I23@ INDI
+1 NAME Jean /LENOIR/
+1 SEX M
+1 BIRT
+2 DATE 1891
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 DEAT
+2 DATE 25 SEP 1915
+2 PLAC , Souain-Perthes-lès-Hurlus, Marne, Grand Est, France
+2 CAUS Tué à l'ennemi
+1 EVEN
+2 TYPE Mort pour la France
+2 DATE 25 SEP 1915
+1 NOTE Frère cadet d'Auguste. Homonyme de son arrière-grand-père Jean LENOIR (an III-av. 1860).
+1 FAMC @F6@
+0 @I24@ INDI
+1 NAME Michel /AUBRY/
+1 SEX M
+1 BIRT
+2 DATE 1949
+2 PLAC , Brest, Finistère, Bretagne, France
+1 RESN privacy
+1 NOTE Marqué privé (RESN privacy) pour tester la gestion de la confidentialité à l'import.
+1 FAMS @F5@
+0 @I25@ INDI
+1 NAME Claire /AUBRY/
+1 SEX F
+1 BIRT
+2 DATE 14 APR 1976
+2 PLAC , Brest, Finistère, Bretagne, France
+1 FAMC @F5@
+1 FAMS @F11@
+0 @I26@ INDI
+1 NAME Thomas /AUBRY/
+1 SEX M
+1 BIRT
+2 DATE 1979
+2 PLAC , Brest, Finistère, Bretagne, France
+1 FAMC @F5@
+1 FAMS @F12@
+0 @I27@ INDI
+1 NAME Sophie /AUBRY/
+1 SEX F
+1 BIRT
+2 DATE 1984
+2 PLAC , Đà Nẵng, , , Viêt Nam
+1 ADOP
+2 DATE 1986
+2 PLAC , Brest, Finistère, Bretagne, France
+2 FAMC @F5@
+3 ADOP BOTH
+1 NOTE Adoptée. Teste PEDI adopted et les caractères vietnamiens dans un lieu.
+1 FAMC @F5@
+2 PEDI adopted
+1 FAMS @F13@
+0 @I28@ INDI
+1 NAME Nicolas /FERRAND/
+1 SEX M
+1 BIRT
+2 DATE 1974
+1 FAMS @F11@
+0 @I29@ INDI
+1 NAME Léa /FERRAND/
+1 SEX F
+1 BIRT
+2 DATE 2004
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 FAMC @F11@
+0 @I30@ INDI
+1 NAME Hugo /FERRAND/
+1 SEX M
+1 BIRT
+2 DATE 2007
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 FAMC @F11@
+0 @I31@ INDI
+1 NAME Inès /AUBRY/
+1 SEX F
+1 BIRT
+2 DATE 2010
+1 NOTE Mère inconnue : la famille F12 n'a qu'un HUSB.
+1 FAMC @F12@
+0 @I32@ INDI
+1 NAME Élodie /AUBRY/
+1 SEX F
+1 BIRT
+2 DATE 2012
+1 NOTE Père inconnu : la famille F13 n'a qu'une WIFE.
+1 FAMC @F13@
+0 @I33@ INDI
+1 NAME Rosalie /GUERIN/
+1 SEX F
+1 BIRT
+2 DATE ABT 1863
+2 PLAC , Lannilis, Finistère, Bretagne, France
+1 NOTE DOUBLON VOLONTAIRE de Rosalie GUÉRIN (I14), sans accent et avec une date approximative,
+2 CONT non rattaché à aucune famille. Sert à tester la fusion de doublons.
+0 @F1@ FAM
+1 HUSB @I2@
+1 WIFE @I4@
+1 MARR
+2 DATE 1943
+2 PLAC , Brest, Finistère, Bretagne, France
+1 CHIL @I5@
+0 @F2@ FAM
+1 HUSB @I2@
+1 WIFE @I3@
+1 MARR
+2 DATE 12 JUN 1948
+2 PLAC , Quimper, Finistère, Bretagne, France
+2 SOUR @S2@
+3 PAGE Page 1
+3 QUAY 3
+2 NOTE Second mariage d'Henri, veuf d'Yvonne KERGOAT.
+1 CHIL @I8@
+1 CHIL @I1@
+1 CHIL @I6@
+1 CHIL @I7@
+1 NOTE Famille de référence : quatre enfants dont des jumeaux et un enfant sans vie.
+0 @F3@ FAM
+1 HUSB @I9@
+1 WIFE @I10@
+1 MARR
+2 DATE 1919
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 CHIL @I2@
+0 @F4@ FAM
+1 HUSB @I11@
+1 WIFE @I12@
+1 MARR
+2 DATE 1922
+2 PLAC , Cahors, Lot, Occitanie, France
+1 CHIL @I3@
+0 @F5@ FAM
+1 HUSB @I24@
+1 WIFE @I1@
+1 MARR
+2 DATE 6 JUL 1974
+2 PLAC , Brest, Finistère, Bretagne, France
+1 DIV
+2 DATE 1990
+2 PLAC , Brest, Finistère, Bretagne, France
+1 CHIL @I25@
+1 CHIL @I26@
+1 CHIL @I27@
+0 @F6@ FAM
+1 HUSB @I13@
+1 WIFE @I14@
+1 MARR
+2 DATE 1886
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+2 SOUR @S1@
+3 PAGE Registre des mariages 1886, acte n° 9
+3 QUAY 3
+1 CHIL @I9@
+1 CHIL @I23@
+0 @F7@ FAM
+1 HUSB @I15@
+1 WIFE @I16@
+1 MARR
+2 DATE ABT 1890
+1 CHIL @I10@
+0 @F8@ FAM
+1 HUSB @I17@
+1 WIFE @I18@
+1 MARR
+2 DATE 1895
+1 CHIL @I11@
+0 @F9@ FAM
+1 HUSB @I19@
+1 WIFE @I20@
+1 MARR
+2 DATE 1896
+2 PLAC , Cahors, Lot, Occitanie, France
+1 CHIL @I12@
+0 @F10@ FAM
+1 HUSB @I21@
+1 WIFE @I22@
+1 MARR
+2 DATE 1826
+2 PLAC , Plouguerneau, Finistère, Bretagne, France
+1 CHIL @I13@
+0 @F11@ FAM
+1 HUSB @I28@
+1 WIFE @I25@
+1 MARR
+2 DATE 2002
+2 PLAC , Quimper, Finistère, Bretagne, France
+1 CHIL @I29@
+1 CHIL @I30@
+0 @F12@ FAM
+1 HUSB @I26@
+1 CHIL @I31@
+0 @F13@ FAM
+1 WIFE @I27@
+1 CHIL @I32@
+0 @S1@ SOUR
+1 TITL État civil de Plouguerneau, naissances, mariages, décès 1853-1925
+1 AUTH Commune de Plouguerneau
+1 ABBR EC Plouguerneau
+1 PUBL Numérisé par les Archives départementales du Finistère
+1 REPO @R1@
+2 CALN 3 E 195
+1 NOTE Source fictive. Les cotes et numéros de vue sont inventés.
+0 @S2@ SOUR
+1 TITL Livret de famille LENOIR-MARCHAL
+1 AUTH Mairie de Quimper
+1 ABBR Livret LENOIR-MARCHAL
+1 NOTE Document conservé par la famille.
+0 @R1@ REPO
+1 NAME Archives départementales du Finistère
+1 ADDR 5 allée Henri Bourde de la Rogerie
+2 CITY Quimper
+2 POST 29000
+2 CTRY France
+1 WWW https://archives.finistere.fr/
+0 @O1@ OBJE
+1 FILE henri_lenoir_1946.jpg
+2 FORM jpg
+2 TITL Henri LENOIR sur le port de Brest, 1946
+1 NOTE Fichier absent volontairement : teste l'import d'un média référencé sans le fichier.
+0 @N1@ NOTE Note partagée (enregistrement NOTE) attachée à Henri LENOIR.
+1 CONT Elle teste les notes par référence, par opposition aux notes en ligne.
+1 CONT Deuxième ligne avec accents : été, çà, œuvre, Ñ.
+0 TRLR
