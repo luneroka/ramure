@@ -113,6 +113,25 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       byId.set(p.id, n);
       allGens.add(p.gen);
     }
+    // A parent with children from several unions gets one bus height per union, left to right.
+    const slots = new Map<string, { i: number; n: number }>();
+    for (const id of comp.ids) {
+      const fams = tree.individuals[id]!.partnerIn.map((f) => tree.families[f]).filter(
+        (f): f is NonNullable<typeof f> => !!f && f.childIds.some((c) => byId.has(c)),
+      );
+      if (fams.length < 2) continue;
+      const xOf = (f: (typeof fams)[number]) => {
+        const other = f.husbandId === id ? f.wifeId : f.husbandId;
+        const n = other ? byId.get(other) : undefined;
+        return n?.x ?? byId.get(id)?.x ?? 0;
+      };
+      fams
+        .sort((a, b) => xOf(a) - xOf(b))
+        .forEach((f, i) => {
+          const cur = slots.get(f.id);
+          if (!cur || fams.length > cur.n) slots.set(f.id, { i, n: fams.length });
+        });
+    }
     // Connectors: one bus per family with children; partner ties.
     for (const fid of new Set(comp.ids.flatMap((id) => tree.individuals[id]!.partnerIn))) {
       const f = tree.families[fid];
@@ -144,7 +163,8 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       }
       const kids = f.childIds.map((c) => byId.get(c)).filter((n): n is LayoutNode => !!n);
       if (!kids.length) continue;
-      const busY = (h ?? w)!.y + opts.cardH + opts.rowGap / 2;
+      const slot = slots.get(fid) ?? { i: 0, n: 1 };
+      const busY = (h ?? w)!.y + opts.cardH + (opts.rowGap * (slot.i + 1)) / (slot.n + 1);
       links.push({
         kind: 'child',
         points: [

@@ -70,6 +70,11 @@ export interface Layout {
   rowLabels?: Map<number, string>;
 }
 
+/** Space between the children of two different unions: wider than between siblings, so the groups read apart. */
+function unionGap(opts: LayoutOptions): number {
+  return opts.siblingGap * 2.5;
+}
+
 export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions = DEFAULT_LAYOUT): Layout {
   const focus = tree.individuals[focusId];
   if (!focus) throw new Error(`Unknown focus ${focusId}`);
@@ -208,7 +213,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     const partners = families.filter((f) => f.partnerId).length;
     const rowW = opts.cardW + partners * (opts.partnerGap + opts.cardW);
     const childBlocks = families.map((f) => f.children.reduce((s, u, i) => s + u.width + (i ? opts.siblingGap : 0), 0));
-    const childrenW = childBlocks.reduce((s, w, i) => s + w + (i && w && childBlocks.slice(0, i).some((x) => x) ? opts.siblingGap : 0), 0);
+    const childrenW = childBlocks.reduce((s, w, i) => s + w + (i && w && childBlocks.slice(0, i).some((x) => x) ? unionGap(opts) : 0), 0);
     const truncated = families.some((f) => f.truncated);
     if (truncated) truncatedDown = true;
     return { id, families, rowW, width: Math.max(rowW, childrenW), truncated };
@@ -221,7 +226,10 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     let px = rowLeft + opts.cardW + opts.partnerGap;
     // Children blocks, centred under the whole row.
     const blocks = u.families.map((f) => f.children.reduce((s, c, i) => s + c.width + (i ? opts.siblingGap : 0), 0));
-    const totalKids = blocks.reduce((s, w) => s + w + (w ? opts.siblingGap : 0), 0) - (blocks.some((w) => w) ? opts.siblingGap : 0);
+    const totalKids = blocks.reduce((s, w) => s + w + (w ? unionGap(opts) : 0), 0) - (blocks.some((w) => w) ? unionGap(opts) : 0);
+    // Each union with children gets its own bus height, so two sets of children never share a line.
+    const withKids = u.families.filter((f) => f.children.length).length;
+    let busIndex = 0;
     let bx = left + (u.width - totalKids) / 2;
     let lastAnchorX = self.x + self.w / 2;
     for (let i = 0; i < u.families.length; i++) {
@@ -246,7 +254,8 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
         anchorY = self.y + self.h;
       }
       if (!fam.children.length) continue;
-      const busY = self.y + self.h + opts.rowGap / 2;
+      const busY = self.y + self.h + (opts.rowGap * (busIndex + 1)) / (withKids + 1);
+      busIndex++;
       links.push({
         kind: 'child',
         points: [
@@ -269,6 +278,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
         });
         cx += c.width + opts.siblingGap;
       }
+      cx += unionGap(opts) - opts.siblingGap;
       const lo = Math.min(anchorX, ...childCenters),
         hi = Math.max(anchorX, ...childCenters);
       links.push({
