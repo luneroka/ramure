@@ -24,6 +24,6 @@ bucket_name = "ramure-media"
 #   DEV_ECHO_LINKS=1
 [vars]
 APP_ORIGIN = "https://ramure.ramure.workers.dev"
-MAIL_FROM = "Ramure <ramure@example.com>"
+MAIL_FROM = "Ramure <contact@contact.luneroka.com>"
 
 # Secrets, set with `wrangler secret put`: RESEND_API_KEY
