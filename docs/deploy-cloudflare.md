@@ -30,17 +30,19 @@ npm run db:migrate
 
 ## 4. Email for sign-in links
 
-Create a free account at resend.com, verify a sending domain (or use their test domain to start), and create an API key. Then:
+Create a free account at resend.com, verify a sending domain, and create an API key. Then:
 
 ```bash
 npx wrangler secret put RESEND_API_KEY
 ```
 
-In `wrangler.toml`, set `MAIL_FROM` to an address on the verified domain, and **remove the `DEV_ECHO_LINKS` line**: it makes the API return sign-in links instead of emailing them, which is only acceptable on a laptop.
+In `wrangler.toml`, set `MAIL_FROM` to an address on the verified domain (for example `Ramure <ramure@votredomaine.fr>`) and deploy again.
+
+Local development never emails: `.dev.vars` (git-ignored) sets `DEV_ECHO_LINKS=1`, which makes the local API return sign-in links to the page instead. Never put that variable in `wrangler.toml`.
 
 ## 5. Origin
 
-Set `APP_ORIGIN` in `wrangler.toml` to the public URL, for example `https://ramure.example.com` or the `*.workers.dev` URL Wrangler prints on the first deploy. Sign-in redirects and invite links use it, and the API refuses cross-site writes from anywhere else.
+`APP_ORIGIN` in `wrangler.toml` is the public URL: today `https://ramure.ramure.workers.dev`, later the custom domain. Sign-in redirects and invite links use it, and the API refuses cross-site writes from anywhere else. When a domain is added (Workers & Pages → ramure → Settings → Domains), change this value and deploy again.
 
 ## 6. Deploy
 

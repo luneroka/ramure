@@ -12,18 +12,18 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ramure"
-# Replace with the id printed by `wrangler d1 create ramure`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "edbb1d72-2033-4650-97b1-7c1c06d81fb9"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "ramure-media"
 
+# Production values. Local development overrides them in .dev.vars (git-ignored):
+#   APP_ORIGIN=http://localhost:5173
+#   DEV_ECHO_LINKS=1
 [vars]
-APP_ORIGIN = "http://localhost:5173"
-# In local development sign-in links are returned by the API instead of emailed. Never set this in production.
-DEV_ECHO_LINKS = "1"
+APP_ORIGIN = "https://ramure.ramure.workers.dev"
 MAIL_FROM = "Ramure <ramure@example.com>"
 
 # Secrets, set with `wrangler secret put`: RESEND_API_KEY
