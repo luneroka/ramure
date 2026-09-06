@@ -31,6 +31,13 @@ describe('leads, documents and resources round-trip', () => {
       }),
     ).tree;
     tree = applyOp(tree, ops.setResources([{ id: 'Lres', title: 'AD Somme', url: 'https://archives.somme.fr' }])).tree;
+    tree = applyOp(
+      tree,
+      ops.updateTree({
+        media: [{ id: 'M9', file: 'ramure:M9', format: 'pdf', title: 'Livret de famille', kind: 'other', notes: [], extra: [] }],
+        documentIds: ['M9'],
+      }),
+    ).tree;
     const text = serializeGedcom(tree);
     expect(text).toContain('1 _LINK https://example.org/x');
     expect(text).toContain('2 _DONE Y');
@@ -42,6 +49,9 @@ describe('leads, documents and resources round-trip', () => {
     expect(back.media.M1!.kind).toBe('birth');
     expect(back.media.M1!.date).toEqual(parseDate('12 MAR 1852'));
     expect(back.resources).toEqual(tree.resources);
+    expect(text).toContain('1 _DOC @M9@');
+    expect(back.documentIds).toEqual(['M9']);
+    expect(back.media.M9!.title).toBe('Livret de famille');
     // The portrait is the flagged picture, not the first attachment (a PDF).
     expect(portraitId(back.individuals.I1!, back)).toBe('M2');
   });

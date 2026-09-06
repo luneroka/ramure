@@ -122,6 +122,7 @@ function writeHeader(w: Writer, tree: Tree, o: SerializeOptions): void {
   }
   for (const n of tree.header.notes) w.line(1, 'NOTE', n);
   writeLeads(w, 1, tree.resources ?? []);
+  for (const id of tree.documentIds ?? []) if (tree.media[id]) w.line(1, '_DOC', ptr(id));
 }
 
 function writeLeads(w: Writer, level: number, leads: Lead[]): void {

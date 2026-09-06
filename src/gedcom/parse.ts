@@ -164,6 +164,9 @@ function parseHeader(ctx: Ctx, r: GedcomRecord): void {
   if (plac) h.placeFormat = childValue(plac, 'FORM');
   h.notes = notesOf(ctx, r);
   ctx.tree.resources = leadsOf(r);
+  ctx.tree.documentIds = children(r, '_DOC')
+    .map((c) => pointerId(c.value))
+    .filter((id): id is string => !!id);
 }
 
 /** _LINK <url> / 2 TITL / 2 NOTE / 2 _DONE Y : a research lead or resource. */

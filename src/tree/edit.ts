@@ -342,6 +342,28 @@ export function setResources(tree: Tree, resources: Lead[]): EditResult {
   return { tree: { ...tree, resources } };
 }
 
+export interface TreePatch {
+  /** Links useful to the whole tree, replaced wholesale. */
+  resources?: Lead[];
+  /** Media records to add or update. */
+  media?: MediaObject[];
+  /** The tree's own documents, in order. */
+  documentIds?: string[];
+}
+
+/** Tree-level things that are not people: resources and the tree's documents. */
+export function updateTree(tree: Tree, patch: TreePatch): EditResult {
+  let t = tree;
+  if (patch.media?.length) {
+    const table = { ...t.media };
+    for (const m of patch.media) table[m.id] = m;
+    t = { ...t, media: table };
+  }
+  if (patch.resources) t = { ...t, resources: patch.resources };
+  if (patch.documentIds) t = { ...t, documentIds: patch.documentIds };
+  return { tree: t };
+}
+
 export interface FamilyPatch {
   events?: Event[];
   notes?: string[];
@@ -498,6 +520,7 @@ export function newTree(given: string, surname: string, sex: Sex, id?: string): 
     extra: [],
     importNotes: [],
     resources: [],
+    documentIds: [],
   };
   return createPerson(tree, { given, surname, sex }, id);
 }

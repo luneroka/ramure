@@ -153,8 +153,10 @@ textarea:focus {
 }
 .search input {
   width: 100%;
-  min-height: 38px;
-  padding: 6px 12px;
+  min-height: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--ground);
@@ -2354,11 +2356,25 @@ a.lead-title:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
-.dialog.resources {
-  width: min(560px, 92vw);
+.resources-page .resources-hint {
+  margin: -6px 0 0;
 }
-.dialog.resources .lead-list {
-  margin: 8px 0;
+.resources-page .resources-tree {
+  margin-left: auto;
+  font-size: 14px;
+}
+.resources-btn {
+  margin-left: auto;
+}
+.resources-btn + .search {
+  margin-left: 8px;
+}
+.resources-btn.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.resources-page .lead-list {
+  margin: 4px 0;
 }
 
 .lightbox {

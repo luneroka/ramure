@@ -22,7 +22,7 @@ import { TreeMenu, UserMenu } from './Menus';
 import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
 import { PersonPanel } from './PersonPanel';
-import { ResourcesDialog } from './Resources';
+import { ResourcesPage } from './Resources';
 import { useAuth } from './useAuth';
 
 type ViewMode = 'all' | 'hourglass' | 'ancestors' | 'descendants';
@@ -150,7 +150,6 @@ export function App() {
   const [band, setBand] = useState<{ band: DetailBand; zoom: number }>({ band: 'cards', zoom: 1 });
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
-  const [showResources, setShowResources] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<{
@@ -370,7 +369,9 @@ export function App() {
     const onHash = () => {
       const r = parseRoute(location.hash);
       const cur = sourceRef.current;
-      if (r.name !== 'tree' && cur) {
+      // The resources page belongs to the open tree: the tree stays loaded behind it.
+      const onTree = r.name === 'tree' || r.name === 'resources';
+      if (!onTree && cur) {
         engine.current?.dispose();
         engine.current = null;
         setActiveMediaStore(null);
@@ -380,7 +381,7 @@ export function App() {
         setDraft(null);
         setEditing(false);
         setHomeRefresh((n) => n + 1);
-      } else if (r.name === 'tree' && (!cur || cur.id !== r.id)) {
+      } else if (onTree && (!cur || cur.id !== r.id)) {
         const tr = treeListRef.current.find((x) => x.id === r.id);
         if (tr) void openCloud(tr.id, tr.name, tr.role);
       }
@@ -830,7 +831,7 @@ export function App() {
                 onSaveVersion={() => void saveVersion()}
                 readOnly={readOnly}
                 onReport={() => setShowReport(true)}
-                onResources={() => setShowResources(true)}
+                onResources={() => navigate({ name: 'resources', id: source.id })}
                 onDelete={() =>
                   void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
                 }
@@ -863,7 +864,26 @@ export function App() {
             </>
           )}
         </div>
-        {tree && (
+        {tree && source && (
+          <button
+            className={`btn icon resources-btn ${route.name === 'resources' ? 'on' : ''}`}
+            onClick={() => navigate(route.name === 'resources' ? { name: 'tree', id: source.id } : { name: 'resources', id: source.id })}
+            aria-label={t(lang, 'resources')}
+            title={t(lang, 'resources')}
+          >
+            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+              <path
+                d="M4 3.5h5.5a2 2 0 0 1 1.5.7 2 2 0 0 1 1.5-.7H16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-3.5a1.5 1.5 0 0 0-1.5 1.5 1.5 1.5 0 0 0-1.5-1.5H4a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+              <path d="M11 5.5v10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </button>
+        )}
+        {tree && route.name === 'tree' && (
           <div className={`search ${searchOpen ? 'open' : ''}`}>
             <input
               type="search"
@@ -1139,6 +1159,39 @@ export function App() {
               </div>
             )}
           </>
+        ) : route.name === 'resources' && tree && source ? (
+          <ResourcesPage
+            lang={lang}
+            tree={tree}
+            treeName={source.name}
+            readOnly={readOnly}
+            onBack={() => navigate({ name: 'tree', id: source.id })}
+            onNotice={toast}
+            onSaveLinks={(r) => {
+              if (commit(ops.updateTree({ resources: r }))) toast(t(lang, 'resourceSaved'));
+            }}
+            onSaveDocument={(media) => {
+              const ids = tree.documentIds ?? [];
+              const documentIds = ids.includes(media.id) ? ids : [...ids, media.id];
+              if (commit(ops.updateTree({ media: [media], documentIds })))
+                toast(t(lang, ids.includes(media.id) ? 'saved' : 'documentAdded'));
+            }}
+            onDeleteDocument={(mediaId) => {
+              void (async () => {
+                const answer = await ask({
+                  title: t(lang, 'deleteDocument'),
+                  message: t(lang, 'deleteDocumentMessage'),
+                  confirmLabel: t(lang, 'delete'),
+                  danger: true,
+                });
+                if (!answer) return;
+                if (commit(ops.updateTree({ documentIds: (tree.documentIds ?? []).filter((m) => m !== mediaId) }))) {
+                  void mediaStore.delete(mediaId);
+                  toast(t(lang, 'documentDeleted'));
+                }
+              })();
+            }}
+          />
         ) : route.name === 'settings' ? (
           <Settings
             lang={lang}
@@ -1185,17 +1238,6 @@ export function App() {
             onTrees={setTreeList}
             refreshKey={homeRefresh}
             busy={busy}
-          />
-        )}
-        {showResources && tree && (
-          <ResourcesDialog
-            lang={lang}
-            resources={tree.resources ?? []}
-            readOnly={readOnly}
-            onSave={(r) => {
-              if (commit(ops.setResources(r))) toast(t(lang, 'resourceSaved'));
-            }}
-            onClose={() => setShowResources(false)}
           />
         )}
         {snapshots && (

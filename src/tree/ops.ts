@@ -21,6 +21,8 @@ import {
   mergePeople,
   setResources,
   unlinkChild,
+  updateTree,
+  type TreePatch,
   updateFamily,
   updatePerson,
   type EditResult,
@@ -45,6 +47,7 @@ export type Op =
   | { t: 'updateFamily'; id: string; patch: FamilyPatch }
   | { t: 'mergePeople'; keepId: string; dropId: string }
   | { t: 'setResources'; resources: Lead[] }
+  | { t: 'updateTree'; patch: TreePatch }
   /** Replace the whole tree (snapshot restore). Carries the GEDCOM text so it replays anywhere. */
   | { t: 'replaceTree'; gedcom: string }
   /** Several ops applied as one step (one undo, one sync record), e.g. "add child" then "fill in the card". */
@@ -107,6 +110,7 @@ export const ops = {
   updateFamily: (id: string, patch: FamilyPatch): Op => ({ t: 'updateFamily', id, patch }),
   mergePeople: (keepId: string, dropId: string): Op => ({ t: 'mergePeople', keepId, dropId }),
   setResources: (resources: Lead[]): Op => ({ t: 'setResources', resources }),
+  updateTree: (patch: TreePatch): Op => ({ t: 'updateTree', patch }),
   replaceTree: (gedcom: string): Op => ({ t: 'replaceTree', gedcom }),
   batch: (list: Op[]): Op => ({ t: 'batch', ops: list }),
 };
@@ -140,6 +144,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       return mergePeople(tree, op.keepId, op.dropId);
     case 'setResources':
       return setResources(tree, op.resources);
+    case 'updateTree':
+      return updateTree(tree, op.patch);
     case 'replaceTree':
       return { tree: parseGedcom(op.gedcom) };
     case 'patchRecords':
@@ -206,6 +212,8 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
     case 'mergePeople':
       return fr ? 'Doublons fusionnés' : 'Duplicates merged';
     case 'setResources':
+      return fr ? 'Ressources modifiées' : 'Resources edited';
+    case 'updateTree':
       return fr ? 'Ressources modifiées' : 'Resources edited';
     case 'replaceTree':
       return fr ? 'Sauvegarde restaurée' : 'Snapshot restored';

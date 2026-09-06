@@ -2,15 +2,18 @@
  * Hash routes, so the back button and reloads land where expected:
  *   #/               home (the account's trees)
  *   #/arbre/<id>     a tree
+ *   #/arbre/<id>/ressources   the tree's resources
  *   #/parametres     settings
  */
 
 import { useCallback, useEffect, useState } from 'react';
 
-export type Route = { name: 'home' } | { name: 'tree'; id: string } | { name: 'settings' };
+export type Route = { name: 'home' } | { name: 'tree'; id: string } | { name: 'resources'; id: string } | { name: 'settings' };
 
 export function parseRoute(hash: string): Route {
   const h = hash.replace(/^#/, '');
+  const res = /^\/arbre\/([^/?]+)\/ressources/.exec(h);
+  if (res) return { name: 'resources', id: decodeURIComponent(res[1]!) };
   const tree = /^\/arbre\/([^/?]+)/.exec(h);
   if (tree) return { name: 'tree', id: decodeURIComponent(tree[1]!) };
   if (/^\/parametres/.test(h) || /^\/settings/.test(h)) return { name: 'settings' };
@@ -23,6 +26,8 @@ export function routeHash(r: Route): string {
       return '#/';
     case 'tree':
       return `#/arbre/${encodeURIComponent(r.id)}`;
+    case 'resources':
+      return `#/arbre/${encodeURIComponent(r.id)}/ressources`;
     case 'settings':
       return '#/parametres';
   }

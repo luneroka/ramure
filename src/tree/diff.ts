@@ -18,6 +18,7 @@ export interface RecordPatch {
   media: Record<string, MediaObject | null>;
   /** Tree-wide resources, when they changed. */
   resources?: Lead[];
+  documentIds?: string[];
 }
 
 function diffTable<T>(from: Record<string, T>, to: Record<string, T>): Record<string, T | null> {
@@ -35,6 +36,7 @@ export function diffTrees(from: Tree, to: Tree): RecordPatch {
     families: diffTable(from.families, to.families),
     media: diffTable(from.media, to.media),
     ...(from.resources !== to.resources ? { resources: to.resources } : {}),
+    ...(from.documentIds !== to.documentIds ? { documentIds: to.documentIds } : {}),
   };
 }
 
@@ -43,7 +45,8 @@ export function isEmptyPatch(p: RecordPatch): boolean {
     Object.keys(p.individuals).length === 0 &&
     Object.keys(p.families).length === 0 &&
     Object.keys(p.media).length === 0 &&
-    p.resources === undefined
+    p.resources === undefined &&
+    p.documentIds === undefined
   );
 }
 
@@ -63,5 +66,6 @@ export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
     families: applyTable(tree.families, p.families),
     media: applyTable(tree.media, p.media),
     ...(p.resources ? { resources: p.resources } : {}),
+    ...(p.documentIds ? { documentIds: p.documentIds } : {}),
   };
 }

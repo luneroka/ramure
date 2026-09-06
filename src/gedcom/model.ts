@@ -226,6 +226,8 @@ export interface Tree {
   importNotes: ImportNote[];
   /** Research resources shared by the whole tree (custom _LINK records under HEAD). */
   resources: Lead[];
+  /** Documents that belong to the tree itself, not to a person (custom _DOC pointers under HEAD). */
+  documentIds: string[];
 }
 
 export function emptyTree(): Tree {
@@ -239,6 +241,7 @@ export function emptyTree(): Tree {
     extra: [],
     importNotes: [],
     resources: [],
+    documentIds: [],
   };
 }
 
