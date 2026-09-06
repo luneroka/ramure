@@ -44,7 +44,9 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch { /* storage unavailable: the app still works for the session */ }
+  } catch {
+    /* storage unavailable: the app still works for the session */
+  }
 }
 
 export async function kvDelete(key: string): Promise<void> {
@@ -56,7 +58,9 @@ export async function kvDelete(key: string): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export interface SavedTree {
@@ -87,7 +91,9 @@ async function allKeys(): Promise<string[]> {
       req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String));
       req.onerror = () => reject(req.error);
     });
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /** Keep a dated copy of the tree. Oldest copies are pruned beyond MAX_SNAPSHOTS. */
@@ -100,7 +106,10 @@ export async function saveSnapshot(gedcom: string, fileName: string, people: num
 }
 
 export async function listSnapshots(): Promise<Array<Omit<Snapshot, 'gedcom'>>> {
-  const keys = (await allKeys()).filter((k) => k.startsWith(SNAP_PREFIX)).sort().reverse();
+  const keys = (await allKeys())
+    .filter((k) => k.startsWith(SNAP_PREFIX))
+    .sort()
+    .reverse();
   const out: Array<Omit<Snapshot, 'gedcom'>> = [];
   for (const k of keys) {
     const s = await kvGet<Snapshot>(k);
@@ -124,7 +133,9 @@ export async function mediaPut(id: string, blob: Blob): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch { /* storage unavailable */ }
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 export async function mediaGet(id: string): Promise<Blob | undefined> {
@@ -135,7 +146,9 @@ export async function mediaGet(id: string): Promise<Blob | undefined> {
       req.onsuccess = () => resolve(req.result as Blob | undefined);
       req.onerror = () => reject(req.error);
     });
-  } catch { return undefined; }
+  } catch {
+    return undefined;
+  }
 }
 
 export async function mediaDelete(id: string): Promise<void> {
@@ -147,5 +160,7 @@ export async function mediaDelete(id: string): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

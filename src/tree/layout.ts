@@ -27,7 +27,13 @@ export interface LayoutOptions {
 }
 
 export const DEFAULT_LAYOUT: LayoutOptions = {
-  cardW: 244, cardH: 68, rowGap: 88, siblingGap: 28, partnerGap: 16, maxUp: 6, maxDown: 6,
+  cardW: 244,
+  cardH: 68,
+  rowGap: 88,
+  siblingGap: 28,
+  partnerGap: 16,
+  maxUp: 6,
+  maxDown: 6,
 };
 
 export interface LayoutNode {
@@ -71,7 +77,8 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
   const links: LayoutLink[] = [];
   const seen = new Map<string, number>();
   const rowH = opts.cardH + opts.rowGap;
-  let truncatedUp = false, truncatedDown = false;
+  let truncatedUp = false,
+    truncatedDown = false;
 
   const place = (id: string, x: number, gen: number, role: LayoutNode['role']): LayoutNode => {
     const dup = seen.get(id) ?? 0;
@@ -94,7 +101,10 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
   // (from the subtree's left edge) of the person's card centre. A person sits
   // at the midpoint of their parents' centres, so the anchor is derived from
   // the parents' anchors, not from the subtree extent.
-  interface AncInfo { w: number; a: number }
+  interface AncInfo {
+    w: number;
+    a: number;
+  }
   const ancInfo = new Map<string, AncInfo>(); // keyed by `${id}@${gen}` so duplicates at different depths are fine
   const infoUp = (id: string, gen: number): AncInfo => {
     const key = `${id}@${gen}`;
@@ -145,14 +155,41 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     // Connector: parents' bottoms → bus → child's top.
     const busY = child.y - opts.rowGap / 2;
     const childTopX = child.x + child.w / 2;
-    for (const p of placed) links.push({ kind: 'parent', points: [[p.x + p.w / 2, p.y + p.h], [p.x + p.w / 2, busY]] });
-    if (placed.length === 2) links.push({ kind: 'parent', points: [[placed[0]!.x + placed[0]!.w / 2, busY], [placed[1]!.x + placed[1]!.w / 2, busY]] });
+    for (const p of placed)
+      links.push({
+        kind: 'parent',
+        points: [
+          [p.x + p.w / 2, p.y + p.h],
+          [p.x + p.w / 2, busY],
+        ],
+      });
+    if (placed.length === 2)
+      links.push({
+        kind: 'parent',
+        points: [
+          [placed[0]!.x + placed[0]!.w / 2, busY],
+          [placed[1]!.x + placed[1]!.w / 2, busY],
+        ],
+      });
     const anchorX = placed.length === 2 ? (placed[0]!.x + placed[1]!.x + opts.cardW) / 2 : placed[0]!.x + opts.cardW / 2;
-    links.push({ kind: 'parent', points: [[anchorX, busY], [childTopX, busY], [childTopX, child.y]] });
+    links.push({
+      kind: 'parent',
+      points: [
+        [anchorX, busY],
+        [childTopX, busY],
+        [childTopX, child.y],
+      ],
+    });
   };
 
   // ---------- Descendants ----------
-  interface Unit { id: string; families: Array<{ famId: string; partnerId?: string; children: Unit[] }>; rowW: number; width: number; truncated: boolean }
+  interface Unit {
+    id: string;
+    families: Array<{ famId: string; partnerId?: string; children: Unit[] }>;
+    rowW: number;
+    width: number;
+    truncated: boolean;
+  }
 
   const buildUnit = (id: string, depth: number): Unit => {
     const ind = tree.individuals[id]!;
@@ -193,7 +230,13 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
       let anchorY: number;
       if (fam.partnerId) {
         const p = place(fam.partnerId, px, gen, 'partner');
-        links.push({ kind: 'partner', points: [[px - opts.partnerGap, self.y + self.h / 2], [px, self.y + self.h / 2]] });
+        links.push({
+          kind: 'partner',
+          points: [
+            [px - opts.partnerGap, self.y + self.h / 2],
+            [px, self.y + self.h / 2],
+          ],
+        });
         anchorX = px - opts.partnerGap / 2;
         anchorY = self.y + self.h / 2;
         px += opts.cardW + opts.partnerGap;
@@ -204,18 +247,37 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
       }
       if (!fam.children.length) continue;
       const busY = self.y + self.h + opts.rowGap / 2;
-      links.push({ kind: 'child', points: [[anchorX, anchorY], [anchorX, busY]] });
+      links.push({
+        kind: 'child',
+        points: [
+          [anchorX, anchorY],
+          [anchorX, busY],
+        ],
+      });
       let cx = bx;
       const childCenters: number[] = [];
       for (const c of fam.children) {
         const n = placeUnit(c, depth + 1, cx, 'descendant');
         const tx = n.x + n.w / 2;
         childCenters.push(tx);
-        links.push({ kind: 'child', points: [[tx, busY], [tx, n.y]] });
+        links.push({
+          kind: 'child',
+          points: [
+            [tx, busY],
+            [tx, n.y],
+          ],
+        });
         cx += c.width + opts.siblingGap;
       }
-      const lo = Math.min(anchorX, ...childCenters), hi = Math.max(anchorX, ...childCenters);
-      links.push({ kind: 'child', points: [[lo, busY], [hi, busY]] });
+      const lo = Math.min(anchorX, ...childCenters),
+        hi = Math.max(anchorX, ...childCenters);
+      links.push({
+        kind: 'child',
+        points: [
+          [lo, busY],
+          [hi, busY],
+        ],
+      });
       bx = cx;
     }
     return self;
@@ -232,7 +294,12 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
 
   const rows = [...new Set(nodes.map((n) => n.gen))].sort((a, b) => b - a);
   const bounds = nodes.reduce(
-    (b, n) => ({ minX: Math.min(b.minX, n.x), minY: Math.min(b.minY, n.y), maxX: Math.max(b.maxX, n.x + n.w), maxY: Math.max(b.maxY, n.y + n.h) }),
+    (b, n) => ({
+      minX: Math.min(b.minX, n.x),
+      minY: Math.min(b.minY, n.y),
+      maxX: Math.max(b.maxX, n.x + n.w),
+      maxY: Math.max(b.maxY, n.y + n.h),
+    }),
     { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
   );
   return { focusId, nodes, links, rows, bounds, truncatedUp, truncatedDown };

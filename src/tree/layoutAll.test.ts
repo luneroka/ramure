@@ -12,7 +12,10 @@ function overlaps(a: { x: number; y: number; w: number; h: number }, b: typeof a
 }
 
 describe('layoutEverything', () => {
-  for (const [name, t] of [['input', tree], ['export', exported]] as const) {
+  for (const [name, t] of [
+    ['input', tree],
+    ['export', exported],
+  ] as const) {
     it(`shows every person exactly once and never overlaps (${name})`, () => {
       const L = layoutEverything(t);
       const ids = L.nodes.map((n) => n.id).sort();

@@ -33,7 +33,10 @@ export function computeAge(birth: GDate | undefined, end: GDate | 'today' | unde
   const now = new Date();
   const today = { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
   if (end === 'today') {
-    if (b) { const y = yearsBetween({ year: b.year!, month: b.month!, day: b.day! }, today); return y >= 0 && y < 130 ? { years: y, approx: false } : undefined; }
+    if (b) {
+      const y = yearsBetween({ year: b.year!, month: b.month!, day: b.day! }, today);
+      return y >= 0 && y < 130 ? { years: y, approx: false } : undefined;
+    }
     const by = approximateYear(birth);
     if (by === undefined) return undefined;
     const y = today.year - by;
@@ -44,7 +47,8 @@ export function computeAge(birth: GDate | undefined, end: GDate | 'today' | unde
     const y = yearsBetween({ year: b.year!, month: b.month!, day: b.day! }, { year: e.year!, month: e.month!, day: e.day! });
     return y >= 0 ? { years: y, approx: false } : undefined;
   }
-  const by = approximateYear(birth), ey = approximateYear(end);
+  const by = approximateYear(birth),
+    ey = approximateYear(end);
   if (by === undefined || ey === undefined) return undefined;
   const y = ey - by;
   // Same-year births and deaths with unknown months are legitimately 0.

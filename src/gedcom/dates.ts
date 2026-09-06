@@ -22,18 +22,7 @@ export interface SimpleDate {
 }
 
 export type DateKind =
-  | 'exact'
-  | 'about'
-  | 'calculated'
-  | 'estimated'
-  | 'before'
-  | 'after'
-  | 'between'
-  | 'from'
-  | 'to'
-  | 'from-to'
-  | 'phrase'
-  | 'unknown';
+  'exact' | 'about' | 'calculated' | 'estimated' | 'before' | 'after' | 'between' | 'from' | 'to' | 'from-to' | 'phrase' | 'unknown';
 
 export interface GDate {
   raw: string;
@@ -142,7 +131,14 @@ export function formatGedcomDate(d: GDate): string {
   if (d.raw) return d.raw;
   const simple = (x?: SimpleDate): string => {
     if (!x) return '';
-    const esc = x.calendar === 'french-republican' ? '@#DFRENCH R@ ' : x.calendar === 'julian' ? '@#DJULIAN@ ' : x.calendar === 'hebrew' ? '@#DHEBREW@ ' : '';
+    const esc =
+      x.calendar === 'french-republican'
+        ? '@#DFRENCH R@ '
+        : x.calendar === 'julian'
+          ? '@#DJULIAN@ '
+          : x.calendar === 'hebrew'
+            ? '@#DHEBREW@ '
+            : '';
     const months = monthsFor(x.calendar);
     const parts: string[] = [];
     if (x.day) parts.push(String(x.day));
@@ -151,29 +147,65 @@ export function formatGedcomDate(d: GDate): string {
     return esc + parts.join(' ');
   };
   switch (d.kind) {
-    case 'exact': return simple(d.date);
-    case 'about': return 'ABT ' + simple(d.date);
-    case 'calculated': return 'CAL ' + simple(d.date);
-    case 'estimated': return 'EST ' + simple(d.date);
-    case 'before': return 'BEF ' + simple(d.date);
-    case 'after': return 'AFT ' + simple(d.date);
-    case 'between': return `BET ${simple(d.date)} AND ${simple(d.date2)}`;
-    case 'from': return 'FROM ' + simple(d.date);
-    case 'to': return 'TO ' + simple(d.date);
-    case 'from-to': return `FROM ${simple(d.date)} TO ${simple(d.date2)}`;
-    case 'phrase': return d.phrase ? `(${d.phrase})` : '';
-    default: return '';
+    case 'exact':
+      return simple(d.date);
+    case 'about':
+      return 'ABT ' + simple(d.date);
+    case 'calculated':
+      return 'CAL ' + simple(d.date);
+    case 'estimated':
+      return 'EST ' + simple(d.date);
+    case 'before':
+      return 'BEF ' + simple(d.date);
+    case 'after':
+      return 'AFT ' + simple(d.date);
+    case 'between':
+      return `BET ${simple(d.date)} AND ${simple(d.date2)}`;
+    case 'from':
+      return 'FROM ' + simple(d.date);
+    case 'to':
+      return 'TO ' + simple(d.date);
+    case 'from-to':
+      return `FROM ${simple(d.date)} TO ${simple(d.date2)}`;
+    case 'phrase':
+      return d.phrase ? `(${d.phrase})` : '';
+    default:
+      return '';
   }
 }
 
 const FR_MONTHS_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const FR_MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const REP_MONTHS = ['vendémiaire', 'brumaire', 'frimaire', 'nivôse', 'pluviôse', 'ventôse', 'germinal', 'floréal', 'prairial', 'messidor', 'thermidor', 'fructidor', 'jours compl.'];
+const REP_MONTHS = [
+  'vendémiaire',
+  'brumaire',
+  'frimaire',
+  'nivôse',
+  'pluviôse',
+  'ventôse',
+  'germinal',
+  'floréal',
+  'prairial',
+  'messidor',
+  'thermidor',
+  'fructidor',
+  'jours compl.',
+];
 
 function roman(n: number): string {
-  const table: [number, string][] = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  const table: [number, string][] = [
+    [10, 'X'],
+    [9, 'IX'],
+    [5, 'V'],
+    [4, 'IV'],
+    [1, 'I'],
+  ];
   let out = '';
-  for (const [v, r] of table) while (n >= v) { out += r; n -= v; }
+  for (const [v, r] of table)
+    while (n >= v) {
+      out += r;
+      n -= v;
+    }
   return out;
 }
 
@@ -193,17 +225,29 @@ export function formatDate(d: GDate | undefined, lang: 'fr' | 'en' = 'fr'): stri
     return [x.day, m, x.year].filter((v) => v !== undefined).join(' ');
   };
   switch (d.kind) {
-    case 'exact': return simple(d.date);
-    case 'about': return (fr ? 'vers ' : 'about ') + simple(d.date);
-    case 'calculated': return (fr ? 'calc. ' : 'calc. ') + simple(d.date);
-    case 'estimated': return (fr ? 'est. ' : 'est. ') + simple(d.date);
-    case 'before': return (fr ? 'avant ' : 'before ') + simple(d.date);
-    case 'after': return (fr ? 'après ' : 'after ') + simple(d.date);
-    case 'between': return fr ? `entre ${simple(d.date)} et ${simple(d.date2)}` : `between ${simple(d.date)} and ${simple(d.date2)}`;
-    case 'from': return (fr ? 'à partir de ' : 'from ') + simple(d.date);
-    case 'to': return (fr ? "jusqu'à " : 'until ') + simple(d.date);
-    case 'from-to': return fr ? `de ${simple(d.date)} à ${simple(d.date2)}` : `${simple(d.date)} to ${simple(d.date2)}`;
-    case 'phrase': return d.phrase ?? d.raw;
-    default: return d.raw;
+    case 'exact':
+      return simple(d.date);
+    case 'about':
+      return (fr ? 'vers ' : 'about ') + simple(d.date);
+    case 'calculated':
+      return (fr ? 'calc. ' : 'calc. ') + simple(d.date);
+    case 'estimated':
+      return (fr ? 'est. ' : 'est. ') + simple(d.date);
+    case 'before':
+      return (fr ? 'avant ' : 'before ') + simple(d.date);
+    case 'after':
+      return (fr ? 'après ' : 'after ') + simple(d.date);
+    case 'between':
+      return fr ? `entre ${simple(d.date)} et ${simple(d.date2)}` : `between ${simple(d.date)} and ${simple(d.date2)}`;
+    case 'from':
+      return (fr ? 'à partir de ' : 'from ') + simple(d.date);
+    case 'to':
+      return (fr ? "jusqu'à " : 'until ') + simple(d.date);
+    case 'from-to':
+      return fr ? `de ${simple(d.date)} à ${simple(d.date2)}` : `${simple(d.date)} to ${simple(d.date2)}`;
+    case 'phrase':
+      return d.phrase ?? d.raw;
+    default:
+      return d.raw;
   }
 }

@@ -17,7 +17,12 @@ describe('layoutHourglass', () => {
     expect(focus.gen).toBe(0);
     expect(focus.role).toBe('focus');
     expect(L.nodes.filter((n) => n.gen > 0)).toHaveLength(16); // 2 + 4 + 8 + 2 ancestors
-    expect(L.nodes.filter((n) => n.gen === 4).map((n) => n.id).sort()).toEqual(['I21', 'I22']); // Jean and Perrine
+    expect(
+      L.nodes
+        .filter((n) => n.gen === 4)
+        .map((n) => n.id)
+        .sort(),
+    ).toEqual(['I21', 'I22']); // Jean and Perrine
   });
 
   it('includes four generations up and all descendants with partners', () => {
@@ -25,7 +30,8 @@ describe('layoutHourglass', () => {
     const ids = new Set(L.nodes.map((n) => n.id));
     for (const id of ['I21', 'I22', 'I24', 'I25', 'I26', 'I27', 'I28', 'I29', 'I30', 'I31', 'I32']) expect(ids.has(id)).toBe(true);
     // Michel (partner) sits to the right of Marguerite on the same row.
-    const m = L.nodes.find((n) => n.id === 'I1')!, p = L.nodes.find((n) => n.id === 'I24')!;
+    const m = L.nodes.find((n) => n.id === 'I1')!,
+      p = L.nodes.find((n) => n.id === 'I24')!;
     expect(p.y).toBe(m.y);
     expect(p.x).toBeGreaterThan(m.x);
   });
@@ -38,7 +44,8 @@ describe('layoutHourglass', () => {
 
   it('centres parents above their child', () => {
     const child = L.nodes.find((n) => n.id === 'I2')!; // Henri
-    const f = L.nodes.find((n) => n.id === 'I9')!, m = L.nodes.find((n) => n.id === 'I10')!;
+    const f = L.nodes.find((n) => n.id === 'I9')!,
+      m = L.nodes.find((n) => n.id === 'I10')!;
     const mid = (f.x + m.x + m.w) / 2;
     expect(Math.abs(mid - (child.x + child.w / 2))).toBeLessThan(1);
   });

@@ -3,7 +3,7 @@
  * for the canvas, and object URLs for the DOM.
  */
 
-import { mediaGet } from '../db';
+import { mediaStore } from '../store';
 
 const MAX_SIDE = 640;
 
@@ -11,7 +11,8 @@ const MAX_SIDE = 640;
 export async function prepareImage(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale), h = Math.round(bitmap.height * scale);
+  const w = Math.round(bitmap.width * scale),
+    h = Math.round(bitmap.height * scale);
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -32,7 +33,11 @@ export class PortraitCache {
 
   get(id: string): ImageBitmap | undefined {
     const e = this.entries.get(id);
-    if (!e) { this.entries.set(id, { state: 'loading' }); void this.load(id); return undefined; }
+    if (!e) {
+      this.entries.set(id, { state: 'loading' });
+      void this.load(id);
+      return undefined;
+    }
     return e.state === 'ready' ? e.bitmap : undefined;
   }
 
@@ -45,8 +50,11 @@ export class PortraitCache {
 
   private async load(id: string): Promise<void> {
     try {
-      const blob = await mediaGet(id);
-      if (!blob) { this.entries.set(id, { state: 'missing' }); return; }
+      const blob = await mediaStore.get(id);
+      if (!blob) {
+        this.entries.set(id, { state: 'missing' });
+        return;
+      }
       const bitmap = await createImageBitmap(blob);
       this.entries.set(id, { state: 'ready', bitmap });
       this.onReady();
@@ -62,8 +70,17 @@ export class PortraitCache {
 }
 
 /** Draw `img` (or nothing) inside an oval with a thin bezel, cover-fitted and centred slightly above middle. */
-export function drawMedallion(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, img: ImageBitmap | undefined, colors: { ring: string; fill: string; silhouette: string }): void {
-  const cx = x + w / 2, cy = y + h / 2;
+export function drawMedallion(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  img: ImageBitmap | undefined,
+  colors: { ring: string; fill: string; silhouette: string },
+): void {
+  const cx = x + w / 2,
+    cy = y + h / 2;
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
@@ -73,7 +90,8 @@ export function drawMedallion(ctx: CanvasRenderingContext2D, x: number, y: numbe
   ctx.clip();
   if (img) {
     const scale = Math.max(w / img.width, h / img.height);
-    const dw = img.width * scale, dh = img.height * scale;
+    const dw = img.width * scale,
+      dh = img.height * scale;
     // Faces sit in the upper part of a photo: bias the crop upward.
     ctx.drawImage(img, cx - dw / 2, cy - dh / 2 - (dh - h) * 0.15, dw, dh);
   } else {

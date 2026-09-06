@@ -5,7 +5,7 @@ import { eventLabel, formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { isLiving } from '../canvas/renderer';
 import { nextId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '../tree/edit';
-import { mediaPut } from '../db';
+import { mediaStore } from '../store';
 import { prepareImage } from '../media/portraits';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
@@ -50,14 +50,34 @@ function EventRow({ e, lang, tree, birth }: { e: Event; lang: Lang; tree: Tree; 
       <span className="event-label">{eventLabel(lang, e.type, e.customType)}</span>
       <span className="event-body">
         {bits.join(' · ') || '—'}
-        {e.cause && <span className="event-extra">{t(lang, 'cause')} : {e.cause}</span>}
-        {e.age && <span className="event-extra">{t(lang, 'age')} : {e.age}</span>}
-        {e.address && <span className="event-extra">{t(lang, 'address')} : {e.address}</span>}
-        {e.notes.map((n, i) => <span key={i} className="event-note">{n}</span>)}
+        {e.cause && (
+          <span className="event-extra">
+            {t(lang, 'cause')} : {e.cause}
+          </span>
+        )}
+        {e.age && (
+          <span className="event-extra">
+            {t(lang, 'age')} : {e.age}
+          </span>
+        )}
+        {e.address && (
+          <span className="event-extra">
+            {t(lang, 'address')} : {e.address}
+          </span>
+        )}
+        {e.notes.map((n, i) => (
+          <span key={i} className="event-note">
+            {n}
+          </span>
+        ))}
         {e.citations.map((c, i) => {
           const src = c.sourceId ? tree.sources[c.sourceId] : undefined;
-          const text = src ? [src.title, c.page].filter(Boolean).join(', ') : c.flat ?? '';
-          return text ? <span key={i} className="event-cite">{text}</span> : null;
+          const text = src ? [src.title, c.page].filter(Boolean).join(', ') : (c.flat ?? '');
+          return text ? (
+            <span key={i} className="event-cite">
+              {text}
+            </span>
+          ) : null;
         })}
       </span>
     </li>
@@ -77,8 +97,15 @@ export function PersonPanel(props: Props) {
     try {
       const blob = await prepareImage(file);
       const id = `${nextId(tree, 'M')}-${Date.now().toString(36)}`;
-      await mediaPut(id, blob);
-      props.onSetPortrait(person.id, { id, file: RAMURE_MEDIA_SCHEME + id, format: 'jpg', title: file.name.replace(/\.[^.]+$/, ''), notes: [], extra: [] });
+      await mediaStore.put(id, blob);
+      props.onSetPortrait(person.id, {
+        id,
+        file: RAMURE_MEDIA_SCHEME + id,
+        format: 'jpg',
+        title: file.name.replace(/\.[^.]+$/, ''),
+        notes: [],
+        extra: [],
+      });
     } finally {
       setPhotoBusy(false);
     }
@@ -89,7 +116,9 @@ export function PersonPanel(props: Props) {
   const birthEvent = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
   const ageToday = living ? computeAge(birthEvent?.date, 'today') : undefined;
 
-  const parentFamilies = person.childOf.map((l) => ({ link: l, fam: tree.families[l.familyId] })).filter((x): x is { link: typeof x.link; fam: Family } => !!x.fam);
+  const parentFamilies = person.childOf
+    .map((l) => ({ link: l, fam: tree.families[l.familyId] }))
+    .filter((x): x is { link: typeof x.link; fam: Family } => !!x.fam);
   const parents = parentFamilies.flatMap(({ link, fam }) =>
     [fam.husbandId, fam.wifeId].filter((id): id is string => !!id && !!tree.individuals[id]).map((id) => ({ id, pedigree: link.pedigree })),
   );
@@ -98,7 +127,8 @@ export function PersonPanel(props: Props) {
 
   const Person = ({ id, tag, onRemove }: { id: string; tag?: string; onRemove?: () => void }) => {
     const p = tree.individuals[id]!;
-    const b = findEvent(p.events, 'birth'), d = findEvent(p.events, 'death');
+    const b = findEvent(p.events, 'birth'),
+      d = findEvent(p.events, 'death');
     const years = [b?.date?.date?.year, d?.date?.date?.year].filter((y) => y !== undefined).join('–');
     return (
       <li className="person-row">
@@ -108,7 +138,11 @@ export function PersonPanel(props: Props) {
           {years && <span className="link-years">{years}</span>}
           {tag && <span className="tag">{tag}</span>}
         </button>
-        {onRemove && <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>⨯</button>}
+        {onRemove && (
+          <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>
+            ⨯
+          </button>
+        )}
       </li>
     );
   };
@@ -118,7 +152,9 @@ export function PersonPanel(props: Props) {
       <aside className="panel" aria-label={name}>
         <header className="panel-head">
           <h2 className="panel-name">{name}</h2>
-          <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>×</button>
+          <button className="icon-btn" onClick={() => setEditing(false)} aria-label={t(lang, 'close')}>
+            ×
+          </button>
         </header>
         {isDraft && <p className="muted small draft-hint">{t(lang, 'draftHint')}</p>}
         <PersonEditor
@@ -126,9 +162,15 @@ export function PersonPanel(props: Props) {
           person={person}
           lang={lang}
           canDelete={!isDraft}
-          onSave={(patch) => { props.onSavePerson(person.id, patch); if (!isDraft) setEditing(false); }}
+          onSave={(patch) => {
+            props.onSavePerson(person.id, patch);
+            if (!isDraft) setEditing(false);
+          }}
           onCancel={() => setEditing(false)}
-          onDelete={() => { props.onDeletePerson(person.id); setEditing(false); }}
+          onDelete={() => {
+            props.onDeletePerson(person.id);
+            setEditing(false);
+          }}
         />
       </aside>
     );
@@ -149,103 +191,227 @@ export function PersonPanel(props: Props) {
           title={person.mediaIds[0] ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         >
           <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
-          <span className="medallion-badge" aria-hidden="true">{person.mediaIds[0] ? '✎' : '+'}</span>
+          <span className="medallion-badge" aria-hidden="true">
+            {person.mediaIds[0] ? '✎' : '+'}
+          </span>
         </button>
-        <input ref={photoInput} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void quickPhoto(f); e.target.value = ''; }} />
+        <input
+          ref={photoInput}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void quickPhoto(f);
+            e.target.value = '';
+          }}
+        />
         <div>
-          <h2 className="panel-name">{name} <span className="panel-sex" aria-hidden="true">{sexGlyph}</span></h2>
+          <h2 className="panel-name">
+            {name}{' '}
+            <span className="panel-sex" aria-hidden="true">
+              {sexGlyph}
+            </span>
+          </h2>
           <div className="panel-tags">
             {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
-            {person.names.slice(1).map((n, i) => <span key={i} className="tag">{[n.given, n.surname].filter(Boolean).join(' ')}{n.type ? ` (${n.type})` : ''}</span>)}
-            {living && <span className="tag living">{tg(lang, 'living', person.sex)}{ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}</span>}
+            {person.names.slice(1).map((n, i) => (
+              <span key={i} className="tag">
+                {[n.given, n.surname].filter(Boolean).join(' ')}
+                {n.type ? ` (${n.type})` : ''}
+              </span>
+            ))}
+            {living && (
+              <span className="tag living">
+                {tg(lang, 'living', person.sex)}
+                {ageToday ? ` · ${formatAge(lang, ageToday)}` : ''}
+              </span>
+            )}
             {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
           </div>
         </div>
-        <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>×</button>
+        <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>
+          ×
+        </button>
       </header>
 
       <div className="row panel-actions">
-        <button className="btn primary" onClick={() => onFocus(person.id)}>{t(lang, 'focusOn')}</button>
-        <button className="btn" onClick={() => setEditing(true)}>{t(lang, 'edit')}</button>
+        <button className="btn primary" onClick={() => onFocus(person.id)}>
+          {t(lang, 'focusOn')}
+        </button>
+        <button className="btn" onClick={() => setEditing(true)}>
+          {t(lang, 'edit')}
+        </button>
       </div>
 
       {picking?.kind === 'merge' && (
-        <PersonPicker tree={tree} lang={lang} exclude={[person.id]} hint={t(lang, 'mergeHint')} onCancel={() => setPicking(null)} onPick={(id) => { props.onMerge(person.id, id); setPicking(null); }} />
+        <PersonPicker
+          tree={tree}
+          lang={lang}
+          exclude={[person.id]}
+          hint={t(lang, 'mergeHint')}
+          onCancel={() => setPicking(null)}
+          onPick={(id) => {
+            props.onMerge(person.id, id);
+            setPicking(null);
+          }}
+        />
       )}
       {picking?.kind === 'partner' && (
-        <PersonPicker tree={tree} lang={lang} exclude={[person.id]} onCancel={() => setPicking(null)} onPick={(id) => { props.onLinkPartner(person.id, id); setPicking(null); }} />
+        <PersonPicker
+          tree={tree}
+          lang={lang}
+          exclude={[person.id]}
+          onCancel={() => setPicking(null)}
+          onPick={(id) => {
+            props.onLinkPartner(person.id, id);
+            setPicking(null);
+          }}
+        />
       )}
       {picking?.kind === 'child' && (
-        <PersonPicker tree={tree} lang={lang} exclude={[person.id, ...(tree.families[picking.familyId]?.childIds ?? [])]} onCancel={() => setPicking(null)} onPick={(id) => { props.onLinkChild(picking.familyId, id); setPicking(null); }} />
+        <PersonPicker
+          tree={tree}
+          lang={lang}
+          exclude={[person.id, ...(tree.families[picking.familyId]?.childIds ?? [])]}
+          onCancel={() => setPicking(null)}
+          onPick={(id) => {
+            props.onLinkChild(picking.familyId, id);
+            setPicking(null);
+          }}
+        />
       )}
 
-      {lifeEvents.length > 0 && <ul className="events">{lifeEvents.map((e, i) => <EventRow key={i} e={e} lang={lang} tree={tree} birth={birthEvent} />)}</ul>}
+      {lifeEvents.length > 0 && (
+        <ul className="events">
+          {lifeEvents.map((e, i) => (
+            <EventRow key={i} e={e} lang={lang} tree={tree} birth={birthEvent} />
+          ))}
+        </ul>
+      )}
 
       {parents.length > 0 && (
         <section>
           <h3>{t(lang, 'parents')}</h3>
-          <ul className="people">{parents.map((p) => <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined} />)}</ul>
+          <ul className="people">
+            {parents.map((p) => (
+              <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined} />
+            ))}
+          </ul>
         </section>
       )}
       {siblings.length > 0 && (
         <section>
           <h3>{t(lang, 'siblings')}</h3>
-          <ul className="people">{siblings.map((id) => <Person key={id} id={id} />)}</ul>
+          <ul className="people">
+            {siblings.map((id) => (
+              <Person key={id} id={id} />
+            ))}
+          </ul>
         </section>
       )}
       <section>
         <h3>{t(lang, 'partners')}</h3>
         {unions.map((f) => {
           const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
-          const marr = findEvent(f.events, 'marriage'), div = findEvent(f.events, 'divorce');
+          const marr = findEvent(f.events, 'marriage'),
+            div = findEvent(f.events, 'divorce');
           const line = [
-            marr && `${eventLabel(lang, 'marriage')} ${marr.date ? formatDate(marr.date, lang) : ''}${marr.place ? ', ' + placeText(marr.place) : ''}`,
+            marr &&
+              `${eventLabel(lang, 'marriage')} ${marr.date ? formatDate(marr.date, lang) : ''}${marr.place ? ', ' + placeText(marr.place) : ''}`,
             div && `${eventLabel(lang, 'divorce')} ${div.date ? formatDate(div.date, lang) : ''}`,
             f.unionType === 'unmarried' && t(lang, 'unmarried'),
             f.unionType === 'civil' && t(lang, 'civil'),
-          ].filter(Boolean).join(' · ');
+          ]
+            .filter(Boolean)
+            .join(' · ');
           return (
             <div key={f.id} className="union">
-              <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{tg(lang, 'unknownPerson', person.sex === 'M' ? 'F' : person.sex === 'F' ? 'M' : 'U')}</li>}</ul>
+              <ul className="people">
+                {partnerId && tree.individuals[partnerId] ? (
+                  <Person id={partnerId} />
+                ) : (
+                  <li className="muted">{tg(lang, 'unknownPerson', person.sex === 'M' ? 'F' : person.sex === 'F' ? 'M' : 'U')}</li>
+                )}
+              </ul>
               {editingFamily === f.id ? (
-                <FamilyEditor tree={tree} lang={lang} unionType={f.unionType} events={f.events} onCancel={() => setEditingFamily(null)} onSave={(patch) => { props.onSaveFamily(f.id, patch); setEditingFamily(null); }} />
+                <FamilyEditor
+                  tree={tree}
+                  lang={lang}
+                  unionType={f.unionType}
+                  events={f.events}
+                  onCancel={() => setEditingFamily(null)}
+                  onSave={(patch) => {
+                    props.onSaveFamily(f.id, patch);
+                    setEditingFamily(null);
+                  }}
+                />
               ) : (
                 <div className="union-line">
                   {line || <span className="muted">—</span>}
-                  <button className="link small" onClick={() => setEditingFamily(f.id)}>{t(lang, 'editUnion')}</button>
+                  <button className="link small" onClick={() => setEditingFamily(f.id)}>
+                    {t(lang, 'editUnion')}
+                  </button>
                 </div>
               )}
               <h4>{t(lang, 'children')}</h4>
               <ul className="people">
-                {f.childIds.filter((c) => tree.individuals[c]).map((c) => (
-                  <Person key={c} id={c} tag={tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted' ? tg(lang, 'adopted', tree.individuals[c]!.sex) : undefined} onRemove={() => props.onUnlinkChild(f.id, c)} />
-                ))}
+                {f.childIds
+                  .filter((c) => tree.individuals[c])
+                  .map((c) => (
+                    <Person
+                      key={c}
+                      id={c}
+                      tag={
+                        tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted'
+                          ? tg(lang, 'adopted', tree.individuals[c]!.sex)
+                          : undefined
+                      }
+                      onRemove={() => props.onUnlinkChild(f.id, c)}
+                    />
+                  ))}
               </ul>
               <div className="row small-actions">
-                <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>{t(lang, 'addChild')}</button>
-                <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>{t(lang, 'linkChild')}</button>
+                <button className="btn small" onClick={() => props.onAddChild(person.id, f.id)}>
+                  {t(lang, 'addChild')}
+                </button>
+                <button className="btn small" onClick={() => setPicking({ kind: 'child', familyId: f.id })}>
+                  {t(lang, 'linkChild')}
+                </button>
               </div>
             </div>
           );
         })}
         <div className="row small-actions">
-          <button className="btn small" onClick={() => setPicking({ kind: 'partner' })}>{t(lang, 'linkPartner')}</button>
+          <button className="btn small" onClick={() => setPicking({ kind: 'partner' })}>
+            {t(lang, 'linkPartner')}
+          </button>
         </div>
       </section>
       {otherEvents.length > 0 && (
         <section>
           <h3>{t(lang, 'events')}</h3>
-          <ul className="events">{otherEvents.map((e, i) => <EventRow key={i} e={e} lang={lang} tree={tree} />)}</ul>
+          <ul className="events">
+            {otherEvents.map((e, i) => (
+              <EventRow key={i} e={e} lang={lang} tree={tree} />
+            ))}
+          </ul>
         </section>
       )}
       {person.notes.length > 0 && (
         <section>
           <h3>{t(lang, 'notes')}</h3>
-          {person.notes.map((n, i) => <p key={i} className="note">{n}</p>)}
+          {person.notes.map((n, i) => (
+            <p key={i} className="note">
+              {n}
+            </p>
+          ))}
         </section>
       )}
       <section className="panel-footer">
-        <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>{t(lang, 'merge')}</button>
+        <button className="btn subtle" onClick={() => setPicking({ kind: 'merge' })}>
+          {t(lang, 'merge')}
+        </button>
       </section>
     </aside>
   );

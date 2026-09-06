@@ -3,7 +3,7 @@
  * French communes and worldwide places fetched as you type.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { placeText, type Place } from '../../gedcom/model';
 import { t, type Lang } from '../../i18n';
 import { searchPlaces, type PlaceSuggestion } from '../../places/search';
@@ -25,15 +25,35 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
   const abort = useRef<AbortController | null>(null);
   const timer = useRef(0);
 
-  useEffect(() => { setText(placeText(value)); }, [value]);
+  // When the value changes from outside, adopt its text (React's "adjust state during render" pattern).
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setText(placeText(value));
+  }
 
   const local = useMemo(() => {
     const q = text.trim().toLowerCase();
     if (q.length < 1) return [];
     const seen = new Set<string>();
-    return known.filter((p) => { const k = placeText(p).toLowerCase(); if (!k.includes(q) || seen.has(k)) return false; seen.add(k); return true; }).slice(0, 5)
-      // Normalise: drop empty components so "Quimper, Finistère" from the tree matches the service's spelling.
-      .map((p): PlaceSuggestion => ({ text: placeText(p), parts: p.parts.filter((x) => x.length), lat: p.lat, lon: p.lon, source: 'tree' }));
+    return (
+      known
+        .filter((p) => {
+          const k = placeText(p).toLowerCase();
+          if (!k.includes(q) || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+        .slice(0, 5)
+        // Normalise: drop empty components so "Quimper, Finistère" from the tree matches the service's spelling.
+        .map((p): PlaceSuggestion => ({
+          text: placeText(p),
+          parts: p.parts.filter((x) => x.length),
+          lat: p.lat,
+          lon: p.lon,
+          source: 'tree',
+        }))
+    );
   }, [text, known]);
 
   const type = (s: string) => {
@@ -43,14 +63,23 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
     onChange(trimmed ? { text: trimmed, parts: trimmed.split(',').map((x) => x.trim()) } : undefined);
     window.clearTimeout(timer.current);
     abort.current?.abort();
-    if (trimmed.length < 2) { setRemote([]); setLoading(false); return; }
+    if (trimmed.length < 2) {
+      setRemote([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     timer.current = window.setTimeout(async () => {
       const ctrl = new AbortController();
       abort.current = ctrl;
-      try { const r = await searchPlaces(trimmed, lang, ctrl.signal); if (!ctrl.signal.aborted) setRemote(r); }
-      catch { /* offline or aborted */ }
-      finally { if (!ctrl.signal.aborted) setLoading(false); }
+      try {
+        const r = await searchPlaces(trimmed, lang, ctrl.signal);
+        if (!ctrl.signal.aborted) setRemote(r);
+      } catch {
+        /* offline or aborted */
+      } finally {
+        if (!ctrl.signal.aborted) setLoading(false);
+      }
     }, 350);
   };
 
@@ -74,7 +103,13 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
         onChange={(e) => type(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && open && all[0]) { e.preventDefault(); pick(all[0]); } if (e.key === 'Escape') setOpen(false); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && open && all[0]) {
+            e.preventDefault();
+            pick(all[0]);
+          }
+          if (e.key === 'Escape') setOpen(false);
+        }}
         autoComplete="off"
       />
       {open && (all.length > 0 || loading) && (

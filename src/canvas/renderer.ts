@@ -12,12 +12,31 @@ import { formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { drawMedallion } from '../media/portraits';
 
-export interface Camera { x: number; y: number; k: number }
+export interface Camera {
+  x: number;
+  y: number;
+  k: number;
+}
 
 export interface Theme {
-  ground: string; surface: string; surface2: string; ink: string; ink2: string; ink3: string;
-  line: string; line2: string; accent: string; focus: string; focusSoft: string; connector: string;
-  male: string; female: string; unknown: string; bodyFont: string; monoFont: string; accentInk: string;
+  ground: string;
+  surface: string;
+  surface2: string;
+  ink: string;
+  ink2: string;
+  ink3: string;
+  line: string;
+  line2: string;
+  accent: string;
+  focus: string;
+  focusSoft: string;
+  connector: string;
+  male: string;
+  female: string;
+  unknown: string;
+  bodyFont: string;
+  monoFont: string;
+  accentInk: string;
 }
 
 export const MIN_ZOOM = 0.05;
@@ -34,7 +53,10 @@ export type HandleKind = 'plus';
 export interface Handle {
   kind: HandleKind;
   personId: string;
-  x: number; y: number; w: number; h: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 /** One round (+) button on the right edge of the selected card, in world coordinates. */
@@ -66,31 +88,55 @@ export function readTheme(el: HTMLElement): Theme {
   const cs = getComputedStyle(el);
   const v = (name: string) => cs.getPropertyValue(name).trim();
   return {
-    ground: v('--ground'), surface: v('--surface'), surface2: v('--surface-2'), ink: v('--ink'), ink2: v('--ink-2'), ink3: v('--ink-3'),
-    line: v('--line'), line2: v('--line-2'), accent: v('--accent'), focus: v('--focus'), focusSoft: v('--focus-soft'),
-    connector: v('--connector'), male: v('--male'), female: v('--female'), unknown: v('--unknown'), accentInk: v('--accent-ink') || '#fff',
-    bodyFont: v('--body') || 'system-ui, sans-serif', monoFont: v('--mono') || 'ui-monospace, monospace',
+    ground: v('--ground'),
+    surface: v('--surface'),
+    surface2: v('--surface-2'),
+    ink: v('--ink'),
+    ink2: v('--ink-2'),
+    ink3: v('--ink-3'),
+    line: v('--line'),
+    line2: v('--line-2'),
+    accent: v('--accent'),
+    focus: v('--focus'),
+    focusSoft: v('--focus-soft'),
+    connector: v('--connector'),
+    male: v('--male'),
+    female: v('--female'),
+    unknown: v('--unknown'),
+    accentInk: v('--accent-ink') || '#fff',
+    bodyFont: v('--body') || 'system-ui, sans-serif',
+    monoFont: v('--mono') || 'ui-monospace, monospace',
   };
 }
 
 /** "en 1952", "vers 1860", "avant 1900", "1857–1859" for a birth shown on a card. */
 function birthYearText(d: GDate, lang: Lang): string {
-  const y = approximateYear(d), y2 = approximateYear(d.date2 ? { ...d, date: d.date2 } : undefined);
+  const y = approximateYear(d),
+    y2 = approximateYear(d.date2 ? { ...d, date: d.date2 } : undefined);
   if (y === undefined) return formatDate(d, lang);
   const fr = lang === 'fr';
   switch (d.kind) {
-    case 'about': case 'estimated': case 'calculated': return (fr ? 'vers ' : 'c. ') + y;
-    case 'before': return (fr ? 'avant ' : 'bef. ') + y;
-    case 'after': return (fr ? 'après ' : 'aft. ') + y;
-    case 'between': case 'from-to': return y2 !== undefined && y2 !== y ? `${fr ? 'en ' : ''}${y}–${y2}` : (fr ? 'en ' : '') + y;
-    default: return (fr ? 'en ' : '') + y;
+    case 'about':
+    case 'estimated':
+    case 'calculated':
+      return (fr ? 'vers ' : 'c. ') + y;
+    case 'before':
+      return (fr ? 'avant ' : 'bef. ') + y;
+    case 'after':
+      return (fr ? 'après ' : 'aft. ') + y;
+    case 'between':
+    case 'from-to':
+      return y2 !== undefined && y2 !== y ? `${fr ? 'en ' : ''}${y}–${y2}` : (fr ? 'en ' : '') + y;
+    default:
+      return (fr ? 'en ' : '') + y;
   }
 }
 
 function lifespan(ind: Individual, lang: Lang): string {
   const b = findEvent(ind.events, 'birth') ?? findEvent(ind.events, 'baptism');
   const d = findEvent(ind.events, 'death') ?? findEvent(ind.events, 'burial');
-  const by = approximateYear(b?.date), dy = approximateYear(d?.date);
+  const by = approximateYear(b?.date),
+    dy = approximateYear(d?.date);
   const bs = by !== undefined ? String(by) : b?.date ? formatDate(b.date, lang) : '';
   const ds = dy !== undefined ? String(dy) : d?.date ? formatDate(d.date, lang) : '';
   if (d) {
@@ -125,7 +171,9 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 function tracePolyline(ctx: CanvasRenderingContext2D, pts: Array<[number, number]>, radius: number): void {
   ctx.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length - 1; i++) {
-    const [px, py] = pts[i - 1]!, [cx, cy] = pts[i]!, [nx, ny] = pts[i + 1]!;
+    const [px, py] = pts[i - 1]!,
+      [cx, cy] = pts[i]!,
+      [nx, ny] = pts[i + 1]!;
     const r = Math.min(radius, Math.hypot(cx - px, cy - py) / 2, Math.hypot(nx - cx, ny - cy) / 2);
     ctx.arcTo(cx, cy, nx, ny, r);
   }
@@ -169,8 +217,10 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   const k = cam.k;
   const band = detailBand(k);
   const vis = {
-    minX: (-cam.x) / k - 200, maxX: (width - cam.x) / k + 200,
-    minY: (-cam.y) / k - 200, maxY: (height - cam.y) / k + 200,
+    minX: -cam.x / k - 200,
+    maxX: (width - cam.x) / k + 200,
+    minY: -cam.y / k - 200,
+    maxY: (height - cam.y) / k + 200,
   };
   const visible = (n: LayoutNode) => n.x + n.w >= vis.minX && n.x <= vis.maxX && n.y + n.h >= vis.minY && n.y <= vis.maxY;
 
@@ -178,8 +228,15 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   for (const l of layout.links) {
-    const p0 = l.points[0]!, p1 = l.points[l.points.length - 1]!;
-    if (Math.max(p0[0], p1[0]) < vis.minX || Math.min(p0[0], p1[0]) > vis.maxX || Math.max(p0[1], p1[1]) < vis.minY || Math.min(p0[1], p1[1]) > vis.maxY) continue;
+    const p0 = l.points[0]!,
+      p1 = l.points[l.points.length - 1]!;
+    if (
+      Math.max(p0[0], p1[0]) < vis.minX ||
+      Math.min(p0[0], p1[0]) > vis.maxX ||
+      Math.max(p0[1], p1[1]) < vis.minY ||
+      Math.min(p0[1], p1[1]) > vis.maxY
+    )
+      continue;
     ctx.strokeStyle = T.connector;
     ctx.lineWidth = Math.min(1.25 / Math.max(k, 0.35), 2.4);
     ctx.beginPath();
@@ -197,14 +254,19 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     const isDraft = n.id === s.draftId;
     const isHover = n.id === s.hoverId;
     const sexColor = ind.sex === 'M' ? T.male : ind.sex === 'F' ? T.female : T.unknown;
-    const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+    const cx = n.x + n.w / 2,
+      cy = n.y + n.h / 2;
 
     if (band === 'dots') {
       ctx.fillStyle = sexColor;
       ctx.beginPath();
       ctx.arc(cx, cy, isFocus ? 16 : 11, 0, Math.PI * 2);
       ctx.fill();
-      if (isFocus || isSel) { ctx.strokeStyle = isFocus ? T.focus : T.accent; ctx.lineWidth = 5 / k; ctx.stroke(); }
+      if (isFocus || isSel) {
+        ctx.strokeStyle = isFocus ? T.focus : T.accent;
+        ctx.lineWidth = 5 / k;
+        ctx.stroke();
+      }
       continue;
     }
 
@@ -235,7 +297,8 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.fillText(fitText(ctx, name, n.w - 22), cx + 2, cy);
     } else {
       // Medallion portrait on the left: an oval like an old locket.
-      const MW = 42, MH = 54;
+      const MW = 42,
+        MH = 54;
       const mediaId = ind.mediaIds[0];
       const img = mediaId && s.portrait ? s.portrait(mediaId) : undefined;
       drawMedallion(ctx, n.x + 13, n.y + (n.h - MH) / 2, MW, MH, img, { ring: T.line2, fill: T.surface2, silhouette: T.ink3 });
@@ -267,7 +330,8 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   // The (+) button on the selected card.
   if (band === 'cards' && s.handles?.length) {
     for (const hd of s.handles) {
-      const cx = hd.x + hd.w / 2, cy = hd.y + hd.h / 2;
+      const cx = hd.x + hd.w / 2,
+        cy = hd.y + hd.h / 2;
       ctx.beginPath();
       ctx.arc(cx, cy, hd.w / 2, 0, Math.PI * 2);
       ctx.fillStyle = T.accent;
@@ -279,8 +343,10 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.lineWidth = 2.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx - 6, cy); ctx.lineTo(cx + 6, cy);
-      ctx.moveTo(cx, cy - 6); ctx.lineTo(cx, cy + 6);
+      ctx.moveTo(cx - 6, cy);
+      ctx.lineTo(cx + 6, cy);
+      ctx.moveTo(cx, cy - 6);
+      ctx.lineTo(cx, cy + 6);
       ctx.stroke();
     }
   }
@@ -291,7 +357,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   for (const g of layout.rows) {
-    const y = cam.y + (-g * s.rowH) * cam.k;
+    const y = cam.y + -g * s.rowH * cam.k;
     if (y < -12 || y > height + 12) continue;
     const label = (layout.rowLabels?.get(g) ?? generationLabel(g, lang)).toUpperCase();
     const w = ctx.measureText(label).width + 12;
@@ -306,18 +372,21 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
 
 export function hitHandle(handles: Handle[] | undefined, cam: Camera, sx: number, sy: number): Handle | undefined {
   if (!handles?.length || detailBand(cam.k) !== 'cards') return undefined;
-  const wx = (sx - cam.x) / cam.k, wy = (sy - cam.y) / cam.k;
+  const wx = (sx - cam.x) / cam.k,
+    wy = (sy - cam.y) / cam.k;
   const slack = 4 / cam.k;
   return handles.find((h) => wx >= h.x - slack && wx <= h.x + h.w + slack && wy >= h.y - slack && wy <= h.y + h.h + slack);
 }
 
 export function hitTest(layout: Layout, cam: Camera, sx: number, sy: number): LayoutNode | undefined {
-  const wx = (sx - cam.x) / cam.k, wy = (sy - cam.y) / cam.k;
+  const wx = (sx - cam.x) / cam.k,
+    wy = (sy - cam.y) / cam.k;
   const band = detailBand(cam.k);
   for (let i = layout.nodes.length - 1; i >= 0; i--) {
     const n = layout.nodes[i]!;
     if (band === 'dots') {
-      const dx = wx - (n.x + n.w / 2), dy = wy - (n.y + n.h / 2);
+      const dx = wx - (n.x + n.w / 2),
+        dy = wy - (n.y + n.h / 2);
       // Generous target when zoomed far out: at least 22 screen px radius.
       if (dx * dx + dy * dy <= Math.pow(Math.max(16, 22 / cam.k), 2)) return n;
     } else if (wx >= n.x && wx <= n.x + n.w && wy >= n.y && wy <= n.y + n.h) return n;

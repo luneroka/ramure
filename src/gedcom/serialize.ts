@@ -14,12 +14,34 @@ import type { GedcomRecord } from './tokenizer';
 const MAX_LINE = 248;
 
 const EVENT_TAG_BY_TYPE: Record<string, string> = {
-  birth: 'BIRT', baptism: 'CHR', death: 'DEAT', burial: 'BURI', cremation: 'CREM', adoption: 'ADOP',
-  marriage: 'MARR', divorce: 'DIV', engagement: 'ENGA', 'marriage-banns': 'MARB', annulment: 'ANUL',
-  occupation: 'OCCU', residence: 'RESI', census: 'CENS', education: 'EDUC', religion: 'RELI',
-  retirement: 'RETI', emigration: 'EMIG', immigration: 'IMMI', naturalization: 'NATU', probate: 'PROB',
-  will: 'WILL', graduation: 'GRAD', confirmation: 'CONF', 'first-communion': 'FCOM', title: 'TITL',
-  description: 'DSCR', custom: 'EVEN',
+  birth: 'BIRT',
+  baptism: 'CHR',
+  death: 'DEAT',
+  burial: 'BURI',
+  cremation: 'CREM',
+  adoption: 'ADOP',
+  marriage: 'MARR',
+  divorce: 'DIV',
+  engagement: 'ENGA',
+  'marriage-banns': 'MARB',
+  annulment: 'ANUL',
+  occupation: 'OCCU',
+  residence: 'RESI',
+  census: 'CENS',
+  education: 'EDUC',
+  religion: 'RELI',
+  retirement: 'RETI',
+  emigration: 'EMIG',
+  immigration: 'IMMI',
+  naturalization: 'NATU',
+  probate: 'PROB',
+  will: 'WILL',
+  graduation: 'GRAD',
+  confirmation: 'CONF',
+  'first-communion': 'FCOM',
+  title: 'TITL',
+  description: 'DSCR',
+  custom: 'EVEN',
 };
 
 class Writer {
@@ -48,7 +70,9 @@ class Writer {
     for (const c of rec.children) this.raw(c, level + 1);
   }
 
-  toString(): string { return this.lines.join('\n') + '\n'; }
+  toString(): string {
+    return this.lines.join('\n') + '\n';
+  }
 }
 
 const ptr = (id: string): string => `@${id}@`;
@@ -92,7 +116,10 @@ function writeHeader(w: Writer, tree: Tree, o: SerializeOptions): void {
   w.line(2, 'FORM', 'LINEAGE-LINKED');
   w.line(1, 'CHAR', 'UTF-8');
   if (tree.header.language) w.line(1, 'LANG', tree.header.language);
-  if (tree.header.placeFormat) { w.line(1, 'PLAC'); w.line(2, 'FORM', tree.header.placeFormat); }
+  if (tree.header.placeFormat) {
+    w.line(1, 'PLAC');
+    w.line(2, 'FORM', tree.header.placeFormat);
+  }
   for (const n of tree.header.notes) w.line(1, 'NOTE', n);
 }
 

@@ -8,7 +8,19 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { Tree } from '../gedcom/model';
 import type { Lang } from '../i18n';
 import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
-import { clampZoom, computeHandles, detailBand, hitHandle, hitTest, readTheme, render, type Camera, type DetailBand, type HandleKind, type Theme } from './renderer';
+import {
+  clampZoom,
+  computeHandles,
+  detailBand,
+  hitHandle,
+  hitTest,
+  readTheme,
+  render,
+  type Camera,
+  type DetailBand,
+  type HandleKind,
+  type Theme,
+} from './renderer';
 import { PortraitCache } from '../media/portraits';
 
 export interface TreeCanvasHandle {
@@ -64,7 +76,16 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!ctx) return;
       if (!theme.current) theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
-        layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H, handles, draftId,
+        layout,
+        tree,
+        camera: cam.current,
+        selectedId,
+        hoverId: hoverId.current,
+        lang,
+        theme: theme.current,
+        rowH: ROW_H,
+        handles,
+        draftId,
         portrait: (id) => portraits.current!.get(id),
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
@@ -80,17 +101,24 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     const canvas = canvasRef.current!;
     const parent = canvas.parentElement!;
     const ro = new ResizeObserver(() => {
-      const w = parent.clientWidth, h = parent.clientHeight;
+      const w = parent.clientWidth,
+        h = parent.clientHeight;
       if (!w || !h) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
       const prev = size.current;
-      if (prev.w && prev.h) { cam.current.x += (w - prev.w) / 2; cam.current.y += (h - prev.h) / 2; }
+      if (prev.w && prev.h) {
+        cam.current.x += (w - prev.w) / 2;
+        cam.current.y += (h - prev.h) / 2;
+      }
       size.current = { w, h, dpr };
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      if (pendingFit.current) { pendingFit.current = false; fitRef.current(false, true); }
+      if (pendingFit.current) {
+        pendingFit.current = false;
+        fitRef.current(false, true);
+      }
       drawRef.current();
     });
     ro.observe(parent);
@@ -100,87 +128,126 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   // Theme changes: re-read tokens.
   useEffect(() => {
     const mq = matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => { theme.current = null; drawRef.current(); };
+    const onChange = () => {
+      theme.current = null;
+      drawRef.current();
+    };
     mq.addEventListener('change', onChange);
     const mo = new MutationObserver(onChange);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
     if (document.fonts?.ready) document.fonts.ready.then(onChange);
-    return () => { mq.removeEventListener('change', onChange); mo.disconnect(); };
+    return () => {
+      mq.removeEventListener('change', onChange);
+      mo.disconnect();
+    };
   }, []);
 
-  useEffect(() => { draw(); }, [draw]);
+  useEffect(() => {
+    draw();
+  }, [draw]);
   useEffect(() => () => portraits.current?.dispose(), []);
 
-  const animateTo = useCallback((target: Camera, animate: boolean) => {
-    if (anim.current) cancelAnimationFrame(anim.current);
-    if (!animate || reduced) { cam.current = target; draw(); return; }
-    const from = { ...cam.current };
-    const t0 = performance.now();
-    const D = 380;
-    const step = (now: number) => {
-      const t = Math.min(1, (now - t0) / D);
-      const e = 1 - Math.pow(1 - t, 3);
-      cam.current = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, k: from.k + (target.k - from.k) * e };
-      draw();
-      if (t < 1) anim.current = requestAnimationFrame(step);
-      else anim.current = null;
-    };
-    anim.current = requestAnimationFrame(step);
-  }, [draw, reduced]);
-
-  const centerWorld = useCallback((wx: number, wy: number, k: number, animate: boolean) => {
-    const { w, h } = size.current;
-    animateTo({ x: w / 2 - wx * k, y: h / 2 - wy * k, k: clampZoom(k) }, animate);
-  }, [animateTo]);
-
-  const fitNow = useCallback((animate: boolean, readableOnly = false) => {
-    const { w, h } = size.current;
-    const b = layout.bounds;
-    if (!isFinite(b.minX)) return;
-    if (!w || !h) { pendingFit.current = true; return; }
-    const gutter = Math.min(RULER_GUTTER, w * 0.28);
-    const pad = 32;
-    const availW = w - gutter - pad, availH = h - pad * 2;
-    const k = clampZoom(Math.min(availW / (b.maxX - b.minX), availH / (b.maxY - b.minY), 1.2));
-    if (readableOnly && k < 0.6) {
-      // Too small to read: open on the focus card instead, at a size where names are legible.
-      const n = layout.nodes.find((x) => x.id === layout.focusId);
-      if (n) {
-        const k2 = w < 600 ? 0.8 : 0.9;
-        animateTo({ x: gutter + availW / 2 - (n.x + n.w / 2) * k2, y: h / 2 - (n.y + n.h / 2) * k2, k: k2 }, animate);
+  const animateTo = useCallback(
+    (target: Camera, animate: boolean) => {
+      if (anim.current) cancelAnimationFrame(anim.current);
+      if (!animate || reduced) {
+        cam.current = target;
+        draw();
         return;
       }
-    }
-    // Centre in the area to the right of the ruler gutter.
-    const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
-    animateTo({ x: gutter + availW / 2 - cx * k, y: h / 2 - cy * k, k }, animate);
-  }, [layout, animateTo]);
+      const from = { ...cam.current };
+      const t0 = performance.now();
+      const D = 380;
+      const step = (now: number) => {
+        const t = Math.min(1, (now - t0) / D);
+        const e = 1 - Math.pow(1 - t, 3);
+        cam.current = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, k: from.k + (target.k - from.k) * e };
+        draw();
+        if (t < 1) anim.current = requestAnimationFrame(step);
+        else anim.current = null;
+      };
+      anim.current = requestAnimationFrame(step);
+    },
+    [draw, reduced],
+  );
+
+  const centerWorld = useCallback(
+    (wx: number, wy: number, k: number, animate: boolean) => {
+      const { w, h } = size.current;
+      animateTo({ x: w / 2 - wx * k, y: h / 2 - wy * k, k: clampZoom(k) }, animate);
+    },
+    [animateTo],
+  );
+
+  const fitNow = useCallback(
+    (animate: boolean, readableOnly = false) => {
+      const { w, h } = size.current;
+      const b = layout.bounds;
+      if (!isFinite(b.minX)) return;
+      if (!w || !h) {
+        pendingFit.current = true;
+        return;
+      }
+      const gutter = Math.min(RULER_GUTTER, w * 0.28);
+      const pad = 32;
+      const availW = w - gutter - pad,
+        availH = h - pad * 2;
+      const k = clampZoom(Math.min(availW / (b.maxX - b.minX), availH / (b.maxY - b.minY), 1.2));
+      if (readableOnly && k < 0.6) {
+        // Too small to read: open on the focus card instead, at a size where names are legible.
+        const n = layout.nodes.find((x) => x.id === layout.focusId);
+        if (n) {
+          const k2 = w < 600 ? 0.8 : 0.9;
+          animateTo({ x: gutter + availW / 2 - (n.x + n.w / 2) * k2, y: h / 2 - (n.y + n.h / 2) * k2, k: k2 }, animate);
+          return;
+        }
+      }
+      // Centre in the area to the right of the ruler gutter.
+      const cx = (b.minX + b.maxX) / 2,
+        cy = (b.minY + b.maxY) / 2;
+      animateTo({ x: gutter + availW / 2 - cx * k, y: h / 2 - cy * k, k }, animate);
+    },
+    [layout, animateTo],
+  );
   fitRef.current = fitNow;
 
-  useImperativeHandle(ref, () => ({
-    fit(animate = true) { fitNow(animate); },
-    initialView() { fitNow(false, true); },
-    centerOn(id, animate = true) {
-      const n = layout.nodes.find((x) => x.id === id);
-      if (!n) return;
-      centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(cam.current.k, 0.75), animate);
+  const zoomAt = useCallback(
+    (sx: number, sy: number, factor: number) => {
+      const c = cam.current;
+      const k2 = clampZoom(c.k * factor);
+      cam.current = { x: sx - (sx - c.x) * (k2 / c.k), y: sy - (sy - c.y) * (k2 / c.k), k: k2 };
+      draw();
     },
-    zoomBy(factor) {
-      const { w, h } = size.current;
-      zoomAt(w / 2, h / 2, factor);
-    },
-  }), [layout, centerWorld, fitNow]);
+    [draw],
+  );
 
-  const zoomAt = (sx: number, sy: number, factor: number) => {
-    const c = cam.current;
-    const k2 = clampZoom(c.k * factor);
-    cam.current = { x: sx - (sx - c.x) * (k2 / c.k), y: sy - (sy - c.y) * (k2 / c.k), k: k2 };
-    draw();
-  };
+  useImperativeHandle(
+    ref,
+    () => ({
+      fit(animate = true) {
+        fitNow(animate);
+      },
+      initialView() {
+        fitNow(false, true);
+      },
+      centerOn(id, animate = true) {
+        const n = layout.nodes.find((x) => x.id === id);
+        if (!n) return;
+        centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(cam.current.k, 0.75), animate);
+      },
+      zoomBy(factor) {
+        const { w, h } = size.current;
+        zoomAt(w / 2, h / 2, factor);
+      },
+    }),
+    [layout, centerWorld, fitNow, zoomAt],
+  );
 
   // ---------- Gestures ----------
   const ptrs = useRef(new Map<number, { x: number; y: number }>());
-  const gesture = useRef<{ moved: number; pinch0?: { d: number; k: number }; downAt?: number; lastTap?: { t: number; id: string } }>({ moved: 0 });
+  const gesture = useRef<{ moved: number; pinch0?: { d: number; k: number }; downAt?: number; lastTap?: { t: number; id: string } }>({
+    moved: 0,
+  });
 
   const pos = (e: React.PointerEvent | React.WheelEvent) => {
     const r = canvasRef.current!.getBoundingClientRect();
@@ -188,10 +255,20 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (anim.current) { cancelAnimationFrame(anim.current); anim.current = null; }
-    try { canvasRef.current!.setPointerCapture(e.pointerId); } catch { /* synthetic events have no capturable pointer */ }
+    if (anim.current) {
+      cancelAnimationFrame(anim.current);
+      anim.current = null;
+    }
+    try {
+      canvasRef.current!.setPointerCapture(e.pointerId);
+    } catch {
+      /* synthetic events have no capturable pointer */
+    }
     ptrs.current.set(e.pointerId, pos(e));
-    if (ptrs.current.size === 1) { gesture.current.moved = 0; gesture.current.downAt = performance.now(); }
+    if (ptrs.current.size === 1) {
+      gesture.current.moved = 0;
+      gesture.current.downAt = performance.now();
+    }
     if (ptrs.current.size === 2) {
       const [a, b] = [...ptrs.current.values()];
       gesture.current.pinch0 = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y), k: cam.current.k };
@@ -205,7 +282,10 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         const hd = hitHandle(handles, cam.current, p.x, p.y);
         const h = hd ? undefined : hitTest(layout, cam.current, p.x, p.y);
         const id = h?.id;
-        if (id !== hoverId.current) { hoverId.current = id; draw(); }
+        if (id !== hoverId.current) {
+          hoverId.current = id;
+          draw();
+        }
         canvasRef.current!.style.cursor = id || hd ? 'pointer' : 'grab';
       }
       return;
@@ -222,7 +302,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
       const mid = { x: (a!.x + b!.x) / 2, y: (a!.y + b!.y) / 2 };
       const prevMid = { x: mid.x - (p.x - prev.x) / 2, y: mid.y - (p.y - prev.y) / 2 };
-      const k2 = clampZoom(gesture.current.pinch0.k * d / gesture.current.pinch0.d);
+      const k2 = clampZoom((gesture.current.pinch0.k * d) / gesture.current.pinch0.d);
       const c = cam.current;
       cam.current = { x: mid.x - (prevMid.x - c.x) * (k2 / c.k), y: mid.y - (prevMid.y - c.y) * (k2 / c.k), k: k2 };
       gesture.current.moved = 99;
@@ -240,7 +320,13 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       const quick = gesture.current.moved < 6 && performance.now() - (gesture.current.downAt ?? 0) < 600;
       if (quick) {
         const hd = hitHandle(handles, cam.current, p.x, p.y);
-        if (hd) { onHandle?.(hd.kind, hd.personId, { x: (hd.x + hd.w) * cam.current.k + cam.current.x, y: (hd.y + hd.h / 2) * cam.current.k + cam.current.y }); return; }
+        if (hd) {
+          onHandle?.(hd.kind, hd.personId, {
+            x: (hd.x + hd.w) * cam.current.k + cam.current.x,
+            y: (hd.y + hd.h / 2) * cam.current.k + cam.current.y,
+          });
+          return;
+        }
         const h = hitTest(layout, cam.current, p.x, p.y);
         if (h) {
           const now = performance.now();

@@ -26,10 +26,22 @@ export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint 
   return (
     <div className="picker">
       {hint && <p className="muted small">{hint}</p>}
-      <input autoFocus type="search" value={q} placeholder={t(lang, 'pickPerson')} aria-label={t(lang, 'pickPerson')} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); if (e.key === 'Enter' && matches[0]) onPick(matches[0].id); }} />
+      <input
+        autoFocus
+        type="search"
+        value={q}
+        placeholder={t(lang, 'pickPerson')}
+        aria-label={t(lang, 'pickPerson')}
+        onChange={(e) => setQ(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onCancel();
+          if (e.key === 'Enter' && matches[0]) onPick(matches[0].id);
+        }}
+      />
       <ul className="people picker-results">
         {matches.map((m) => {
-          const b = findEvent(m.events, 'birth')?.date?.date?.year, d = findEvent(m.events, 'death')?.date?.date?.year;
+          const b = findEvent(m.events, 'birth')?.date?.date?.year,
+            d = findEvent(m.events, 'death')?.date?.date?.year;
           return (
             <li key={m.id}>
               <button className="link-person" onClick={() => onPick(m.id)}>
@@ -43,7 +55,9 @@ export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint 
         {q.trim() && matches.length === 0 && <li className="muted small">{t(lang, 'noMatch')}</li>}
       </ul>
       <div className="row">
-        <button className="btn" onClick={onCancel}>{t(lang, 'cancel')}</button>
+        <button className="btn" onClick={onCancel}>
+          {t(lang, 'cancel')}
+        </button>
       </div>
     </div>
   );

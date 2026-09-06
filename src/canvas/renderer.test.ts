@@ -28,14 +28,16 @@ describe('handles', () => {
     const h = hs[0]!;
     for (const k of [0.75, 1, 1.6]) {
       const cam = camFor(k);
-      const sx = (h.x + h.w / 2) * k + cam.x, sy = (h.y + h.h / 2) * k + cam.y;
+      const sx = (h.x + h.w / 2) * k + cam.x,
+        sy = (h.y + h.h / 2) * k + cam.y;
       expect(detailBand(k)).toBe('cards');
       expect(hitHandle(hs, cam, sx, sy)?.personId).toBe('I1');
       // The handle wins over the card underneath it, and the card is still hit next to it.
       expect(hitTest(layout, cam, 400, 300)?.id).toBe('I1');
     }
     const cam = camFor(0.5);
-    const sx = (h.x + h.w / 2) * 0.5 + cam.x, sy = (h.y + h.h / 2) * 0.5 + cam.y;
+    const sx = (h.x + h.w / 2) * 0.5 + cam.x,
+      sy = (h.y + h.h / 2) * 0.5 + cam.y;
     expect(hitHandle(hs, cam, sx, sy)).toBeUndefined();
   });
 

@@ -1,0 +1,13 @@
+/**
+ * The app's stores. One place to swap implementations: when sync arrives,
+ * these become a synced tree store and a caching media store, and no
+ * component changes.
+ */
+
+import { LocalMediaStore, LocalTreeStore } from './local';
+import type { MediaStore, TreeStore } from './types';
+
+export const treeStore: TreeStore = new LocalTreeStore();
+export const mediaStore: MediaStore = new LocalMediaStore();
+
+export type { MediaStore, SavedTree, Snapshot, SnapshotMeta, TreeStore } from './types';

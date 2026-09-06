@@ -10,9 +10,35 @@ import { formatGedcomDate, parseDate, type GDate, type SimpleDate } from './date
 
 const MONTHS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const MONTHS_FR_ABBR = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc'];
-const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+const MONTHS_EN = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
 const MONTHS_EN_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-const REP_MONTHS = ['vendémiaire', 'brumaire', 'frimaire', 'nivôse', 'pluviôse', 'ventôse', 'germinal', 'floréal', 'prairial', 'messidor', 'thermidor', 'fructidor'];
+const REP_MONTHS = [
+  'vendémiaire',
+  'brumaire',
+  'frimaire',
+  'nivôse',
+  'pluviôse',
+  'ventôse',
+  'germinal',
+  'floréal',
+  'prairial',
+  'messidor',
+  'thermidor',
+  'fructidor',
+];
 
 function fold(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -29,11 +55,16 @@ function monthIndex(word: string): number | undefined {
 
 function romanToInt(s: string): number | undefined {
   const map: Record<string, number> = { I: 1, V: 5, X: 10, L: 50 };
-  let total = 0, prev = 0;
+  let total = 0,
+    prev = 0;
   for (const ch of s.toUpperCase().split('').reverse()) {
     const v = map[ch];
     if (!v) return undefined;
-    if (v < prev) total -= v; else { total += v; prev = v; }
+    if (v < prev) total -= v;
+    else {
+      total += v;
+      prev = v;
+    }
   }
   return total || undefined;
 }
@@ -49,11 +80,11 @@ function simple(text: string): SimpleDate | undefined {
     if (mi >= 0 && y) return { calendar: 'french-republican', day: rep[1] ? Number(rep[1]) : undefined, month: mi + 1, year: y };
   }
   // Numeric: dd/mm/yyyy, dd.mm.yyyy, dd-mm-yyyy, yyyy-mm-dd, mm/yyyy
-  let m = /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{3,4})$/.exec(s);
+  let m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{3,4})$/.exec(s);
   if (m) return { calendar: 'gregorian', day: Number(m[1]), month: Number(m[2]), year: Number(m[3]) };
   m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
   if (m) return { calendar: 'gregorian', day: Number(m[3]), month: Number(m[2]), year: Number(m[1]) };
-  m = /^(\d{1,2})[/.\-](\d{3,4})$/.exec(s);
+  m = /^(\d{1,2})[/.-](\d{3,4})$/.exec(s);
   if (m) return { calendar: 'gregorian', month: Number(m[1]), year: Number(m[2]) };
   // Year only
   m = /^(\d{3,4})$/.exec(s);
@@ -91,8 +122,10 @@ export function parseHumanDate(text: string): GDate | undefined {
     return g;
   };
   let m: RegExpExecArray | null;
-  if ((m = /^(?:entre|between) (.+?) (?:et|and) (.+)$/.exec(f))) return build('between', s.slice(m.index + m[0].indexOf(m[1]!), m.index + m[0].indexOf(m[1]!) + m[1]!.length), s.slice(-m[2]!.length));
-  if ((m = /^(?:de|from) (.+?) (?:a|à|to) (.+)$/.exec(f))) return build('from-to', s.slice(m[0].indexOf(m[1]!), m[0].indexOf(m[1]!) + m[1]!.length), s.slice(-m[2]!.length));
+  if ((m = /^(?:entre|between) (.+?) (?:et|and) (.+)$/.exec(f)))
+    return build('between', s.slice(m.index + m[0].indexOf(m[1]!), m.index + m[0].indexOf(m[1]!) + m[1]!.length), s.slice(-m[2]!.length));
+  if ((m = /^(?:de|from) (.+?) (?:a|à|to) (.+)$/.exec(f)))
+    return build('from-to', s.slice(m[0].indexOf(m[1]!), m[0].indexOf(m[1]!) + m[1]!.length), s.slice(-m[2]!.length));
   const prefixes: Array<[RegExp, GDate['kind']]> = [
     [/^(?:vers|environ|env\.?|circa|ca\.?|c\.|about|abt\.?|~)\s*(.+)$/, 'about'],
     [/^(?:avant|av\.|before|bef\.?)\s*(.+)$/, 'before'],

@@ -7,28 +7,82 @@
 
 import { parseDate } from './dates';
 import {
-  emptyTree, newEvent, newFamily, newIndividual,
-  type Citation, type Event, type EventType, type Family, type Individual,
-  type MediaObject, type Name, type Pedigree, type Place, type Repository,
-  type Sex, type Source, type Tree, type UnionType,
+  emptyTree,
+  newEvent,
+  newFamily,
+  newIndividual,
+  type Citation,
+  type Event,
+  type EventType,
+  type Family,
+  type Individual,
+  type MediaObject,
+  type Name,
+  type Pedigree,
+  type Place,
+  type Repository,
+  type Sex,
+  type Source,
+  type Tree,
+  type UnionType,
 } from './model';
 import { child, childValue, children, pointerId, tokenize, type GedcomRecord } from './tokenizer';
 import { repairGeneWeb } from './geneweb';
 
 const INDI_EVENT_TAGS: Record<string, EventType> = {
-  BIRT: 'birth', CHR: 'baptism', BAPM: 'baptism', DEAT: 'death', BURI: 'burial', CREM: 'cremation',
-  ADOP: 'adoption', OCCU: 'occupation', RESI: 'residence', CENS: 'census', EDUC: 'education',
-  RELI: 'religion', RETI: 'retirement', EMIG: 'emigration', IMMI: 'immigration', NATU: 'naturalization',
-  PROB: 'probate', WILL: 'will', GRAD: 'graduation', CONF: 'confirmation', FCOM: 'first-communion',
-  TITL: 'title', DSCR: 'description', EVEN: 'custom',
+  BIRT: 'birth',
+  CHR: 'baptism',
+  BAPM: 'baptism',
+  DEAT: 'death',
+  BURI: 'burial',
+  CREM: 'cremation',
+  ADOP: 'adoption',
+  OCCU: 'occupation',
+  RESI: 'residence',
+  CENS: 'census',
+  EDUC: 'education',
+  RELI: 'religion',
+  RETI: 'retirement',
+  EMIG: 'emigration',
+  IMMI: 'immigration',
+  NATU: 'naturalization',
+  PROB: 'probate',
+  WILL: 'will',
+  GRAD: 'graduation',
+  CONF: 'confirmation',
+  FCOM: 'first-communion',
+  TITL: 'title',
+  DSCR: 'description',
+  EVEN: 'custom',
   // Rarely used but valid individual attributes/events
-  BARM: 'custom', BASM: 'custom', BLES: 'custom', CHRA: 'custom', ORDN: 'custom', NCHI: 'custom',
-  NMR: 'custom', PROP: 'custom', SSN: 'custom', IDNO: 'custom', NATI: 'custom', CAST: 'custom', FACT: 'custom',
+  BARM: 'custom',
+  BASM: 'custom',
+  BLES: 'custom',
+  CHRA: 'custom',
+  ORDN: 'custom',
+  NCHI: 'custom',
+  NMR: 'custom',
+  PROP: 'custom',
+  SSN: 'custom',
+  IDNO: 'custom',
+  NATI: 'custom',
+  CAST: 'custom',
+  FACT: 'custom',
 };
 
 const FAM_EVENT_TAGS: Record<string, EventType> = {
-  MARR: 'marriage', DIV: 'divorce', ENGA: 'engagement', MARB: 'marriage-banns', ANUL: 'annulment',
-  DIVF: 'custom', MARC: 'custom', MARL: 'custom', MARS: 'custom', CENS: 'census', RESI: 'residence', EVEN: 'custom',
+  MARR: 'marriage',
+  DIV: 'divorce',
+  ENGA: 'engagement',
+  MARB: 'marriage-banns',
+  ANUL: 'annulment',
+  DIVF: 'custom',
+  MARC: 'custom',
+  MARL: 'custom',
+  MARS: 'custom',
+  CENS: 'census',
+  RESI: 'residence',
+  EVEN: 'custom',
 };
 
 const EVENT_DETAIL_TAGS = new Set(['TYPE', 'DATE', 'PLAC', 'ADDR', 'CAUS', 'AGE', 'NOTE', 'SOUR', 'OBJE', 'FAMC', 'AGNC', 'RELI', 'RESN']);
@@ -54,15 +108,30 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
   for (const r of records) {
     const id = r.xref ? pointerId(r.xref) : undefined;
     switch (r.tag) {
-      case 'HEAD': parseHeader(ctx, r); break;
-      case 'INDI': if (id) tree.individuals[id] = parseIndividual(ctx, id, r); break;
-      case 'FAM': if (id) tree.families[id] = parseFamily(ctx, id, r); break;
-      case 'SOUR': if (id) tree.sources[id] = parseSource(ctx, id, r); break;
-      case 'REPO': if (id) tree.repositories[id] = parseRepository(ctx, id, r); break;
-      case 'OBJE': if (id) tree.media[id] = parseMedia(ctx, id, r); break;
-      case 'NOTE': break; // inlined wherever referenced
-      case 'TRLR': break;
-      default: tree.extra.push(r);
+      case 'HEAD':
+        parseHeader(ctx, r);
+        break;
+      case 'INDI':
+        if (id) tree.individuals[id] = parseIndividual(ctx, id, r);
+        break;
+      case 'FAM':
+        if (id) tree.families[id] = parseFamily(ctx, id, r);
+        break;
+      case 'SOUR':
+        if (id) tree.sources[id] = parseSource(ctx, id, r);
+        break;
+      case 'REPO':
+        if (id) tree.repositories[id] = parseRepository(ctx, id, r);
+        break;
+      case 'OBJE':
+        if (id) tree.media[id] = parseMedia(ctx, id, r);
+        break;
+      case 'NOTE':
+        break; // inlined wherever referenced
+      case 'TRLR':
+        break;
+      default:
+        tree.extra.push(r);
     }
   }
 
@@ -71,7 +140,12 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
   if (options.repairGeneWeb !== false) repairGeneWeb(tree);
   const unlinked = Object.values(tree.individuals).filter((i) => i.childOf.length === 0 && i.partnerIn.length === 0);
   if (unlinked.length && Object.keys(tree.individuals).length > 1) {
-    tree.importNotes.push({ level: 'info', code: 'unlinked', message: `${unlinked.length} personne(s) non rattachée(s) à aucune famille.`, ids: unlinked.map((i) => i.id) });
+    tree.importNotes.push({
+      level: 'info',
+      code: 'unlinked',
+      message: `${unlinked.length} personne(s) non rattachée(s) à aucune famille.`,
+      ids: unlinked.map((i) => i.id),
+    });
   }
   return tree;
 }
@@ -110,15 +184,22 @@ function mediaOf(ctx: Ctx, r: GedcomRecord): string[] {
   const ids: string[] = [];
   for (const o of children(r, 'OBJE')) {
     const id = pointerId(o.value);
-    if (id) { ids.push(id); continue; }
+    if (id) {
+      ids.push(id);
+      continue;
+    }
     // Inline OBJE (5.5.1 allows FILE directly under the event). Promote to a media record.
     const file = childValue(o, 'FILE');
     if (file) {
       const newId = `M${Object.keys(ctx.tree.media).length + 1}`;
       const fileRec = child(o, 'FILE')!;
       ctx.tree.media[newId] = {
-        id: newId, file, format: childValue(fileRec, 'FORM') ?? childValue(o, 'FORM'),
-        title: childValue(o, 'TITL') ?? childValue(fileRec, 'TITL'), notes: notesOf(ctx, o), extra: [],
+        id: newId,
+        file,
+        format: childValue(fileRec, 'FORM') ?? childValue(o, 'FORM'),
+        title: childValue(o, 'TITL') ?? childValue(fileRec, 'TITL'),
+        notes: notesOf(ctx, o),
+        extra: [],
       };
       ids.push(newId);
     }
@@ -170,8 +251,16 @@ function parsePlace(r: GedcomRecord): Place {
 }
 
 function parseAddress(r: GedcomRecord): string {
-  const lines = [r.value, ...children(r, 'ADR1').map((c) => c.value), ...children(r, 'ADR2').map((c) => c.value), ...children(r, 'ADR3').map((c) => c.value)];
-  const city = childValue(r, 'CITY'), post = childValue(r, 'POST'), stae = childValue(r, 'STAE'), ctry = childValue(r, 'CTRY');
+  const lines = [
+    r.value,
+    ...children(r, 'ADR1').map((c) => c.value),
+    ...children(r, 'ADR2').map((c) => c.value),
+    ...children(r, 'ADR3').map((c) => c.value),
+  ];
+  const city = childValue(r, 'CITY'),
+    post = childValue(r, 'POST'),
+    stae = childValue(r, 'STAE'),
+    ctry = childValue(r, 'CTRY');
   const tail = [post, city].filter(Boolean).join(' ');
   return [...lines.filter(Boolean), tail, stae, ctry].filter(Boolean).join('\n');
 }
@@ -181,20 +270,36 @@ function parseEvent(ctx: Ctx, r: GedcomRecord, type: EventType): Event {
   if (r.value && r.value !== 'Y') e.value = r.value;
   for (const c of r.children) {
     switch (c.tag) {
-      case 'TYPE': e.customType = c.value; break;
-      case 'DATE': e.date = parseDate(c.value); break;
-      case 'PLAC': e.place = parsePlace(c); break;
-      case 'ADDR': e.address = parseAddress(c); break;
-      case 'CAUS': e.cause = c.value; break;
-      case 'AGE': e.age = c.value; break;
+      case 'TYPE':
+        e.customType = c.value;
+        break;
+      case 'DATE':
+        e.date = parseDate(c.value);
+        break;
+      case 'PLAC':
+        e.place = parsePlace(c);
+        break;
+      case 'ADDR':
+        e.address = parseAddress(c);
+        break;
+      case 'CAUS':
+        e.cause = c.value;
+        break;
+      case 'AGE':
+        e.age = c.value;
+        break;
       case 'FAMC': {
         e.adoptionFamilyId = pointerId(c.value);
         const by = childValue(c, 'ADOP');
         if (by === 'HUSB' || by === 'WIFE' || by === 'BOTH') e.adoptedBy = by;
         break;
       }
-      case 'NOTE': case 'SOUR': case 'OBJE': break; // handled below
-      default: e.extra.push(c);
+      case 'NOTE':
+      case 'SOUR':
+      case 'OBJE':
+        break; // handled below
+      default:
+        e.extra.push(c);
     }
   }
   e.notes = notesOf(ctx, r);
@@ -206,7 +311,8 @@ function parseEvent(ctx: Ctx, r: GedcomRecord, type: EventType): Event {
 function parseName(r: GedcomRecord): Name {
   const raw = r.value.trim();
   const m = /^([^/]*)\/([^/]*)\/(.*)$/.exec(raw);
-  let given = raw, surname = '';
+  let given = raw,
+    surname = '';
   let suffix: string | undefined;
   if (m) {
     given = m[1]!.trim();
@@ -215,10 +321,12 @@ function parseName(r: GedcomRecord): Name {
     if (tail) suffix = tail;
   }
   const n: Name = { given, surname };
-  const givn = childValue(r, 'GIVN'), surn = childValue(r, 'SURN');
+  const givn = childValue(r, 'GIVN'),
+    surn = childValue(r, 'SURN');
   if (givn !== undefined) n.given = givn;
   if (surn !== undefined) n.surname = surn;
-  const npfx = childValue(r, 'NPFX'), nsfx = childValue(r, 'NSFX');
+  const npfx = childValue(r, 'NPFX'),
+    nsfx = childValue(r, 'NSFX');
   if (npfx) n.prefix = npfx;
   if (nsfx ?? suffix) n.suffix = nsfx ?? suffix;
   const nick = childValue(r, 'NICK');
@@ -231,18 +339,35 @@ function parseName(r: GedcomRecord): Name {
 function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
   const ind = newIndividual(id);
   for (const c of r.children) {
-    if (c.tag === 'NAME') { ind.names.push(parseName(c)); continue; }
-    if (c.tag === 'SEX') { const s = c.value.trim().toUpperCase().charAt(0); ind.sex = (s === 'M' || s === 'F') ? (s as Sex) : 'U'; continue; }
+    if (c.tag === 'NAME') {
+      ind.names.push(parseName(c));
+      continue;
+    }
+    if (c.tag === 'SEX') {
+      const s = c.value.trim().toUpperCase().charAt(0);
+      ind.sex = s === 'M' || s === 'F' ? (s as Sex) : 'U';
+      continue;
+    }
     if (c.tag === 'FAMC') {
       const fid = pointerId(c.value);
       if (fid) ind.childOf.push({ familyId: fid, pedigree: parsePedigree(childValue(c, 'PEDI')) });
       continue;
     }
-    if (c.tag === 'FAMS') { const fid = pointerId(c.value); if (fid) ind.partnerIn.push(fid); continue; }
-    if (c.tag === 'RESN') { ind.restriction = c.value.trim().toLowerCase(); continue; }
+    if (c.tag === 'FAMS') {
+      const fid = pointerId(c.value);
+      if (fid) ind.partnerIn.push(fid);
+      continue;
+    }
+    if (c.tag === 'RESN') {
+      ind.restriction = c.value.trim().toLowerCase();
+      continue;
+    }
     if (c.tag === 'NOTE' || c.tag === 'SOUR' || c.tag === 'OBJE') continue;
     const et = INDI_EVENT_TAGS[c.tag];
-    if (et) { ind.events.push(parseEvent(ctx, c, et)); continue; }
+    if (et) {
+      ind.events.push(parseEvent(ctx, c, et));
+      continue;
+    }
     ind.extra.push(c);
   }
   ind.notes = notesOf(ctx, r);
@@ -260,12 +385,25 @@ function parsePedigree(v: string | undefined): Pedigree {
 function parseFamily(ctx: Ctx, id: string, r: GedcomRecord): Family {
   const fam = newFamily(id);
   for (const c of r.children) {
-    if (c.tag === 'HUSB') { fam.husbandId = pointerId(c.value); continue; }
-    if (c.tag === 'WIFE') { fam.wifeId = pointerId(c.value); continue; }
-    if (c.tag === 'CHIL') { const cid = pointerId(c.value); if (cid) fam.childIds.push(cid); continue; }
+    if (c.tag === 'HUSB') {
+      fam.husbandId = pointerId(c.value);
+      continue;
+    }
+    if (c.tag === 'WIFE') {
+      fam.wifeId = pointerId(c.value);
+      continue;
+    }
+    if (c.tag === 'CHIL') {
+      const cid = pointerId(c.value);
+      if (cid) fam.childIds.push(cid);
+      continue;
+    }
     if (c.tag === 'NOTE' || c.tag === 'SOUR' || c.tag === 'OBJE') continue;
     const et = FAM_EVENT_TAGS[c.tag];
-    if (et) { fam.events.push(parseEvent(ctx, c, et)); continue; }
+    if (et) {
+      fam.events.push(parseEvent(ctx, c, et));
+      continue;
+    }
     fam.extra.push(c);
   }
   fam.unionType = inferUnionType(fam);
@@ -284,14 +422,30 @@ function parseSource(ctx: Ctx, id: string, r: GedcomRecord): Source {
   const s: Source = { id, title: '', notes: [], mediaIds: [], extra: [] };
   for (const c of r.children) {
     switch (c.tag) {
-      case 'TITL': s.title = c.value; break;
-      case 'AUTH': s.author = c.value; break;
-      case 'ABBR': s.abbreviation = c.value; break;
-      case 'PUBL': s.publication = c.value; break;
-      case 'TEXT': s.text = c.value; break;
-      case 'REPO': s.repositoryId = pointerId(c.value); s.callNumber = childValue(c, 'CALN'); break;
-      case 'NOTE': case 'OBJE': break;
-      default: s.extra.push(c);
+      case 'TITL':
+        s.title = c.value;
+        break;
+      case 'AUTH':
+        s.author = c.value;
+        break;
+      case 'ABBR':
+        s.abbreviation = c.value;
+        break;
+      case 'PUBL':
+        s.publication = c.value;
+        break;
+      case 'TEXT':
+        s.text = c.value;
+        break;
+      case 'REPO':
+        s.repositoryId = pointerId(c.value);
+        s.callNumber = childValue(c, 'CALN');
+        break;
+      case 'NOTE':
+      case 'OBJE':
+        break;
+      default:
+        s.extra.push(c);
     }
   }
   s.notes = notesOf(ctx, r);

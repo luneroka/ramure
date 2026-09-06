@@ -4,28 +4,29 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { mediaDelete, mediaGet, mediaPut } from '../../db';
+import { mediaStore } from '../../store';
 import type { MediaObject } from '../../gedcom/model';
 import { t, type Lang } from '../../i18n';
 import { prepareImage } from '../../media/portraits';
 import { RAMURE_MEDIA_SCHEME } from '../../tree/edit';
 
 export function usePortraitUrl(mediaId: string | undefined): string | undefined {
-  const [url, setUrl] = useState<string>();
+  const [loaded, setLoaded] = useState<{ id: string; url: string }>();
   useEffect(() => {
+    if (!mediaId) return;
     let alive = true;
     let objectUrl: string | undefined;
-    setUrl(undefined);
-    if (mediaId) {
-      mediaGet(mediaId).then((blob) => {
-        if (!alive || !blob) return;
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
-      });
-    }
-    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    mediaStore.get(mediaId).then((blob) => {
+      if (!alive || !blob) return;
+      objectUrl = URL.createObjectURL(blob);
+      setLoaded({ id: mediaId, url: objectUrl });
+    });
+    return () => {
+      alive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [mediaId]);
-  return url;
+  return loaded && loaded.id === mediaId ? loaded.url : undefined;
 }
 
 export function Medallion({ mediaId, size = 64, className = '' }: { mediaId?: string; size?: number; className?: string }) {
@@ -33,7 +34,9 @@ export function Medallion({ mediaId, size = 64, className = '' }: { mediaId?: st
   const w = Math.round(size * 0.78);
   return (
     <span className={`medallion ${className}`} style={{ width: w, height: size }} aria-hidden="true">
-      {url ? <img src={url} alt="" /> : (
+      {url ? (
+        <img src={url} alt="" />
+      ) : (
         <svg viewBox="0 0 40 52" width={w} height={size}>
           <circle cx="20" cy="19" r="8" fill="currentColor" />
           <path d="M4 50c1-11 8-16 16-16s15 5 16 16z" fill="currentColor" />
@@ -59,16 +62,13 @@ export function PortraitPicker({ lang, current, onChange, allocateId }: PickerPr
   const [busy, setBusy] = useState(false);
   const shown = pending ?? current;
 
-  // A picked-then-replaced picture that was never saved is deleted from storage.
-  useEffect(() => () => { /* nothing: pending blobs are cleaned by the caller on cancel */ }, []);
-
   const pick = async (file: File) => {
     setBusy(true);
     try {
       const blob = await prepareImage(file);
       const id = allocateId();
-      await mediaPut(id, blob);
-      if (pending) void mediaDelete(pending);
+      await mediaStore.put(id, blob);
+      if (pending) void mediaStore.delete(pending);
       setPending(id);
       onChange({ id, file: RAMURE_MEDIA_SCHEME + id, format: 'jpg', title: file.name.replace(/\.[^.]+$/, ''), notes: [], extra: [] });
     } finally {
@@ -80,9 +80,33 @@ export function PortraitPicker({ lang, current, onChange, allocateId }: PickerPr
     <div className="portrait-picker">
       <Medallion mediaId={shown} size={96} />
       <div className="portrait-actions">
-        <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }} />
-        <button type="button" className="btn" disabled={busy} onClick={() => input.current?.click()}>{shown ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}</button>
-        {shown && <button type="button" className="btn subtle" onClick={() => { if (pending) void mediaDelete(pending); setPending(undefined); onChange(null); }}>{t(lang, 'removePhoto')}</button>}
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void pick(f);
+            e.target.value = '';
+          }}
+        />
+        <button type="button" className="btn" disabled={busy} onClick={() => input.current?.click()}>
+          {shown ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+        </button>
+        {shown && (
+          <button
+            type="button"
+            className="btn subtle"
+            onClick={() => {
+              if (pending) void mediaStore.delete(pending);
+              setPending(undefined);
+              onChange(null);
+            }}
+          >
+            {t(lang, 'removePhoto')}
+          </button>
+        )}
         <p className="muted small">{t(lang, 'photoHint')}</p>
       </div>
     </div>

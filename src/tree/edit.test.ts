@@ -3,7 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { parseGedcom } from '../gedcom/parse';
 import { serializeGedcom } from '../gedcom/serialize';
 import { displayName, type Tree } from '../gedcom/model';
-import { addChild, addParent, addPartner, addSibling, deletePerson, linkPartner, mergePeople, newTree, nextId, unlinkChild, updatePerson } from './edit';
+import {
+  addChild,
+  addParent,
+  addPartner,
+  addSibling,
+  deletePerson,
+  linkPartner,
+  mergePeople,
+  newTree,
+  nextId,
+  unlinkChild,
+  updatePerson,
+} from './edit';
+import { isGeneratedId } from './ids';
 
 const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
 
@@ -11,10 +24,17 @@ const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fix
 function assertConsistent(tree: Tree): void {
   for (const ind of Object.values(tree.individuals)) {
     for (const l of ind.childOf) expect(tree.families[l.familyId]?.childIds, `${ind.id} childOf ${l.familyId}`).toContain(ind.id);
-    for (const f of ind.partnerIn) { const fam = tree.families[f]!; expect([fam.husbandId, fam.wifeId], `${ind.id} partnerIn ${f}`).toContain(ind.id); }
+    for (const f of ind.partnerIn) {
+      const fam = tree.families[f]!;
+      expect([fam.husbandId, fam.wifeId], `${ind.id} partnerIn ${f}`).toContain(ind.id);
+    }
   }
   for (const fam of Object.values(tree.families)) {
-    for (const c of fam.childIds) expect(tree.individuals[c]?.childOf.map((l) => l.familyId), `${fam.id} child ${c}`).toContain(fam.id);
+    for (const c of fam.childIds)
+      expect(
+        tree.individuals[c]?.childOf.map((l) => l.familyId),
+        `${fam.id} child ${c}`,
+      ).toContain(fam.id);
     for (const p of [fam.husbandId, fam.wifeId]) if (p) expect(tree.individuals[p]?.partnerIn, `${fam.id} partner ${p}`).toContain(fam.id);
     expect(fam.husbandId || fam.wifeId || fam.childIds.length, `${fam.id} empty`).toBeTruthy();
   }
@@ -29,7 +49,7 @@ describe('edit operations', () => {
     expect(JSON.stringify(base)).toBe(before);
   });
 
-  it('adds a child to a couple, with the father\'s surname', () => {
+  it("adds a child to a couple, with the father's surname", () => {
     const r = addChild(base, 'I1', { given: 'Paul' });
     const child = r.tree.individuals[r.focusId!]!;
     expect(displayName(child)).toBe('Paul AUBRY');
@@ -130,10 +150,14 @@ describe('edit operations', () => {
     expect(again.individuals['I1']!.restriction).toBe('privacy');
   });
 
-  it('starts a new tree and allocates ids past the maximum', () => {
+  it('starts a new tree with a generated id, and honours explicit ids', () => {
     const r = newTree('Jean', 'DUPONT', 'M');
-    expect(r.focusId).toBe('I1');
+    expect(isGeneratedId(r.focusId!)).toBe(true);
+    const c = addChild(base, 'I1', { given: 'X' }, undefined, { person: 'Iabcdefghijk' });
+    expect(c.focusId).toBe('Iabcdefghijk');
+    const p = addPartner(base, 'I33', {}, { person: 'Ipppppppppp1', family: 'Fffffffffff1' });
+    expect(p.tree.families['Fffffffffff1']!.wifeId).toBe('I33');
+    expect(() => addChild(base, 'I1', {}, undefined, { person: 'I1' })).toThrow('Duplicate id');
     expect(nextId(base, 'I')).toBe('I34');
-    expect(nextId(base, 'F')).toBe('F14');
   });
 });

@@ -55,7 +55,13 @@ describe('input fixture (our own GEDCOM)', () => {
     const text = serializeGedcom(input, { date: new Date(2026, 8, 6) });
     const again = parseGedcom(text);
     // Line numbers of preserved raw records legitimately move; nothing else may.
-    const strip = (t: Tree) => JSON.parse(JSON.stringify({ ...t, header: { ...t.header, date: undefined, sourceVersion: undefined, sourceSystem: undefined }, importNotes: [] }, (k, v) => (k === 'line' ? undefined : v)));
+    const strip = (t: Tree) =>
+      JSON.parse(
+        JSON.stringify(
+          { ...t, header: { ...t.header, date: undefined, sourceVersion: undefined, sourceSystem: undefined }, importNotes: [] },
+          (k, v) => (k === 'line' ? undefined : v),
+        ),
+      );
     expect(strip(again)).toEqual(strip(input));
     // Nothing longer than the spec allows.
     for (const line of text.split('\n')) expect(line.length).toBeLessThanOrEqual(255);
@@ -126,7 +132,8 @@ describe('Geneanet export (GeneWeb dialect)', () => {
       const twin = exported.individuals[ind.id]!;
       expect(displayName(twin)).toBe(displayName(ind));
       for (const type of ['birth', 'death', 'burial', 'baptism'] as const) {
-        const a = findEvent(ind.events, type), b = findEvent(twin.events, type);
+        const a = findEvent(ind.events, type),
+          b = findEvent(twin.events, type);
         expect(!!a).toBe(!!b);
         if (a && b && a.date && a.date.kind !== 'calculated' && a.date.kind !== 'from-to') {
           expect(b.date?.date?.year).toBe(a.date.date?.year);

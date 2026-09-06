@@ -31,8 +31,10 @@ export function repairGeneWeb(tree: Tree): void {
     repairAdoptions(tree);
     dropParentlessFamilies(tree);
     tree.importNotes.push({
-      level: 'info', code: 'geneweb',
-      message: 'Fichier exporté par GeneWeb (Geneanet). Les coordonnées, les flags de confidentialité, les médias et la structure des sources ne sont pas présents dans ce format d\'export.',
+      level: 'info',
+      code: 'geneweb',
+      message:
+        "Fichier exporté par GeneWeb (Geneanet). Les coordonnées, les flags de confidentialité, les médias et la structure des sources ne sont pas présents dans ce format d'export.",
     });
   }
 }
@@ -42,7 +44,12 @@ function unknownGivenName(tree: Tree, ind: Individual): void {
   for (const n of ind.names) {
     if (n.given === 'x' || n.given === 'X' || n.given === '?') {
       n.given = '';
-      tree.importNotes.push({ level: 'info', code: 'unknown-given', message: `Prénom inconnu (« ${'x'} ») remplacé par un prénom vide.`, ids: [ind.id] });
+      tree.importNotes.push({
+        level: 'info',
+        code: 'unknown-given',
+        message: `Prénom inconnu (« ${'x'} ») remplacé par un prénom vide.`,
+        ids: [ind.id],
+      });
     }
   }
 }
@@ -66,7 +73,9 @@ function liftAddressFromNote(events: Event[]): void {
     if (e.address) continue;
     const idx = e.notes.findIndex((n) => /^address\s*:/i.test(n));
     if (idx >= 0) {
-      const lines = e.notes[idx]!.split('\n').map((l) => l.replace(/^address\s*:\s*/i, '').trim()).filter(Boolean);
+      const lines = e.notes[idx]!.split('\n')
+        .map((l) => l.replace(/^address\s*:\s*/i, '').trim())
+        .filter(Boolean);
       const parts = lines.flatMap((l) => l.split(',').map((s) => s.trim())).filter(Boolean);
       if (parts.length) e.address = parts.join(', ');
       e.notes.splice(idx, 1);
@@ -98,7 +107,14 @@ function dedupeOccupation(tree: Tree, ind: Individual): void {
 
 /** "1 EVEN / 2 TYPE unmarried" on a family is GeneWeb's relation kind, not an event. */
 function unionTypeFromEvent(fam: Family): void {
-  const idx = fam.events.findIndex((e) => e.type === 'custom' && e.tag === 'EVEN' && !e.date && !e.place && /^(unmarried|no mention|engaged|pacs|civil|marriage contract|marriage license)$/i.test(e.customType ?? ''));
+  const idx = fam.events.findIndex(
+    (e) =>
+      e.type === 'custom' &&
+      e.tag === 'EVEN' &&
+      !e.date &&
+      !e.place &&
+      /^(unmarried|no mention|engaged|pacs|civil|marriage contract|marriage license)$/i.test(e.customType ?? ''),
+  );
   if (idx < 0) return;
   const t = fam.events[idx]!.customType!.toLowerCase();
   if (t === 'unmarried' || t === 'no mention') fam.unionType = 'unmarried';
@@ -123,7 +139,9 @@ function repairAdoptions(tree: Tree): void {
       const alreadyChild = ind.childOf.some((l) => l.familyId === adoptive.id);
       if (adoptive.childIds.length === 0 && !alreadyChild) {
         // Look for the "real" family with the same partners that lists other children or events.
-        const twin = Object.values(tree.families).find((f) => f.id !== adoptive.id && f.husbandId === adoptive.husbandId && f.wifeId === adoptive.wifeId);
+        const twin = Object.values(tree.families).find(
+          (f) => f.id !== adoptive.id && f.husbandId === adoptive.husbandId && f.wifeId === adoptive.wifeId,
+        );
         const target = twin ?? adoptive;
         if (!target.childIds.includes(ind.id)) target.childIds.push(ind.id);
         const link = ind.childOf.find((l) => l.familyId === target.id);
@@ -134,13 +152,20 @@ function repairAdoptions(tree: Tree): void {
           delete tree.families[adoptive.id];
           for (const p of Object.values(tree.individuals)) p.partnerIn = p.partnerIn.filter((id) => id !== adoptive.id);
         }
-        tree.importNotes.push({ level: 'warning', code: 'adoption-repaired', message: 'Adoption reconstruite : enfant rattaché à la famille de ses parents adoptifs.', ids: [ind.id, target.id] });
+        tree.importNotes.push({
+          level: 'warning',
+          code: 'adoption-repaired',
+          message: 'Adoption reconstruite : enfant rattaché à la famille de ses parents adoptifs.',
+          ids: [ind.id, target.id],
+        });
       } else if (alreadyChild) {
         const link = ind.childOf.find((l) => l.familyId === adoptive.id)!;
         link.pedigree = 'adopted';
       }
       // GeneWeb appends a sentence to the person's note; remove it.
-      ind.notes = ind.notes.map((n) => n.replace(/\n*\s*Family child Pedigree linkage type:\s*\w+\s*$/i, '').replace(/\n+$/, '')).filter((n) => n.length);
+      ind.notes = ind.notes
+        .map((n) => n.replace(/\n*\s*Family child Pedigree linkage type:\s*\w+\s*$/i, '').replace(/\n+$/, ''))
+        .filter((n) => n.length);
     }
   }
 }
@@ -154,6 +179,11 @@ function dropParentlessFamilies(tree: Tree): void {
       const c = tree.individuals[cid];
       if (c) c.childOf = c.childOf.filter((l) => l.familyId !== fam.id);
     }
-    tree.importNotes.push({ level: 'info', code: 'empty-family-dropped', message: 'Famille sans parents supprimée (artefact GeneWeb).', ids: [fam.id, ...fam.childIds] });
+    tree.importNotes.push({
+      level: 'info',
+      code: 'empty-family-dropped',
+      message: 'Famille sans parents supprimée (artefact GeneWeb).',
+      ids: [fam.id, ...fam.childIds],
+    });
   }
 }

@@ -25,7 +25,17 @@ interface GouvCommune {
 }
 
 interface PhotonFeature {
-  properties: { name?: string; city?: string; town?: string; village?: string; county?: string; state?: string; country?: string; osm_value?: string; type?: string };
+  properties: {
+    name?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+    osm_value?: string;
+    type?: string;
+  };
   geometry?: { coordinates: [number, number] };
 }
 
@@ -39,7 +49,9 @@ async function frenchCommunes(q: string, signal: AbortSignal): Promise<PlaceSugg
   const res = await fetch(url, { signal });
   if (!res.ok) return [];
   const data = (await res.json()) as GouvCommune[];
-  return data.map((c) => make([c.nom, c.departement?.nom ?? '', c.region?.nom ?? '', 'France'], c.centre?.coordinates[1], c.centre?.coordinates[0], 'fr'));
+  return data.map((c) =>
+    make([c.nom, c.departement?.nom ?? '', c.region?.nom ?? '', 'France'], c.centre?.coordinates[1], c.centre?.coordinates[0], 'fr'),
+  );
 }
 
 async function photon(q: string, lang: string, signal: AbortSignal): Promise<PlaceSuggestion[]> {
@@ -48,7 +60,12 @@ async function photon(q: string, lang: string, signal: AbortSignal): Promise<Pla
   if (!res.ok) return [];
   const data = (await res.json()) as { features?: PhotonFeature[] };
   return (data.features ?? [])
-    .filter((f) => ['city', 'town', 'village', 'hamlet', 'municipality', 'locality', 'suburb', 'county', 'state', 'country', 'island'].includes(f.properties.osm_value ?? '') || f.properties.type === 'city')
+    .filter(
+      (f) =>
+        ['city', 'town', 'village', 'hamlet', 'municipality', 'locality', 'suburb', 'county', 'state', 'country', 'island'].includes(
+          f.properties.osm_value ?? '',
+        ) || f.properties.type === 'city',
+    )
     .map((f) => {
       const p = f.properties;
       const locality = p.city ?? p.town ?? p.village;
@@ -67,10 +84,12 @@ export async function searchPlaces(q: string, lang: 'fr' | 'en', signal: AbortSi
   if (osm.status === 'fulfilled') out.push(...osm.value);
   // Drop OSM duplicates of French communes already listed.
   const seen = new Set<string>();
-  return out.filter((s) => {
-    const key = s.parts.slice(0, 2).join('|').toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, 8);
+  return out
+    .filter((s) => {
+      const key = s.parts.slice(0, 2).join('|').toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
 }
