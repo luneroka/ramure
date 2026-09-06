@@ -6,7 +6,7 @@ Everything runs in the browser. A tree is a GEDCOM file kept in IndexedDB; nothi
 
 ## Status
 
-Phases 1 and 2 of the plan in `docs/design-brief.html`: viewer and editor.
+Phases 1 to 3 of the plan in `docs/design-brief.html` are done (viewer, editor, accounts and sync); phase 4 is in progress in the order listed there.
 
 - GEDCOM 5.5.1 import with a dedicated repair pass for Geneanet (GeneWeb) exports, see `docs/phase0-geneanet-roundtrip.md`.
 - Hourglass canvas: ancestors above, descendants below, partners beside. Pan, pinch, wheel zoom, tap to select, tap again to re-centre.
