@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatDate } from '../gedcom/dates';
 import { displayName, findEvent, placeText, type Event, type Family, type Individual, type Tree } from '../gedcom/model';
-import { eventLabel, t, type Lang } from '../i18n';
+import { eventLabel, t, tg, type Lang } from '../i18n';
 import { isLiving } from '../canvas/renderer';
 import type { FamilyPatch, PersonPatch } from '../tree/edit';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
@@ -118,7 +118,7 @@ export function PersonPanel(props: Props) {
           <div className="panel-tags">
             {person.names[0]?.nick && <span className="tag">« {person.names[0].nick} »</span>}
             {person.names.slice(1).map((n, i) => <span key={i} className="tag">{[n.given, n.surname].filter(Boolean).join(' ')}{n.type ? ` (${n.type})` : ''}</span>)}
-            {living && <span className="tag living">{t(lang, 'living')}</span>}
+            {living && <span className="tag living">{tg(lang, 'living', person.sex)}</span>}
             {person.restriction && <span className="tag">{t(lang, 'private')}</span>}
           </div>
         </div>
@@ -145,7 +145,7 @@ export function PersonPanel(props: Props) {
       {parents.length > 0 && (
         <section>
           <h3>{t(lang, 'parents')}</h3>
-          <ul className="people">{parents.map((p) => <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? t(lang, 'adopted') : undefined} />)}</ul>
+          <ul className="people">{parents.map((p) => <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined} />)}</ul>
         </section>
       )}
       {siblings.length > 0 && (
@@ -167,7 +167,7 @@ export function PersonPanel(props: Props) {
           ].filter(Boolean).join(' · ');
           return (
             <div key={f.id} className="union">
-              <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{t(lang, 'unknownPerson')}</li>}</ul>
+              <ul className="people">{partnerId && tree.individuals[partnerId] ? <Person id={partnerId} /> : <li className="muted">{tg(lang, 'unknownPerson', person.sex === 'M' ? 'F' : person.sex === 'F' ? 'M' : 'U')}</li>}</ul>
               {editingFamily === f.id ? (
                 <FamilyEditor lang={lang} unionType={f.unionType} events={f.events} onCancel={() => setEditingFamily(null)} onSave={(patch) => { props.onSaveFamily(f.id, patch); setEditingFamily(null); }} />
               ) : (
@@ -179,7 +179,7 @@ export function PersonPanel(props: Props) {
               <h4>{t(lang, 'children')}</h4>
               <ul className="people">
                 {f.childIds.filter((c) => tree.individuals[c]).map((c) => (
-                  <Person key={c} id={c} tag={tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted' ? t(lang, 'adopted') : undefined} onRemove={() => props.onUnlinkChild(f.id, c)} />
+                  <Person key={c} id={c} tag={tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted' ? tg(lang, 'adopted', tree.individuals[c]!.sex) : undefined} onRemove={() => props.onUnlinkChild(f.id, c)} />
                 ))}
               </ul>
               <div className="row small-actions">

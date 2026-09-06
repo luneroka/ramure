@@ -5,10 +5,11 @@ export type Lang = 'fr' | 'en';
 const strings = {
   appName: { fr: 'Ramure', en: 'Ramure' },
   tagline: { fr: 'Tout l’arbre, sur une seule toile.', en: 'The whole tree, on one canvas.' },
-  openFile: { fr: 'Ouvrir un GEDCOM', en: 'Open a GEDCOM' },
-  openShort: { fr: 'Ouvrir', en: 'Open' },
+  openFile: { fr: 'Importer un GEDCOM', en: 'Import a GEDCOM' },
+  openShort: { fr: 'Importer', en: 'Import' },
   loadSample: { fr: 'Arbre d’exemple', en: 'Sample tree' },
-  export: { fr: 'Exporter', en: 'Export' },
+  export: { fr: 'Exporter en GEDCOM', en: 'Export as GEDCOM' },
+  unlinkedPeople: { fr: 'personne(s) non rattachée(s) à aucune famille', en: 'person(s) not linked to any family' },
   search: { fr: 'Rechercher une personne…', en: 'Find a person…' },
   fit: { fr: 'Tout voir', en: 'Fit' },
   recentre: { fr: 'Recentrer', en: 'Re-centre' },
@@ -158,4 +159,21 @@ export function applyTheme(choice: ThemeChoice): void {
   if (choice === 'auto') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', choice);
   try { localStorage.setItem('ramure.theme', choice); } catch { /* ignore */ }
+}
+
+/** Strings whose French form depends on the person's sex. Unknown sex keeps the inclusive form. */
+const gendered = {
+  born: { fr: { M: 'né', F: 'née', U: 'né·e' }, en: { M: 'b.', F: 'b.', U: 'b.' } },
+  died: { fr: { M: 'décédé', F: 'décédée', U: 'décédé·e' }, en: { M: 'd.', F: 'd.', U: 'd.' } },
+  living: { fr: { M: 'Vivant', F: 'Vivante', U: 'Vivant·e' }, en: { M: 'Living', F: 'Living', U: 'Living' } },
+  adopted: { fr: { M: 'adopté', F: 'adoptée', U: 'adopté·e' }, en: { M: 'adopted', F: 'adopted', U: 'adopted' } },
+  unknownPerson: { fr: { M: 'Inconnu', F: 'Inconnue', U: 'Inconnu·e' }, en: { M: 'Unknown', F: 'Unknown', U: 'Unknown' } },
+  /** Label for adding a partner: gendered by the partner that will be created, i.e. the opposite of the person. */
+  addPartner: { fr: { M: '+ Conjointe', F: '+ Conjoint', U: '+ Conjoint·e' }, en: { M: '+ Partner', F: '+ Partner', U: '+ Partner' } },
+} as const;
+
+export type GenderedKey = keyof typeof gendered;
+
+export function tg(lang: Lang, key: GenderedKey, sex: 'M' | 'F' | 'U'): string {
+  return gendered[key][lang][sex];
 }

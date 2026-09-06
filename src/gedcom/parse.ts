@@ -69,6 +69,10 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
   linkFamilies(tree);
 
   if (options.repairGeneWeb !== false) repairGeneWeb(tree);
+  const unlinked = Object.values(tree.individuals).filter((i) => i.childOf.length === 0 && i.partnerIn.length === 0);
+  if (unlinked.length && Object.keys(tree.individuals).length > 1) {
+    tree.importNotes.push({ level: 'info', code: 'unlinked', message: `${unlinked.length} personne(s) non rattachée(s) à aucune famille.`, ids: unlinked.map((i) => i.id) });
+  }
   return tree;
 }
 

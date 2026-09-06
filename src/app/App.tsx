@@ -4,7 +4,7 @@ import type { DetailBand, HandleKind } from '../canvas/renderer';
 import { kvGet, kvSet, listSnapshots, loadSnapshot, saveSnapshot, TREE_KEY, type SavedTree, type Snapshot } from '../db';
 import { parseGedcom, serializeGedcom } from '../gedcom';
 import { displayName, type Tree } from '../gedcom/model';
-import { applyTheme, detectLang, loadTheme, saveLang, t, type Lang, type ThemeChoice } from '../i18n';
+import { applyTheme, detectLang, loadTheme, saveLang, t, tg, type Lang, type ThemeChoice } from '../i18n';
 import { addChild, addParent, addPartner, addSibling, deletePerson, linkChild, linkPartner, mergePeople, newTree, unlinkChild, updateFamily, updatePerson, type EditResult, type FamilyPatch } from '../tree/edit';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
@@ -28,6 +28,13 @@ function defaultFocus(tree: Tree): string | undefined {
 }
 
 const SNAPSHOT_EVERY_MS = 10 * 60 * 1000;
+
+function ThemeIcon({ choice }: { choice: ThemeChoice }) {
+  const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
+  if (choice === 'light') return <svg {...common}><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></svg>;
+  if (choice === 'dark') return <svg {...common}><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" /></svg>;
+  return <svg {...common}><circle cx="12" cy="12" r="8.5" /><path d="M12 3.5v17A8.5 8.5 0 0 0 12 3.5z" fill="currentColor" stroke="none" /></svg>;
+}
 
 export function App() {
   const [lang, setLang] = useState<Lang>(detectLang);
@@ -173,7 +180,7 @@ export function App() {
     const out: Array<{ kind: AddKind; label: string }> = [];
     if (!fam?.husbandId) out.push({ kind: 'father', label: t(lang, 'addFather') });
     if (!fam?.wifeId) out.push({ kind: 'mother', label: t(lang, 'addMother') });
-    out.push({ kind: 'partner', label: t(lang, 'addPartner') }, { kind: 'child', label: t(lang, 'addChild') }, { kind: 'sibling', label: t(lang, 'addSibling') });
+    out.push({ kind: 'partner', label: tg(lang, 'addPartner', ind.sex) }, { kind: 'child', label: t(lang, 'addChild') }, { kind: 'sibling', label: t(lang, 'addSibling') });
     return out;
   };
 
@@ -300,18 +307,20 @@ export function App() {
               <button className="btn icon" onClick={redo} disabled={!history.future.length} aria-label={t(lang, 'redo')} title={`${t(lang, 'redo')} (⇧⌘Z)`}>↷</button>
             </>
           )}
-          <button className="btn" onClick={() => fileInput.current?.click()}><span className="long">{t(lang, 'openFile')}</span><span className="short">{t(lang, 'openShort')}</span></button>
-          {tree && <button className="btn" onClick={exportGedcom}>{t(lang, 'export')}</button>}
+          <button className="btn icon" onClick={cycleTheme} aria-label={`${t(lang, 'theme')} : ${theme === 'auto' ? t(lang, 'themeAuto') : theme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`} title={`${t(lang, 'theme')} : ${theme === 'auto' ? t(lang, 'themeAuto') : theme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`}>
+            <ThemeIcon choice={theme} />
+          </button>
+          <button className="btn icon lang" onClick={switchLang} aria-label={t(lang, 'language')} title={t(lang, 'language')}>{lang.toUpperCase()}</button>
           <div className="menu-wrap">
             <button className="btn icon" onClick={() => setMenuOpen((v) => !v)} aria-label={t(lang, 'menu')} aria-expanded={menuOpen}>⋯</button>
             {menuOpen && (
               <ul className="menu" role="menu" onMouseLeave={() => setMenuOpen(false)}>
+                <li><button onClick={() => { setMenuOpen(false); fileInput.current?.click(); }}>{t(lang, 'openFile')}</button></li>
+                {tree && <li><button onClick={() => { setMenuOpen(false); exportGedcom(); }}>{t(lang, 'export')}</button></li>}
+                <li className="sep" />
                 <li><button onClick={startNewTree}>{t(lang, 'newTree')}</button></li>
                 <li><button onClick={openSnapshots}>{t(lang, 'snapshots')}</button></li>
                 {tree && tree.importNotes.length > 0 && <li><button onClick={() => { setShowReport(true); setMenuOpen(false); }}>{t(lang, 'importReport')} ({tree.importNotes.length})</button></li>}
-                <li className="sep" />
-                <li><button onClick={cycleTheme}>{t(lang, 'theme')} : {theme === 'auto' ? t(lang, 'themeAuto') : theme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}</button></li>
-                <li><button onClick={switchLang}>{t(lang, 'language')} : {lang === 'fr' ? 'Français → English' : 'English → Français'}</button></li>
               </ul>
             )}
           </div>

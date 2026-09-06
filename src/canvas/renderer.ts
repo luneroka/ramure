@@ -8,7 +8,7 @@
 import { approximateYear, formatDate } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
 import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
-import type { Lang } from '../i18n';
+import { tg, type Lang } from '../i18n';
 
 export interface Camera { x: number; y: number; k: number }
 
@@ -75,7 +75,7 @@ function lifespan(ind: Individual, lang: Lang): string {
   const bs = by !== undefined ? String(by) : b?.date ? formatDate(b.date, lang) : '';
   const ds = dy !== undefined ? String(dy) : d?.date ? formatDate(d.date, lang) : '';
   if (d) return `${bs || '?'} – ${ds || '?'}`;
-  if (bs) return (lang === 'fr' ? 'né·e ' : 'b. ') + bs;
+  if (bs) return tg(lang, 'born', ind.sex) + ' ' + bs;
   return '';
 }
 
@@ -94,6 +94,18 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/** Polyline with softly rounded corners. */
+function tracePolyline(ctx: CanvasRenderingContext2D, pts: Array<[number, number]>, radius: number): void {
+  ctx.moveTo(pts[0]![0], pts[0]![1]);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1]!, [cx, cy] = pts[i]!, [nx, ny] = pts[i + 1]!;
+    const r = Math.min(radius, Math.hypot(cx - px, cy - py) / 2, Math.hypot(nx - cx, ny - cy) / 2);
+    ctx.arcTo(cx, cy, nx, ny, r);
+  }
+  const last = pts[pts.length - 1]!;
+  ctx.lineTo(last[0], last[1]);
 }
 
 const ellipsisCache = new Map<string, string>();
@@ -143,11 +155,10 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   for (const l of layout.links) {
     const p0 = l.points[0]!, p1 = l.points[l.points.length - 1]!;
     if (Math.max(p0[0], p1[0]) < vis.minX || Math.min(p0[0], p1[0]) > vis.maxX || Math.max(p0[1], p1[1]) < vis.minY || Math.min(p0[1], p1[1]) > vis.maxY) continue;
-    ctx.strokeStyle = l.kind === 'partner' ? T.line2 : T.connector;
-    ctx.lineWidth = (l.kind === 'partner' ? 1.5 : 1.5) / Math.max(k, 0.4);
+    ctx.strokeStyle = T.connector;
+    ctx.lineWidth = Math.min(1.25 / Math.max(k, 0.35), 2.4);
     ctx.beginPath();
-    ctx.moveTo(p0[0], p0[1]);
-    for (let i = 1; i < l.points.length; i++) ctx.lineTo(l.points[i]![0], l.points[i]![1]);
+    tracePolyline(ctx, l.points, 10);
     ctx.stroke();
   }
 
