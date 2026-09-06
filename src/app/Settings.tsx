@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { t, type Lang, type ThemeChoice } from '../i18n';
 import { api, type Account, type AccountMember, type Me } from '../sync/api';
+import type { AskSpec } from './Modal';
 
 export type DefaultView = 'all' | 'hourglass';
 
@@ -24,6 +25,7 @@ interface Props {
   onDefaultView(v: DefaultView): void;
   onBack(): void;
   toast(msg: string): void;
+  ask(spec: AskSpec): Promise<string | null>;
 }
 
 export function Settings(p: Props) {
@@ -35,6 +37,8 @@ export function Settings(p: Props) {
   const [link, setLink] = useState<string | null>(null);
   const [refresh, setRefresh] = useState(0);
   const owner = account?.role === 'owner';
+  const ownerCount = members.filter((m) => m.role === 'owner').length;
+  const lastOwner = owner && ownerCount <= 1;
 
   useEffect(() => {
     if (!account) return;
@@ -117,7 +121,10 @@ export function Settings(p: Props) {
                       onChange={(e) =>
                         api
                           .setAccountRole(account.id, m.id, e.target.value as 'owner' | 'member')
-                          .then(() => setRefresh((n) => n + 1))
+                          .then(() => {
+                            setRefresh((n) => n + 1);
+                            p.toast(t(lang, 'roleChanged'));
+                          })
                           .catch(() => p.toast(t(lang, 'lastOwner')))
                       }
                     >
@@ -132,7 +139,19 @@ export function Settings(p: Props) {
                       className="icon-btn small"
                       title={t(lang, 'removeMember')}
                       aria-label={t(lang, 'removeMember')}
-                      onClick={() => api.removeAccountMember(account.id, m.id).then(() => setRefresh((n) => n + 1))}
+                      onClick={async () => {
+                        const ok = await p.ask({
+                          title: t(lang, 'removeMemberTitle'),
+                          message: `${m.name || m.email} · ${t(lang, 'removeMemberMessage')}`,
+                          confirmLabel: t(lang, 'removeMember'),
+                          danger: true,
+                        });
+                        if (ok === null) return;
+                        api.removeAccountMember(account.id, m.id).then(() => {
+                          setRefresh((n) => n + 1);
+                          p.toast(t(lang, 'memberRemoved'));
+                        });
+                      }}
                     >
                       ⨯
                     </button>
@@ -151,6 +170,7 @@ export function Settings(p: Props) {
                       api.createAccountInvite(account.id).then((r) => {
                         setLink(r.link);
                         setRefresh((n) => n + 1);
+                        p.toast(t(lang, 'linkCreated'));
                       })
                     }
                   >
@@ -188,16 +208,25 @@ export function Settings(p: Props) {
             <div className="row" style={{ marginTop: 10 }}>
               <button
                 className="btn subtle danger-text"
-                onClick={() => {
-                  if (window.confirm(t(lang, 'leaveAccountConfirm')))
-                    api
-                      .removeAccountMember(account.id, p.user.id)
-                      .then(p.onLeftAccount)
-                      .catch(() => p.toast(t(lang, 'lastOwner')));
+                disabled={lastOwner}
+                title={lastOwner ? t(lang, 'lastOwnerLeave') : undefined}
+                onClick={async () => {
+                  const ok = await p.ask({
+                    title: t(lang, 'leaveAccountTitle'),
+                    message: t(lang, 'leaveAccountConfirm'),
+                    confirmLabel: t(lang, 'leaveAccount'),
+                    danger: true,
+                  });
+                  if (ok === null) return;
+                  api
+                    .removeAccountMember(account.id, p.user.id)
+                    .then(p.onLeftAccount)
+                    .catch(() => p.toast(t(lang, 'lastOwner')));
                 }}
               >
                 {t(lang, 'leaveAccount')}
               </button>
+              {lastOwner && <span className="muted small">{t(lang, 'lastOwnerLeave')}</span>}
             </div>
           </>
         )}

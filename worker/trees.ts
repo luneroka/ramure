@@ -237,11 +237,41 @@ trees.get('/:id/snapshots', async (c) => {
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
   const rows = await c.env.DB.prepare(
-    `SELECT id, version, created_at FROM tree_snapshots WHERE tree_id = ? ORDER BY created_at DESC LIMIT 50`,
+    `SELECT s.id, s.version, s.created_at, s.label, u.name AS by_name, u.email AS by_email FROM tree_snapshots s LEFT JOIN users u ON u.id = s.created_by WHERE s.tree_id = ? ORDER BY s.created_at DESC LIMIT 100`,
   )
     .bind(id)
-    .all<{ id: string; version: number; created_at: number }>();
-  return c.json({ snapshots: rows.results });
+    .all<{ id: string; version: number; created_at: number; label: string | null; by_name: string | null; by_email: string | null }>();
+  return c.json({
+    snapshots: rows.results.map((r) => ({
+      id: r.id,
+      version: r.version,
+      created_at: r.created_at,
+      label: r.label,
+      by: r.by_name || r.by_email || null,
+    })),
+  });
+});
+
+/** Save a named version of the current document. */
+trees.post('/:id/snapshots', async (c) => {
+  const user = requireUser(c.get('user'));
+  const id = c.req.param('id');
+  await requireRole(c.env, id, user, ['owner', 'editor']);
+  const body = await c.req.json<{ label?: string }>().catch(() => ({}) as { label?: string });
+  const label =
+    String(body.label ?? '')
+      .trim()
+      .slice(0, 120) || null;
+  const row = await c.env.DB.prepare(`SELECT version, doc FROM trees WHERE id = ?`).bind(id).first<{ version: number; doc: string }>();
+  if (!row) throw new HttpError(404, 'tree not found');
+  const sid = randomId('S');
+  const ts = now();
+  await c.env.DB.prepare(
+    `INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at, label, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(sid, id, row.version, row.doc, ts, label, user.id)
+    .run();
+  return c.json({ id: sid, version: row.version, created_at: ts, label }, 201);
 });
 
 trees.get('/:id/snapshots/:sid', async (c) => {

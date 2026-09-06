@@ -107,7 +107,12 @@ export const api = {
     }),
 
   listSnapshots: (id: string) =>
-    call<{ snapshots: Array<{ id: string; version: number; created_at: number }> }>('GET', `/api/trees/${id}/snapshots`),
+    call<{ snapshots: Array<{ id: string; version: number; created_at: number; label: string | null; by: string | null }> }>(
+      'GET',
+      `/api/trees/${id}/snapshots`,
+    ),
+  saveSnapshot: (id: string, label: string) =>
+    call<{ id: string; version: number; created_at: number; label: string | null }>('POST', `/api/trees/${id}/snapshots`, { label }),
   getSnapshot: (id: string, sid: string) =>
     call<{ doc: string; version: number; created_at: number }>('GET', `/api/trees/${id}/snapshots/${sid}`),
 

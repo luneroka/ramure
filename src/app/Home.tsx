@@ -16,7 +16,6 @@ interface Props {
   onOpenTree(tree: TreeSummary): void;
   onImport(): void;
   onNewTree(): void;
-  onDeleteTree(tree: TreeSummary): void;
   refreshKey: number;
   busy: boolean;
   /** Lets the parent reuse the list (tree switcher). */
@@ -122,16 +121,6 @@ export function Home(p: Props) {
                 </span>
                 <span className="tree-card-open">{t(lang, 'openTree')} →</span>
               </button>
-              {account.role === 'owner' && (
-                <button
-                  className="icon-btn small tree-card-delete"
-                  title={t(lang, 'deleteTree')}
-                  aria-label={t(lang, 'deleteTree')}
-                  onClick={() => p.onDeleteTree(tr)}
-                >
-                  ⨯
-                </button>
-              )}
             </li>
           ))}
         </ul>

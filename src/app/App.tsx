@@ -16,6 +16,7 @@ import { layoutEverything } from '../tree/layoutAll';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
+import { Modal, type AskSpec, type Pending } from './Modal';
 import { TreeMenu, UserMenu } from './Menus';
 import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
@@ -150,10 +151,32 @@ export function App() {
   const [showReport, setShowReport] = useState(false);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [snapshots, setSnapshots] = useState<Array<{ id: string; version: number; created_at: number }> | null>(null);
+  const [snapshots, setSnapshots] = useState<Array<{
+    id: string;
+    version: number;
+    created_at: number;
+    label: string | null;
+    by: string | null;
+  }> | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const canvas = useRef<TreeCanvasHandle>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const [pending, setPending] = useState<Pending | null>(null);
+  /** Ask the user something through the modal. Resolves with the text (or 'ok'), null when cancelled. */
+  const ask = useCallback(
+    (spec: AskSpec) =>
+      new Promise<string | null>((resolve) =>
+        setPending({
+          spec,
+          resolve: (v) => {
+            setPending(null);
+            resolve(v);
+          },
+        }),
+      ),
+    [],
+  );
 
   const toast = useCallback((msg: string) => {
     setNotice(msg);
@@ -564,6 +587,7 @@ export function App() {
     try {
       const created = await api.createTree(account.id, name, gedcom);
       await openCloud(created.id, created.name, created.role);
+      toast(t(lang, 'treeCreated'));
       if (thenEdit) {
         const first = engine.current?.current ? Object.keys(engine.current.current.individuals)[0] : undefined;
         if (first) {
@@ -606,8 +630,12 @@ export function App() {
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
 
-  const startNewTree = () => {
-    const name = window.prompt(t(lang, 'treeName'), account?.name ?? '');
+  const startNewTree = async () => {
+    const name = await ask({
+      title: t(lang, 'newTree'),
+      input: { label: t(lang, 'treeName'), initial: account?.name ?? '' },
+      confirmLabel: t(lang, 'create'),
+    });
     if (name === null) return;
     const r = newTree('', '', 'U');
     void createTreeFrom(name.trim() || t(lang, 'newTreeName').replace(/\.ged$/, ''), serializeGedcom(r.tree), true);
@@ -623,18 +651,27 @@ export function App() {
       dispatch({ type: 'rename', fileName: name });
       localStorage.setItem(LAST_TREE_KEY, JSON.stringify({ ...source, name }));
       setTreeList((l) => l.map((x) => (x.id === source.id ? { ...x, name } : x)));
-      toast(t(lang, 'saved'));
+      toast(t(lang, 'treeRenamed'));
     } catch {
       toast(t(lang, 'syncError'));
     }
   };
 
   const deleteTree = async (tr: TreeSummary) => {
-    if (!window.confirm(t(lang, 'deleteTreeConfirm'))) return;
+    const answer = await ask({
+      title: t(lang, 'deleteTreeTitle'),
+      message: t(lang, 'deleteTreeMessage'),
+      confirmLabel: t(lang, 'deleteTree'),
+      danger: true,
+      requireText: tr.name,
+    });
+    if (answer === null) return;
     try {
       await api.deleteTree(tr.id);
+      void engine.current?.forget();
       if (source?.id === tr.id) goHome();
       setHomeRefresh((n) => n + 1);
+      toast(t(lang, 'treeDeleted'));
     } catch {
       toast(t(lang, 'syncError'));
     }
@@ -645,13 +682,32 @@ export function App() {
     const r = await api.listSnapshots(source.id);
     setSnapshots(r.snapshots);
   };
+  const saveVersion = async () => {
+    if (!source) return;
+    await engine.current?.sync();
+    const label = await ask({
+      title: t(lang, 'saveVersion'),
+      input: { label: t(lang, 'versionLabel'), placeholder: t(lang, 'versionLabelHint') },
+      confirmLabel: t(lang, 'save'),
+    });
+    if (label === null) return;
+    try {
+      await api.saveSnapshot(source.id, label);
+      toast(t(lang, 'versionSaved'));
+      if (snapshots) setSnapshots((await api.listSnapshots(source.id)).snapshots);
+    } catch {
+      toast(t(lang, 'syncError'));
+    }
+  };
   const restoreSnapshot = async (sid: string) => {
     if (!source) return;
+    const answer = await ask({ title: t(lang, 'restoreTitle'), message: t(lang, 'restoreMessage'), confirmLabel: t(lang, 'restore') });
+    if (answer === null) return;
     const s = await api.getSnapshot(source.id, sid);
     if (tree) commit(ops.replaceTree(s.doc), { select: false });
     setSnapshots(null);
     setSelectedId(undefined);
-    toast(t(lang, 'saved'));
+    toast(t(lang, 'versionRestored'));
   };
 
   // ---------- Search and misc ----------
@@ -760,6 +816,8 @@ export function App() {
                   onRename={() => setRenaming(source.name)}
                   onExport={exportGedcom}
                   onSnapshots={() => void openSnapshots()}
+                  onSaveVersion={() => void saveVersion()}
+                  readOnly={readOnly}
                   onReport={() => setShowReport(true)}
                   onDelete={() =>
                     void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
@@ -861,7 +919,20 @@ export function App() {
                 aria-label={t(lang, 'undo')}
                 title={`${t(lang, 'undo')} (⌘Z)`}
               >
-                ↶
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 14 4 9l5-5" />
+                  <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+                </svg>
               </button>
               <button
                 className="btn icon"
@@ -870,26 +941,22 @@ export function App() {
                 aria-label={t(lang, 'redo')}
                 title={`${t(lang, 'redo')} (⇧⌘Z)`}
               >
-                ↷
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m15 14 5-5-5-5" />
+                  <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+                </svg>
               </button>
             </>
-          )}
-          {tree && (
-            <button className="btn icon" onClick={exportGedcom} aria-label={t(lang, 'export')} title={t(lang, 'export')}>
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 3v12M7 10l5 5 5-5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-              </svg>
-            </button>
           )}
           <button className="btn icon" onClick={cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />
@@ -1070,6 +1137,7 @@ export function App() {
             onDefaultView={setDefaultView}
             onBack={() => navigate({ name: 'home' })}
             toast={toast}
+            ask={ask}
           />
         ) : (
           <Home
@@ -1081,7 +1149,6 @@ export function App() {
             onOpenTree={(tr) => void openCloud(tr.id, tr.name, tr.role)}
             onImport={() => fileInput.current?.click()}
             onNewTree={startNewTree}
-            onDeleteTree={(tr) => void deleteTree(tr)}
             onTrees={setTreeList}
             refreshKey={homeRefresh}
             busy={busy}
@@ -1098,6 +1165,13 @@ export function App() {
                 </button>
               </div>
               <p className="muted small">{t(lang, 'snapshotsHint')}</p>
+              {!readOnly && (
+                <div className="row" style={{ marginBottom: 10 }}>
+                  <button className="btn primary" onClick={() => void saveVersion()}>
+                    {t(lang, 'saveVersion')}
+                  </button>
+                </div>
+              )}
               {snapshots.length === 0 ? (
                 <p className="muted">{t(lang, 'noSnapshots')}</p>
               ) : (
@@ -1105,7 +1179,14 @@ export function App() {
                   {snapshots.map((s) => (
                     <li key={s.id}>
                       <span className="mono">{new Date(s.created_at).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-GB')}</span>
-                      <span>v{s.version}</span>
+                      <span>
+                        <strong>{s.label ?? t(lang, 'automaticVersion')}</strong>
+                        <span className="muted small">
+                          {' '}
+                          · v{s.version}
+                          {s.by ? ` · ${t(lang, 'by')} ${s.by}` : ''}
+                        </span>
+                      </span>
                       <button className="btn small" onClick={() => void restoreSnapshot(s.id)} disabled={readOnly}>
                         {t(lang, 'restore')}
                       </button>
@@ -1121,6 +1202,7 @@ export function App() {
             {notice}
           </div>
         )}
+        <Modal pending={pending} lang={lang} />
       </main>
 
       {tree && displayTree && selected && (
@@ -1152,18 +1234,28 @@ export function App() {
             if (draft) saveDraft(patch);
             else if (commit(ops.updatePerson(id, patch))) toast(t(lang, 'saved'));
           }}
-          onDeletePerson={(id) => commit(ops.deletePerson(id), { select: false })}
+          onDeletePerson={(id) => {
+            if (commit(ops.deletePerson(id), { select: false })) toast(t(lang, 'personDeleted'));
+          }}
           onSaveFamily={(id, patch: FamilyPatch) => {
             if (commit(ops.updateFamily(id, patch))) toast(t(lang, 'saved'));
           }}
           onAddChild={(pid, fid) => startDraft('child', pid, fid)}
-          onLinkPartner={(pid, partner) => commit(ops.linkPartner(pid, partner))}
-          onLinkChild={(fid, cid) => commit(ops.linkChild(fid, cid))}
-          onUnlinkChild={(fid, cid) => commit(ops.unlinkChild(fid, cid))}
-          onMerge={(keep, drop) => commit(ops.mergePeople(keep, drop))}
+          onLinkPartner={(pid, partner) => {
+            if (commit(ops.linkPartner(pid, partner))) toast(t(lang, 'linked'));
+          }}
+          onLinkChild={(fid, cid) => {
+            if (commit(ops.linkChild(fid, cid))) toast(t(lang, 'linked'));
+          }}
+          onUnlinkChild={(fid, cid) => {
+            if (commit(ops.unlinkChild(fid, cid))) toast(t(lang, 'unlinked'));
+          }}
+          onMerge={(keep, drop) => {
+            if (commit(ops.mergePeople(keep, drop))) toast(t(lang, 'merged'));
+          }}
           onSetPortrait={(id, media) => {
             if (draft) return;
-            if (commit(ops.updatePerson(id, { portrait: media }))) toast(t(lang, 'saved'));
+            if (commit(ops.updatePerson(id, { portrait: media }))) toast(t(lang, 'photoSaved'));
           }}
         />
       )}

@@ -49,12 +49,14 @@ interface TreeMenuProps {
   current: { id: string; name: string; role: string };
   trees: TreeSummary[];
   owner: boolean;
+  readOnly?: boolean;
   hasImportReport: boolean;
   onSwitch(tree: TreeSummary): void;
   onNewTree(): void;
   onRename(): void;
   onExport(): void;
   onSnapshots(): void;
+  onSaveVersion(): void;
   onReport(): void;
   onDelete(): void;
 }
@@ -116,6 +118,7 @@ export function TreeMenu(p: TreeMenuProps) {
         <div className="dd-section">{t(lang, 'thisTree')}</div>
         {p.owner && item(t(lang, 'renameTree'), p.onRename)}
         {item(t(lang, 'export'), p.onExport)}
+        {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
         {item(t(lang, 'versionHistory'), p.onSnapshots)}
         {p.hasImportReport && item(t(lang, 'importReport'), p.onReport)}
         {p.owner && item(t(lang, 'deleteTree'), p.onDelete, 'danger')}

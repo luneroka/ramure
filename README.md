@@ -15,7 +15,7 @@ Phases 1 and 2 of the plan in `docs/design-brief.html`: viewer and editor.
 - Search, import report, French and English, installable as a PWA, works offline.
 - GEDCOM export of what was imported, with Ramure's structured model.
 - Editing on the canvas: add-relative handles on the selected card (parents, partner, child, sibling), person and union editors, link or unlink existing people, merge duplicates, delete.
-- Undo / redo (⌘Z, ⇧⌘Z), automatic snapshots on this device with a restore dialog, start a tree from scratch.
+- Undo / redo (⌘Z, ⇧⌘Z) that sync like any edit; versions saved automatically every 100 edits plus named versions, restorable and undoable.
 - Dates typed as people write them ("vers 1860", "entre 1880 et 1885", "15 vendémiaire an III") and stored as GEDCOM dates.
 - Hourglass, ancestors and descendants views.
 

@@ -1576,3 +1576,9 @@ label.check input {
   .topbar { flex-wrap: nowrap; padding: 0 10px; gap: 6px; }
   .actions .btn.icon.lang, .actions .btn.icon:has(svg) { display: none; }
 }
+
+.modal { display: grid; gap: 12px; width: min(460px, 100%); }
+.modal-title { font-family: var(--display); font-weight: 500; font-size: 22px; margin: 0; }
+.modal-message { margin: 0; color: var(--ink-2); font-size: 14px; }
+.modal-actions { margin-top: 4px; }
+.tree-card-delete { display: none; }
