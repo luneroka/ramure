@@ -7,6 +7,7 @@ import { isLiving } from '../canvas/renderer';
 import type { FamilyPatch, PersonPatch } from '../tree/edit';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
+import { Medallion } from './fields/Portrait';
 
 export interface PanelActions {
   onFocus(id: string): void;
@@ -122,6 +123,7 @@ export function PersonPanel(props: Props) {
   return (
     <aside className="panel" aria-label={name}>
       <header className="panel-head">
+        <Medallion mediaId={person.mediaIds[0]} size={72} className="panel-medallion" />
         <div>
           <h2 className="panel-name">{name} <span className="panel-sex" aria-hidden="true">{sexGlyph}</span></h2>
           <div className="panel-tags">

@@ -6,11 +6,16 @@
 
 const DB_NAME = 'ramure';
 const STORE = 'kv';
+const MEDIA = 'media';
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+    const req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      if (!db.objectStoreNames.contains(MEDIA)) db.createObjectStore(MEDIA);
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -106,4 +111,41 @@ export async function listSnapshots(): Promise<Array<Omit<Snapshot, 'gedcom'>>> 
 
 export async function loadSnapshot(key: string): Promise<Snapshot | undefined> {
   return kvGet<Snapshot>(key);
+}
+
+// ---------- Media blobs (portraits), keyed by media id ----------
+
+export async function mediaPut(id: string, blob: Blob): Promise<void> {
+  try {
+    const db = await open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(MEDIA, 'readwrite');
+      tx.objectStore(MEDIA).put(blob, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch { /* storage unavailable */ }
+}
+
+export async function mediaGet(id: string): Promise<Blob | undefined> {
+  try {
+    const db = await open();
+    return await new Promise<Blob | undefined>((resolve, reject) => {
+      const req = db.transaction(MEDIA, 'readonly').objectStore(MEDIA).get(id);
+      req.onsuccess = () => resolve(req.result as Blob | undefined);
+      req.onerror = () => reject(req.error);
+    });
+  } catch { return undefined; }
+}
+
+export async function mediaDelete(id: string): Promise<void> {
+  try {
+    const db = await open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(MEDIA, 'readwrite');
+      tx.objectStore(MEDIA).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch { /* ignore */ }
 }

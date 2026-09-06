@@ -1,0 +1,90 @@
+/**
+ * DOM side of portraits: an oval <img> fed from IndexedDB, and the editor
+ * block to choose, change or remove the picture.
+ */
+
+import { useEffect, useRef, useState } from 'react';
+import { mediaDelete, mediaGet, mediaPut } from '../../db';
+import type { MediaObject } from '../../gedcom/model';
+import { t, type Lang } from '../../i18n';
+import { prepareImage } from '../../media/portraits';
+import { RAMURE_MEDIA_SCHEME } from '../../tree/edit';
+
+export function usePortraitUrl(mediaId: string | undefined): string | undefined {
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    let alive = true;
+    let objectUrl: string | undefined;
+    setUrl(undefined);
+    if (mediaId) {
+      mediaGet(mediaId).then((blob) => {
+        if (!alive || !blob) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      });
+    }
+    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [mediaId]);
+  return url;
+}
+
+export function Medallion({ mediaId, size = 64, className = '' }: { mediaId?: string; size?: number; className?: string }) {
+  const url = usePortraitUrl(mediaId);
+  const w = Math.round(size * 0.78);
+  return (
+    <span className={`medallion ${className}`} style={{ width: w, height: size }} aria-hidden="true">
+      {url ? <img src={url} alt="" /> : (
+        <svg viewBox="0 0 40 52" width={w} height={size}>
+          <circle cx="20" cy="19" r="8" fill="currentColor" />
+          <path d="M4 50c1-11 8-16 16-16s15 5 16 16z" fill="currentColor" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+interface PickerProps {
+  lang: Lang;
+  /** Current portrait media id (from the person). */
+  current?: string;
+  /** Called with the new media record after a successful pick, or null to remove. */
+  onChange(next: MediaObject | null): void;
+  /** Id allocator for a new media record. */
+  allocateId(): string;
+}
+
+export function PortraitPicker({ lang, current, onChange, allocateId }: PickerProps) {
+  const input = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState<string | undefined>();
+  const [busy, setBusy] = useState(false);
+  const shown = pending ?? current;
+
+  // A picked-then-replaced picture that was never saved is deleted from storage.
+  useEffect(() => () => { /* nothing: pending blobs are cleaned by the caller on cancel */ }, []);
+
+  const pick = async (file: File) => {
+    setBusy(true);
+    try {
+      const blob = await prepareImage(file);
+      const id = allocateId();
+      await mediaPut(id, blob);
+      if (pending) void mediaDelete(pending);
+      setPending(id);
+      onChange({ id, file: RAMURE_MEDIA_SCHEME + id, format: 'jpg', title: file.name.replace(/\.[^.]+$/, ''), notes: [], extra: [] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="portrait-picker">
+      <Medallion mediaId={shown} size={96} />
+      <div className="portrait-actions">
+        <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void pick(f); e.target.value = ''; }} />
+        <button type="button" className="btn" disabled={busy} onClick={() => input.current?.click()}>{shown ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}</button>
+        {shown && <button type="button" className="btn subtle" onClick={() => { if (pending) void mediaDelete(pending); setPending(undefined); onChange(null); }}>{t(lang, 'removePhoto')}</button>}
+        <p className="muted small">{t(lang, 'photoHint')}</p>
+      </div>
+    </div>
+  );
+}

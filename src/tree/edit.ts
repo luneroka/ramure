@@ -4,7 +4,7 @@
  * Tree references and nothing is ever mutated in place.
  */
 
-import { newEvent, newFamily, newIndividual, type Event, type EventType, type Family, type Individual, type Name, type Sex, type Tree } from '../gedcom/model';
+import { newEvent, newFamily, newIndividual, type Event, type EventType, type Family, type Individual, type MediaObject, type Name, type Sex, type Tree } from '../gedcom/model';
 
 export interface EditResult {
   tree: Tree;
@@ -72,13 +72,31 @@ export interface PersonPatch {
   events?: Event[];
   notes?: string[];
   restriction?: string | undefined;
+  /** New portrait media record to attach as the main picture; null removes the current one. */
+  portrait?: MediaObject | null;
+}
+
+/** Media stored by Ramure itself use this scheme in FILE; the blob lives in IndexedDB under the media id. */
+export const RAMURE_MEDIA_SCHEME = 'ramure:';
+
+/** The main picture of a person: the first attached media. */
+export function portraitId(ind: Individual): string | undefined {
+  return ind.mediaIds[0];
 }
 
 export function updatePerson(tree: Tree, id: string, patch: PersonPatch): EditResult {
   const ind = must(tree, id);
-  const next: Individual = { ...ind, ...patch };
+  const { portrait, ...rest } = patch;
+  const next: Individual = { ...ind, ...rest };
   if (patch.restriction === undefined && 'restriction' in patch) delete next.restriction;
-  return { tree: withIndividual(tree, next), focusId: id };
+  let t = tree;
+  if (portrait === null) {
+    next.mediaIds = ind.mediaIds.slice(1);
+  } else if (portrait) {
+    t = { ...t, media: { ...t.media, [portrait.id]: portrait } };
+    next.mediaIds = [portrait.id, ...ind.mediaIds.filter((m) => m !== portrait.id)];
+  }
+  return { tree: withIndividual(t, next), focusId: id };
 }
 
 /** Remove a person and every reference to them. Families left with no partners and no children are removed too. */

@@ -10,6 +10,7 @@ import { displayName, findEvent, type Individual, type Tree } from '../gedcom/mo
 import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
 import { formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
+import { drawMedallion } from '../media/portraits';
 
 export interface Camera { x: number; y: number; k: number }
 
@@ -53,6 +54,8 @@ export interface RenderState {
   selectedId?: string;
   hoverId?: string;
   draftId?: string;
+  /** Decoded portrait by media id; undefined while loading or missing (placeholder drawn). */
+  portrait?: (mediaId: string) => ImageBitmap | undefined;
   lang: Lang;
   theme: Theme;
   /** Only draw nodes intersecting the viewport (plus margin). */
@@ -231,18 +234,25 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.textAlign = 'center';
       ctx.fillText(fitText(ctx, name, n.w - 22), cx + 2, cy);
     } else {
+      // Medallion portrait on the left: an oval like an old locket.
+      const MW = 42, MH = 54;
+      const mediaId = ind.mediaIds[0];
+      const img = mediaId && s.portrait ? s.portrait(mediaId) : undefined;
+      drawMedallion(ctx, n.x + 13, n.y + (n.h - MH) / 2, MW, MH, img, { ring: T.line2, fill: T.surface2, silhouette: T.ink3 });
+      const tx = n.x + 13 + MW + 12;
       const living = isLiving(ind);
+      ctx.fillStyle = isDraft ? T.ink3 : T.ink;
       ctx.font = `600 14px ${T.bodyFont}`;
       ctx.textAlign = 'left';
-      ctx.fillText(fitText(ctx, name, living ? n.w - 36 : n.w - 26), n.x + 15, n.y + 23);
+      ctx.fillText(fitText(ctx, name, n.x + n.w - tx - (living ? 22 : 12)), tx, n.y + 25);
       ctx.font = `400 12px ${T.monoFont}`;
       ctx.fillStyle = isDraft ? T.ink3 : T.ink2;
-      ctx.fillText(fitText(ctx, lifespan(ind, lang), n.w - 24), n.x + 15, n.y + 45);
+      ctx.fillText(fitText(ctx, lifespan(ind, lang), n.x + n.w - tx - 10), tx, n.y + 47);
       if (living) {
         // Living marker on the name line, so the date line keeps its full width.
         ctx.fillStyle = T.accent;
         ctx.beginPath();
-        ctx.arc(n.x + n.w - 14, n.y + 23, 3.5, 0, Math.PI * 2);
+        ctx.arc(n.x + n.w - 14, n.y + 25, 3.5, 0, Math.PI * 2);
         ctx.fill();
       }
       if (n.dup > 0) {

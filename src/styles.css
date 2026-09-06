@@ -292,3 +292,15 @@ label.radio input, label.check input { width: auto; }
 .place-loading { padding: 6px 9px; }
 .editor .link { font-size: 12px; }
 .editor .link:disabled { color: var(--ink-3); cursor: default; text-decoration: none; }
+
+/* ---------- Portraits ---------- */
+.medallion {
+  display: inline-block; flex: none; border-radius: 50%; overflow: hidden; background: var(--surface-2);
+  box-shadow: inset 0 0 0 1.5px var(--line-2); color: var(--ink-3);
+}
+.medallion img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; display: block; }
+.medallion svg { display: block; opacity: .7; }
+.panel-medallion { margin-right: 4px; }
+.portrait-picker { display: flex; gap: 14px; align-items: flex-start; }
+.portrait-actions { display: grid; gap: 6px; justify-items: start; }
+.portrait-actions p { margin: 0; }

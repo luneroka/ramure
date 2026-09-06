@@ -9,6 +9,7 @@ import type { Tree } from '../gedcom/model';
 import type { Lang } from '../i18n';
 import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
 import { clampZoom, computeHandles, detailBand, hitHandle, hitTest, readTheme, render, type Camera, type DetailBand, type HandleKind, type Theme } from './renderer';
+import { PortraitCache } from '../media/portraits';
 
 export interface TreeCanvasHandle {
   fit(animate?: boolean): void;
@@ -49,6 +50,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const raf = useRef(0);
   const anim = useRef<number | null>(null);
   const pendingFit = useRef(false);
+  const portraits = useRef<PortraitCache | null>(null);
+  if (!portraits.current) portraits.current = new PortraitCache(() => drawRef.current());
   const RULER_GUTTER = 170; // screen px reserved on the left for generation labels
   const reduced = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, []);
 
@@ -62,6 +65,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!theme.current) theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
         layout, tree, camera: cam.current, selectedId, hoverId: hoverId.current, lang, theme: theme.current, rowH: ROW_H, handles, draftId,
+        portrait: (id) => portraits.current!.get(id),
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
     });
@@ -105,6 +109,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   }, []);
 
   useEffect(() => { draw(); }, [draw]);
+  useEffect(() => () => portraits.current?.dispose(), []);
 
   const animateTo = useCallback((target: Camera, animate: boolean) => {
     if (anim.current) cancelAnimationFrame(anim.current);

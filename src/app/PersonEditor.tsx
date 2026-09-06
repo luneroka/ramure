@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { approximateYear, type GDate } from '../gedcom/dates';
-import { placeText, type Event, type EventType, type Individual, type Name, type Place, type Sex, type Tree } from '../gedcom/model';
+import { placeText, type Event, type EventType, type Individual, type MediaObject, type Name, type Place, type Sex, type Tree } from '../gedcom/model';
 import { eventLabel, t, type Lang } from '../i18n';
-import { blankEvent, type PersonPatch } from '../tree/edit';
+import { blankEvent, nextId, type PersonPatch } from '../tree/edit';
+import { PortraitPicker } from './fields/Portrait';
+import { mediaDelete } from '../db';
 import { DateField } from './fields/DateField';
 import { PlaceField } from './fields/PlaceField';
 
@@ -98,7 +100,10 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
   const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [portrait, setPortrait] = useState<MediaObject | null | undefined>(undefined);
   const places = useMemo(() => knownPlaces(tree), [tree]);
+  const allocateMediaId = () => `${nextId(tree, 'M')}-${Date.now().toString(36)}`;
+  const cancel = () => { if (portrait) void mediaDelete(portrait.id); onCancel(); };
 
   const update = (key: number, patch: Partial<EventDraft>) => setEvents((evs) => {
     const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
@@ -121,11 +126,15 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       events: events.filter((d) => !isBlank(d) || (d.original && !d.suggested)).map(fromDraft),
       notes: notes.trim() ? notes.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean) : [],
       restriction: isPrivate ? 'privacy' : undefined,
+      ...(portrait !== undefined ? { portrait } : {}),
     });
   };
 
   return (
     <form className="editor" onSubmit={(e) => { e.preventDefault(); save(); }}>
+      <h3>{t(lang, 'portrait')}</h3>
+      <PortraitPicker lang={lang} current={person.mediaIds[0]} allocateId={allocateMediaId} onChange={setPortrait} />
+
       <div className="grid2">
         <label>{t(lang, 'givenName')}<input autoFocus value={given} onChange={(e) => setGiven(e.target.value)} /></label>
         <label>{t(lang, 'surname')}<input value={surname} onChange={(e) => setSurname(e.target.value)} /></label>
@@ -167,7 +176,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
       <div className="row editor-actions">
         <button type="submit" className="btn primary">{t(lang, 'save')}</button>
-        <button type="button" className="btn" onClick={onCancel}>{t(lang, 'cancel')}</button>
+        <button type="button" className="btn" onClick={cancel}>{t(lang, 'cancel')}</button>
         <span className="spacer" />
         {!canDelete ? null : confirmDelete ? (
           <span className="confirm">
