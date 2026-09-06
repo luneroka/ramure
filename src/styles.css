@@ -2007,3 +2007,6 @@ label.check input {
     5px 5px;
   background-repeat: no-repeat;
 }
+
+/* The stage clips for the canvas; pages inside it (home, settings) scroll. */
+.stage.page { overflow: auto; -webkit-overflow-scrolling: touch; }

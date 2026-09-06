@@ -981,7 +981,7 @@ export function App() {
         </div>
       </header>
 
-      <main className="stage">
+      <main className={`stage ${tree && layout && route.name === 'tree' ? '' : 'page'}`}>
         {tree && layout && route.name === 'tree' ? (
           <>
             <TreeCanvas
