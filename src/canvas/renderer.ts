@@ -12,6 +12,8 @@ import { formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { drawMedallion } from '../media/portraits';
 import { portraitId } from '../tree/edit';
+import { isLiving } from '../gedcom/living';
+export { isLiving };
 
 export interface Camera {
   x: number;
@@ -169,13 +171,6 @@ function lifespan(ind: Individual, lang: Lang): string {
     return tg(lang, 'born', ind.sex) + ' ' + birthYearText(b.date, lang) + (age ? ` (${formatAge(lang, age, 'card')})` : '');
   }
   return '';
-}
-
-export function isLiving(ind: Individual): boolean {
-  if (findEvent(ind.events, 'death') || findEvent(ind.events, 'burial') || findEvent(ind.events, 'cremation')) return false;
-  const by = approximateYear((findEvent(ind.events, 'birth') ?? findEvent(ind.events, 'baptism'))?.date);
-  if (by === undefined) return false;
-  return new Date().getFullYear() - by < 110;
 }
 
 /** The relationship path: orthogonal strokes from card to card, in the accent colour. */

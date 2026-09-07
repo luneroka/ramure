@@ -5,7 +5,7 @@
 
 import { approximateYear } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
-import { isLiving } from '../canvas/renderer';
+import { isLiving } from '../gedcom/living';
 import { generationLabel } from './layout';
 import { layoutEverything } from './layoutAll';
 
