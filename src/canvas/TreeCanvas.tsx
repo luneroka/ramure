@@ -81,7 +81,9 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      if (!theme.current) theme.current = readTheme(document.documentElement);
+      // Re-read when a token is missing: a hot-reloaded renderer may expect one the cached theme never read.
+      if (!theme.current || Object.values(theme.current).some((v) => v === undefined || v === ''))
+        theme.current = readTheme(document.documentElement);
       render(ctx, size.current.w, size.current.h, size.current.dpr, {
         layout,
         tree,
