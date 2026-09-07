@@ -1,3 +1,4 @@
+import { fold } from '../util/text';
 import { useMemo, useState } from 'react';
 import { displayName, findEvent, type Tree } from '../gedcom/model';
 import { t, type Lang } from '../i18n';
@@ -16,11 +17,11 @@ interface Props {
 export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint }: Props) {
   const [q, setQ] = useState('');
   const matches = useMemo(() => {
-    const s = q.trim().toLowerCase();
+    const s = fold(q);
     if (s.length < 1) return [];
     const ex = new Set(exclude);
     return Object.values(tree.individuals)
-      .filter((i) => !ex.has(i.id) && displayName(i).toLowerCase().includes(s))
+      .filter((i) => !ex.has(i.id) && fold(displayName(i)).includes(s))
       .slice(0, 10);
   }, [q, tree, exclude]);
   return (

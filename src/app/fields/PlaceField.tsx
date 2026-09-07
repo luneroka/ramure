@@ -3,6 +3,7 @@
  * French communes and worldwide places fetched as you type.
  */
 
+import { fold } from '../../util/text';
 import { useMemo, useRef, useState } from 'react';
 import { placeText, type Place } from '../../gedcom/model';
 import { t, type Lang } from '../../i18n';
@@ -33,13 +34,13 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
   }
 
   const local = useMemo(() => {
-    const q = text.trim().toLowerCase();
+    const q = fold(text);
     if (q.length < 1) return [];
     const seen = new Set<string>();
     return (
       known
         .filter((p) => {
-          const k = placeText(p).toLowerCase();
+          const k = fold(placeText(p));
           if (!k.includes(q) || seen.has(k)) return false;
           seen.add(k);
           return true;
@@ -91,7 +92,7 @@ export function PlaceField({ value, onChange, lang, known, label }: Props) {
     onChange(chosen);
   };
 
-  const all = [...local, ...remote.filter((r) => !local.some((l) => l.text.toLowerCase() === r.text.toLowerCase()))];
+  const all = [...local, ...remote.filter((r) => !local.some((l) => fold(l.text) === fold(r.text)))];
   const tag = (s: PlaceSuggestion['source']) => (s === 'tree' ? t(lang, 'placeFromTree') : s === 'fr' ? 'FR' : 'OSM');
 
   return (

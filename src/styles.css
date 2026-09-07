@@ -2733,3 +2733,7 @@ textarea:focus {
 .kinship-text {
   font-weight: 500;
 }
+
+.kinship-banner.armed {
+  border-style: dashed;
+}

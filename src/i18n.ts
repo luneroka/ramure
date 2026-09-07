@@ -389,6 +389,7 @@ const strings = {
   kinship: { fr: 'Lien de parenté', en: 'Relationship' },
   kinshipHint: { fr: 'Avec qui ?', en: 'With whom?' },
   kinshipSwap: { fr: 'Inverser', en: 'Swap' },
+  kinshipArmed: { fr: 'Cliquez sur une autre personne pour voir son lien avec', en: 'Click another person to see their link with' },
   unsureLabel: { fr: 'Informations à vérifier', en: 'Information to check' },
   unsureHint: {
     fr: 'La personne apparaît en pointillé sur la toile, avec un « ? », jusqu’à ce que vous décochiez.',

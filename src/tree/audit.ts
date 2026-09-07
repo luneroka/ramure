@@ -8,15 +8,12 @@
  */
 
 import { approximateYear, type GDate } from '../gedcom/dates';
+import { fold } from '../util/text';
 import { displayName, findEvent, type ImportNote, type Individual, type Tree } from '../gedcom/model';
 
 /** A check note: an ImportNote plus which person to open when fixing. */
 export interface CheckNote extends ImportNote {
   fixId?: string;
-}
-
-function fold(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 /** Day number for a full Gregorian date, or undefined. */

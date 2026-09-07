@@ -16,8 +16,9 @@ describe('handles', () => {
     expect(computeHandles(layout, tree, undefined)).toEqual([]);
     expect(computeHandles(layout, tree, 'nope')).toEqual([]);
     const hs = computeHandles(layout, tree, 'I1');
-    expect(hs).toHaveLength(1);
-    expect(hs[0]!.kind).toBe('plus');
+    expect(hs.map((h) => h.kind)).toEqual(['plus', 'kin']);
+    // Read-only: the kinship handle stays, the (+) goes.
+    expect(computeHandles(layout, tree, 'I1', { plus: false }).map((h) => h.kind)).toEqual(['kin']);
     // Sits on the card's top-right corner.
     expect(hs[0]!.x + hs[0]!.w / 2).toBeGreaterThan(focus.x + focus.w - 10);
     expect(hs[0]!.y + hs[0]!.h / 2).toBeLessThan(focus.y + 12);

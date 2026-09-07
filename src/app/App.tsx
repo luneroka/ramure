@@ -15,6 +15,7 @@ import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
 import { auditTree, noteKey, type CheckNote } from '../tree/audit';
 import { describeKinship } from '../tree/kinship';
+import { fold } from '../util/text';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
@@ -152,6 +153,8 @@ export function App() {
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
   const [kinshipIds, setKinshipIds] = useState<{ a: string; b: string } | null>(null);
+  /** Kinship lookup started from a card: the next card tapped completes it. */
+  const [kinshipFrom, setKinshipFrom] = useState<string | null>(null);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<{
@@ -447,6 +450,7 @@ export function App() {
   const framedPath = useRef<string>('');
   const startKinship = (a: string, b: string) => {
     setKinshipIds({ a, b });
+    setKinshipFrom(null);
     // The whole path has to be on the canvas: the overview shows everyone.
     if (tree) {
       const r = describeKinship(tree, a, b, lang);
@@ -559,8 +563,14 @@ export function App() {
   const undo = useCallback(() => step('undo'), [step]);
   const redo = useCallback(() => step('redo'), [step]);
 
-  const onHandle = useCallback((_kind: HandleKind, id: string, at: { x: number; y: number }) => {
+  const onHandle = useCallback((kind: HandleKind, id: string, at: { x: number; y: number }) => {
     setSelectedId(id);
+    if (kind === 'kin') {
+      setAddMenu(null);
+      setKinshipFrom((cur) => (cur === id ? null : id));
+      return;
+    }
+    setKinshipFrom(null);
     setAddMenu((m) => (m && m.id === id ? null : { id, x: at.x, y: at.y }));
   }, []);
 
@@ -624,6 +634,7 @@ export function App() {
       )
         return;
       const mod = e.metaKey || e.ctrlKey;
+      if (e.key === 'Escape') setKinshipFrom(null);
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
@@ -780,9 +791,9 @@ export function App() {
   // ---------- Search and misc ----------
   const matches = useMemo(() => {
     if (!tree || query.trim().length < 2) return [];
-    const q = query.trim().toLowerCase();
+    const q = fold(query);
     return Object.values(tree.individuals)
-      .filter((i) => displayName(i).toLowerCase().includes(q))
+      .filter((i) => fold(displayName(i)).includes(q))
       .slice(0, 8);
   }, [tree, query]);
 
@@ -1063,9 +1074,14 @@ export function App() {
               editable={!editing && !draft && !readOnly}
               onSelect={(id) => {
                 setDraft(null);
-                setSelectedId(id);
                 setEditing(false);
                 setAddMenu(null);
+                if (kinshipFrom && kinshipFrom !== id) {
+                  startKinship(kinshipFrom, id);
+                  setKinshipFrom(null);
+                  return;
+                }
+                setSelectedId(id);
               }}
               onFocus={focusOn}
               onHandle={onHandle}
@@ -1147,6 +1163,16 @@ export function App() {
                   ))}
                 </ul>
               </>
+            )}
+            {kinshipFrom && tree.individuals[kinshipFrom] && !kinship && (
+              <div className="kinship-banner armed" role="status">
+                <span className="kinship-text">
+                  {t(lang, 'kinshipArmed')} {displayName(tree.individuals[kinshipFrom]!)}
+                </span>
+                <button className="icon-btn" onClick={() => setKinshipFrom(null)} aria-label={t(lang, 'cancel')}>
+                  ×
+                </button>
+              </div>
             )}
             {kinship && (
               <div className="kinship-banner" role="status">
@@ -1363,8 +1389,13 @@ export function App() {
           onFocus={focusOn}
           onSelect={(id) => {
             setDraft(null);
-            setSelectedId(id);
             setEditing(false);
+            if (kinshipFrom && kinshipFrom !== id) {
+              startKinship(kinshipFrom, id);
+              setKinshipFrom(null);
+              return;
+            }
+            setSelectedId(id);
           }}
           onClose={() => {
             if (draft) cancelDraft();

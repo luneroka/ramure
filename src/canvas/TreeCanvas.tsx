@@ -45,7 +45,7 @@ export interface TreeCanvasProps {
   onBandChange?(band: DetailBand, zoom: number): void;
   /** Tap on an add-relative handle of the selected card. */
   onHandle?(kind: HandleKind, personId: string, at: { x: number; y: number }): void;
-  /** Show add-relative handles on the selected card. */
+  /** Show the add-relative handle on the selected card (the kinship handle is always there). */
   editable?: boolean;
   /** Card drawn as a dashed preview: a relative being added, not yet saved. */
   draftId?: string;
@@ -57,7 +57,7 @@ const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
   const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable, draftId, lit } = props;
-  const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId) : []), [editable, layout, tree, selectedId]);
+  const handles = useMemo(() => computeHandles(layout, tree, selectedId, { plus: !!editable }), [editable, layout, tree, selectedId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
   const size = useRef({ w: 0, h: 0, dpr: 1 });

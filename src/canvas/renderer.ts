@@ -50,7 +50,8 @@ export function detailBand(k: number): DetailBand {
   return k >= 0.6 ? 'cards' : k >= 0.26 ? 'names' : 'dots';
 }
 
-export type HandleKind = 'plus';
+/** 'plus' adds a relative; 'kin' starts a relationship lookup, completed by tapping another card. */
+export type HandleKind = 'plus' | 'kin';
 
 export interface Handle {
   kind: HandleKind;
@@ -61,13 +62,26 @@ export interface Handle {
   h: number;
 }
 
-/** One round (+) button on the right edge of the selected card, in world coordinates. */
-export function computeHandles(layout: Layout, tree: Tree, selectedId: string | undefined): Handle[] {
+/** Round buttons on the top-right corner of the selected card, in world coordinates: (+) when editable, the kinship link always. */
+export function computeHandles(
+  layout: Layout,
+  tree: Tree,
+  selectedId: string | undefined,
+  opts: { plus: boolean } = { plus: true },
+): Handle[] {
   if (!selectedId) return [];
   const n = layout.nodes.find((x) => x.id === selectedId);
   if (!n || !tree.individuals[selectedId]) return [];
   const d = 30;
-  return [{ kind: 'plus', personId: selectedId, x: n.x + n.w - d / 2 + 6, y: n.y - d / 2 + 8, w: d, h: d }];
+  const y = n.y - d / 2 + 8;
+  const out: Handle[] = [];
+  let x = n.x + n.w - d / 2 + 6;
+  if (opts.plus) {
+    out.push({ kind: 'plus', personId: selectedId, x, y, w: d, h: d });
+    x -= d + 6;
+  }
+  out.push({ kind: 'kin', personId: selectedId, x, y, w: d, h: d });
+  return out;
 }
 
 export interface RenderState {
@@ -403,20 +417,32 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
         cy = hd.y + hd.h / 2;
       ctx.beginPath();
       ctx.arc(cx, cy, hd.w / 2, 0, Math.PI * 2);
-      ctx.fillStyle = T.accent;
+      ctx.fillStyle = hd.kind === 'plus' ? T.accent : T.surface;
       ctx.fill();
       ctx.lineWidth = 2 / Math.max(k, 0.6);
-      ctx.strokeStyle = T.ground;
+      ctx.strokeStyle = hd.kind === 'plus' ? T.ground : T.accent;
       ctx.stroke();
-      ctx.strokeStyle = T.accentInk;
+      ctx.strokeStyle = hd.kind === 'plus' ? T.accentInk : T.accent;
       ctx.lineWidth = 2.2;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx - 6, cy);
-      ctx.lineTo(cx + 6, cy);
-      ctx.moveTo(cx, cy - 6);
-      ctx.lineTo(cx, cy + 6);
-      ctx.stroke();
+      if (hd.kind === 'plus') {
+        ctx.moveTo(cx - 6, cy);
+        ctx.lineTo(cx + 6, cy);
+        ctx.moveTo(cx, cy - 6);
+        ctx.lineTo(cx, cy + 6);
+        ctx.stroke();
+      } else {
+        // Two people joined by a line: the relationship lookup.
+        ctx.moveTo(cx - 4, cy + 3);
+        ctx.lineTo(cx + 4, cy - 3);
+        ctx.stroke();
+        ctx.fillStyle = T.accent;
+        ctx.beginPath();
+        ctx.arc(cx - 5.5, cy + 4, 3, 0, Math.PI * 2);
+        ctx.arc(cx + 5.5, cy - 4, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
