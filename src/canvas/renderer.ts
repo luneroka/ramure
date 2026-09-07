@@ -31,6 +31,7 @@ export interface Theme {
   accent: string;
   focus: string;
   focusSoft: string;
+  accentSoft: string;
   warn: string;
   connector: string;
   male: string;
@@ -72,13 +73,13 @@ export function computeHandles(
   if (!selectedId) return [];
   const n = layout.nodes.find((x) => x.id === selectedId);
   if (!n || !tree.individuals[selectedId]) return [];
-  const d = 30;
-  const y = n.y - d / 2 + 8;
+  const d = 24;
+  const y = n.y - d / 2 + 7;
   const out: Handle[] = [];
-  let x = n.x + n.w - d / 2 + 6;
+  let x = n.x + n.w - d / 2 + 5;
   if (opts.plus) {
     out.push({ kind: 'plus', personId: selectedId, x, y, w: d, h: d });
-    x -= d + 6;
+    x -= d + 5;
   }
   out.push({ kind: 'kin', personId: selectedId, x, y, w: d, h: d });
   return out;
@@ -118,6 +119,7 @@ export function readTheme(el: HTMLElement): Theme {
     focus: v('--focus'),
     focusSoft: v('--focus-soft'),
     warn: v('--warn') || '#e0955a',
+    accentSoft: v('--accent-soft') || v('--surface-2'),
     connector: v('--connector'),
     male: v('--male'),
     female: v('--female'),
@@ -196,14 +198,28 @@ function drawLitPath(ctx: CanvasRenderingContext2D, s: RenderState, k: number): 
       py = p.y + p.h / 2,
       qx = q.x + q.w / 2,
       qy = q.y + q.h / 2;
-    ctx.moveTo(px, py);
     if (Math.abs(py - qy) < 1) {
-      ctx.lineTo(qx, qy);
-    } else {
-      const midY = py < qy ? (p.y + p.h + q.y) / 2 : (q.y + q.h + p.y) / 2;
+      // Same row: edge to edge.
+      if (qx > px) {
+        ctx.moveTo(p.x + p.w, py);
+        ctx.lineTo(q.x, qy);
+      } else {
+        ctx.moveTo(p.x, py);
+        ctx.lineTo(q.x + q.w, qy);
+      }
+    } else if (qy > py) {
+      // Down: leave p's bottom edge, enter q's top edge.
+      const midY = (p.y + p.h + q.y) / 2;
+      ctx.moveTo(px, p.y + p.h);
       ctx.lineTo(px, midY);
       ctx.lineTo(qx, midY);
-      ctx.lineTo(qx, qy);
+      ctx.lineTo(qx, q.y);
+    } else {
+      const midY = (q.y + q.h + p.y) / 2;
+      ctx.moveTo(px, p.y);
+      ctx.lineTo(px, midY);
+      ctx.lineTo(qx, midY);
+      ctx.lineTo(qx, q.y + q.h);
     }
   }
   ctx.stroke();
@@ -320,6 +336,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     const ind = tree.individuals[n.id];
     if (!ind) continue;
     ctx.globalAlpha = s.lit && !s.lit.ids.has(n.id) ? 0.22 : 1;
+    const isEnd = !!s.lit && (n.id === s.lit.path[0] || n.id === s.lit.path[s.lit.path.length - 1]);
     const isFocus = n.id === layout.focusId;
     const isSel = n.id === s.selectedId;
     const isDraft = n.id === s.draftId;
@@ -340,8 +357,8 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
         ctx.arc(cx, cy, isFocus ? 10 : 6, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (isFocus || isSel) {
-        ctx.strokeStyle = isFocus ? T.focus : T.accent;
+      if (isEnd || isFocus || isSel) {
+        ctx.strokeStyle = isEnd ? T.accent : isFocus ? T.focus : T.accent;
         ctx.lineWidth = 5 / k;
         ctx.stroke();
       }
@@ -350,10 +367,11 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
 
     const r = 7;
     roundRect(ctx, n.x, n.y, n.w, n.h, r);
-    ctx.fillStyle = isFocus ? T.focusSoft : T.surface;
+    // While a relationship is shown, its two people wear the accent instead of the focus amber.
+    ctx.fillStyle = isEnd ? T.accentSoft : isFocus ? T.focusSoft : T.surface;
     ctx.fill();
-    ctx.lineWidth = (isFocus || isSel ? 2 : 1) / Math.max(k, 0.5);
-    ctx.strokeStyle = isFocus ? T.focus : isSel ? T.accent : ind.unsure ? T.warn : isHover ? T.line2 : T.line;
+    ctx.lineWidth = (isEnd || isFocus || isSel ? 2 : 1) / Math.max(k, 0.5);
+    ctx.strokeStyle = isEnd ? T.accent : isFocus ? T.focus : isSel ? T.accent : ind.unsure ? T.warn : isHover ? T.line2 : T.line;
     if (isDraft || ind.unsure) ctx.setLineDash([6, 4]);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -423,24 +441,24 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       ctx.strokeStyle = hd.kind === 'plus' ? T.ground : T.accent;
       ctx.stroke();
       ctx.strokeStyle = hd.kind === 'plus' ? T.accentInk : T.accent;
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.beginPath();
       if (hd.kind === 'plus') {
-        ctx.moveTo(cx - 6, cy);
-        ctx.lineTo(cx + 6, cy);
-        ctx.moveTo(cx, cy - 6);
-        ctx.lineTo(cx, cy + 6);
+        ctx.moveTo(cx - 5, cy);
+        ctx.lineTo(cx + 5, cy);
+        ctx.moveTo(cx, cy - 5);
+        ctx.lineTo(cx, cy + 5);
         ctx.stroke();
       } else {
         // Two people joined by a line: the relationship lookup.
-        ctx.moveTo(cx - 4, cy + 3);
-        ctx.lineTo(cx + 4, cy - 3);
+        ctx.moveTo(cx - 3.5, cy + 2.5);
+        ctx.lineTo(cx + 3.5, cy - 2.5);
         ctx.stroke();
         ctx.fillStyle = T.accent;
         ctx.beginPath();
-        ctx.arc(cx - 5.5, cy + 4, 3, 0, Math.PI * 2);
-        ctx.arc(cx + 5.5, cy - 4, 3, 0, Math.PI * 2);
+        ctx.arc(cx - 4.5, cy + 3.5, 2.5, 0, Math.PI * 2);
+        ctx.arc(cx + 4.5, cy - 3.5, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
