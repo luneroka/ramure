@@ -1462,7 +1462,6 @@ export function App() {
             if (commit(ops.updatePerson(id, { leads }))) toast(t(lang, 'saved'));
           }}
           onNotice={toast}
-          onKinship={startKinship}
         />
       )}
     </div>

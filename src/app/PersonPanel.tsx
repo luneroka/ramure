@@ -44,8 +44,6 @@ export interface PanelActions {
   onSaveLeads(id: string, leads: Lead[]): void;
   /** A short message for the user (toast). */
   onNotice(message: string): void;
-  /** Relationship between this person and another. */
-  onKinship(id: string, otherId: string): void;
 }
 
 interface Props extends PanelActions {
@@ -61,7 +59,7 @@ interface Props extends PanelActions {
   setEditing(v: boolean): void;
 }
 
-type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | { kind: 'kinship' } | null;
+type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
 
 /** One row of the life timeline: a person event, or a union event seen from this person. */
 interface Row {
@@ -543,25 +541,7 @@ export function PersonPanel(props: Props) {
                 {t(lang, 'edit')}
               </button>
             )}
-            {!isDraft && (
-              <button className="btn small" onClick={() => setPicking(picking?.kind === 'kinship' ? null : { kind: 'kinship' })}>
-                {t(lang, 'kinship')}
-              </button>
-            )}
           </div>
-          {picking?.kind === 'kinship' && (
-            <PersonPicker
-              tree={tree}
-              lang={lang}
-              exclude={[person.id]}
-              hint={t(lang, 'kinshipHint')}
-              onCancel={() => setPicking(null)}
-              onPick={(id) => {
-                props.onKinship(person.id, id);
-                setPicking(null);
-              }}
-            />
-          )}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label={t(lang, 'close')}>
           ×
