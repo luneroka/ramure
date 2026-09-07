@@ -24,6 +24,7 @@ import { TreeMenu, UserMenu } from './Menus';
 import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
 import { PersonPanel } from './PersonPanel';
+import { MAX_PPY, MIN_PPY, Timeline } from './Timeline';
 import { ResourcesPage } from './Resources';
 import { useAuth } from './useAuth';
 
@@ -152,6 +153,9 @@ export function App() {
   const [band, setBand] = useState<{ band: DetailBand; zoom: number }>({ band: 'cards', zoom: 1 });
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
+  /** What the stage shows for the open tree: the canvas or the timeline (the map comes later). */
+  const [mode, setMode] = useState<'tree' | 'timeline'>('tree');
+  const [pxPerYear, setPxPerYear] = useState(6);
   const [kinshipIds, setKinshipIds] = useState<{ a: string; b: string } | null>(null);
   /** Kinship lookup started from a card: the next card tapped completes it. */
   const [kinshipFrom, setKinshipFrom] = useState<string | null>(null);
@@ -1064,89 +1068,152 @@ export function App() {
       <main className={`stage ${tree && layout && route.name === 'tree' ? '' : 'page'}`}>
         {tree && layout && route.name === 'tree' ? (
           <>
-            <TreeCanvas
-              key={sourceKey}
-              ref={canvas}
-              tree={displayTree!}
-              layout={layout}
-              selectedId={selectedId}
-              lang={lang}
-              editable={!editing && !draft && !readOnly}
-              onSelect={(id) => {
-                setDraft(null);
-                setEditing(false);
-                setAddMenu(null);
-                if (kinshipFrom && kinshipFrom !== id) {
-                  startKinship(kinshipFrom, id);
-                  setKinshipFrom(null);
-                  return;
-                }
-                setSelectedId(id);
-              }}
-              onFocus={focusOn}
-              onHandle={onHandle}
-              draftId={draft?.preview.focusId}
-              lit={lit}
-              onBandChange={onBandChange}
-            />
+            {mode === 'timeline' && (
+              <Timeline
+                tree={displayTree ?? tree}
+                lang={lang}
+                selectedId={selectedId}
+                focusId={effectiveFocus}
+                onSelect={(id) => {
+                  setDraft(null);
+                  setEditing(false);
+                  setSelectedId(id);
+                }}
+                pxPerYear={pxPerYear}
+                onPxPerYear={setPxPerYear}
+              />
+            )}
+            {mode === 'tree' && (
+              <TreeCanvas
+                key={sourceKey}
+                ref={canvas}
+                tree={displayTree!}
+                layout={layout}
+                selectedId={selectedId}
+                lang={lang}
+                editable={!editing && !draft && !readOnly}
+                onSelect={(id) => {
+                  setDraft(null);
+                  setEditing(false);
+                  setAddMenu(null);
+                  if (kinshipFrom && kinshipFrom !== id) {
+                    startKinship(kinshipFrom, id);
+                    setKinshipFrom(null);
+                    return;
+                  }
+                  setSelectedId(id);
+                }}
+                onFocus={focusOn}
+                onHandle={onHandle}
+                draftId={draft?.preview.focusId}
+                lit={lit}
+                onBandChange={onBandChange}
+              />
+            )}
             <div className="canvas-tools">
-              <div className="segmented" role="radiogroup" aria-label={t(lang, 'view')}>
-                {(['all', 'hourglass', 'ancestors', 'descendants'] as ViewMode[]).map((v) => (
+              <button
+                className="btn mode-btn"
+                onClick={() => {
+                  setMode((m) => (m === 'tree' ? 'timeline' : 'tree'));
+                  setAddMenu(null);
+                  setKinshipIds(null);
+                  setKinshipFrom(null);
+                }}
+                title={t(lang, mode === 'tree' ? 'modeTimeline' : 'modeTree')}
+              >
+                {mode === 'tree' ? (
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="M3 5h9M3 10h14M3 15h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path d="M10 3v5M4 8h12M4 8v4M16 8v4M10 8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  </svg>
+                )}
+                {t(lang, mode === 'tree' ? 'modeTimeline' : 'modeTree')}
+              </button>
+              {mode === 'timeline' ? (
+                <>
+                  <button className="btn" onClick={() => setPxPerYear((v) => Math.max(MIN_PPY, v / 1.3))} aria-label={t(lang, 'zoomOut')}>
+                    −
+                  </button>
+                  <button className="btn" onClick={() => setPxPerYear((v) => Math.min(MAX_PPY, v * 1.3))} aria-label={t(lang, 'zoomIn')}>
+                    +
+                  </button>
                   <button
-                    key={v}
-                    role="radio"
-                    aria-checked={view === v}
-                    className={view === v ? 'on' : ''}
+                    className="btn"
                     onClick={() => {
-                      setView(v);
-                      setAddMenu(null);
+                      const el = document.querySelector('.timeline');
+                      const tlYears = Number(el?.getAttribute('data-years') ?? 0);
+                      if (el && tlYears) setPxPerYear(Math.min(MAX_PPY, Math.max(MIN_PPY, (el.clientWidth - 170) / tlYears)));
                     }}
                   >
-                    {t(
-                      lang,
-                      v === 'all'
-                        ? 'viewAll'
-                        : v === 'hourglass'
-                          ? 'viewHourglass'
-                          : v === 'ancestors'
-                            ? 'viewAncestors'
-                            : 'viewDescendants',
-                    )}
-                  </button>
-                ))}
-              </div>
-              <button className="btn" onClick={() => canvas.current?.zoomBy(1 / 1.3)} aria-label={t(lang, 'zoomOut')}>
-                −
-              </button>
-              <button className="btn" onClick={() => canvas.current?.zoomBy(1.3)} aria-label={t(lang, 'zoomIn')}>
-                +
-              </button>
-              <button className="btn" onClick={() => canvas.current?.fit(true)}>
-                {t(lang, 'fit')}
-              </button>
-              <button className="btn" onClick={() => canvas.current?.centerOn(layout.focusId, true)}>
-                {t(lang, 'recentre')}
-              </button>
-            </div>
-            <div className="hud">
-              {Math.round(band.zoom * 100)}% ·{' '}
-              {hiddenCount > 0 ? (
-                <>
-                  {count - hiddenCount} / {count} {t(lang, 'shown')} ·{' '}
-                  <button className="link" onClick={() => setView('all')}>
-                    {t(lang, 'showAll')}
+                    {t(lang, 'fitYears')}
                   </button>
                 </>
               ) : (
                 <>
-                  {count} {t(lang, 'people')}
+                  <div className="segmented" role="radiogroup" aria-label={t(lang, 'view')}>
+                    {(['all', 'hourglass', 'ancestors', 'descendants'] as ViewMode[]).map((v) => (
+                      <button
+                        key={v}
+                        role="radio"
+                        aria-checked={view === v}
+                        className={view === v ? 'on' : ''}
+                        onClick={() => {
+                          setView(v);
+                          setAddMenu(null);
+                        }}
+                      >
+                        {t(
+                          lang,
+                          v === 'all'
+                            ? 'viewAll'
+                            : v === 'hourglass'
+                              ? 'viewHourglass'
+                              : v === 'ancestors'
+                                ? 'viewAncestors'
+                                : 'viewDescendants',
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <button className="btn" onClick={() => canvas.current?.zoomBy(1 / 1.3)} aria-label={t(lang, 'zoomOut')}>
+                    −
+                  </button>
+                  <button className="btn" onClick={() => canvas.current?.zoomBy(1.3)} aria-label={t(lang, 'zoomIn')}>
+                    +
+                  </button>
+                  <button className="btn" onClick={() => canvas.current?.fit(true)}>
+                    {t(lang, 'fit')}
+                  </button>
+                  <button className="btn" onClick={() => canvas.current?.centerOn(layout.focusId, true)}>
+                    {t(lang, 'recentre')}
+                  </button>
                 </>
-              )}{' '}
-              · {t(lang, band.band === 'cards' ? 'fullCards' : band.band === 'names' ? 'namesOnly' : 'dots')}
-              {readOnly && <span className="hud-warn"> · {t(lang, 'readOnlyHint')}</span>}
-              {layout.truncatedUp && <span className="hud-warn"> · ↑ {t(lang, 'moreAbove')}</span>}
-              {layout.truncatedDown && <span className="hud-warn"> · ↓ {t(lang, 'moreBelow')}</span>}
+              )}
             </div>
+            {mode === 'tree' && (
+              <div className="hud">
+                {Math.round(band.zoom * 100)}% ·{' '}
+                {hiddenCount > 0 ? (
+                  <>
+                    {count - hiddenCount} / {count} {t(lang, 'shown')} ·{' '}
+                    <button className="link" onClick={() => setView('all')}>
+                      {t(lang, 'showAll')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {count} {t(lang, 'people')}
+                  </>
+                )}{' '}
+                · {t(lang, band.band === 'cards' ? 'fullCards' : band.band === 'names' ? 'namesOnly' : 'dots')}
+                {readOnly && <span className="hud-warn"> · {t(lang, 'readOnlyHint')}</span>}
+                {layout.truncatedUp && <span className="hud-warn"> · ↑ {t(lang, 'moreAbove')}</span>}
+                {layout.truncatedDown && <span className="hud-warn"> · ↓ {t(lang, 'moreBelow')}</span>}
+              </div>
+            )}
             {addMenu && !readOnly && (
               <>
                 <div className="add-backdrop" onPointerDown={() => setAddMenu(null)} />

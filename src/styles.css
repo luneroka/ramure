@@ -2737,3 +2737,192 @@ textarea:focus {
 .kinship-banner.armed {
   border-style: dashed;
 }
+
+/* ---------- Timeline (« Frise ») ---------- */
+.timeline {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--ground);
+  font-size: 13px;
+}
+.tl-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 150px;
+  height: 34px;
+  background: var(--ground);
+  z-index: 3;
+  float: left;
+}
+.tl-axis {
+  position: sticky;
+  top: 0;
+  display: block;
+  background: color-mix(in srgb, var(--ground) 92%, transparent);
+  border-bottom: 1px solid var(--line);
+  z-index: 2;
+}
+.tl-tick {
+  stroke: var(--line-2);
+  stroke-width: 1;
+}
+.tl-tick.strong {
+  stroke: var(--ink-3);
+}
+.tl-year {
+  fill: var(--ink-3);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.tl-body {
+  position: relative;
+  padding-bottom: 80px;
+}
+.tl-grid {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+}
+.tl-grid-line {
+  stroke: var(--line);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.tl-grid-line.strong {
+  opacity: 1;
+}
+.tl-today {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.tl-head {
+  position: sticky;
+  left: 0;
+  position: absolute;
+  height: 30px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 0 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  z-index: 1;
+}
+.tl-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: block;
+  border: 0;
+  padding: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+.tl-row.hover,
+.tl-row:hover {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+}
+.tl-row.selected {
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+}
+.tl-name {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 10px 0 12px;
+  line-height: 26px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ground);
+  z-index: 1;
+  font-weight: 500;
+}
+.tl-row.selected .tl-name {
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--ground));
+  color: var(--accent);
+}
+.tl-row.focus .tl-name {
+  color: var(--focus);
+}
+.tl-bar {
+  position: absolute;
+  border-radius: 7px;
+  background: var(--bar);
+  opacity: 0.85;
+}
+.tl-bar.approx {
+  background: repeating-linear-gradient(135deg, var(--bar) 0 6px, color-mix(in srgb, var(--bar) 55%, transparent) 6px 12px);
+}
+.tl-bar.open {
+  -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent);
+  mask-image: linear-gradient(90deg, #000 60%, transparent);
+}
+.tl-bar.living {
+  border-right: 2px solid var(--accent);
+  border-radius: 7px 2px 2px 7px;
+}
+.tl-bar.unsure {
+  outline: 1.5px dashed var(--warn);
+  outline-offset: 1px;
+}
+.tl-row.selected .tl-bar {
+  box-shadow: 0 0 0 2px var(--accent);
+  opacity: 1;
+}
+.tl-marriage {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: var(--ground);
+  border: 2px solid var(--ink);
+  transform: rotate(45deg);
+  box-sizing: border-box;
+}
+.tl-years {
+  position: absolute;
+  top: 0;
+  line-height: 26px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tl-undated {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.tl-undated-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: var(--accent);
+  color: var(--accent);
+}

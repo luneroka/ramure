@@ -387,6 +387,12 @@ const strings = {
   file: { fr: 'fichier', en: 'file' },
   unsure: { fr: 'À vérifier', en: 'To check' },
   kinshipSwap: { fr: 'Inverser', en: 'Swap' },
+  modeTree: { fr: 'Arbre', en: 'Tree' },
+  modeTimeline: { fr: 'Frise', en: 'Timeline' },
+  modeMap: { fr: 'Carte', en: 'Map' },
+  marriageShort: { fr: 'Mariage', en: 'Marriage' },
+  undated: { fr: 'Sans date', en: 'Undated' },
+  fitYears: { fr: 'Toutes les années', en: 'All years' },
   kinshipArmed: { fr: 'Cliquez sur une autre personne pour voir son lien avec', en: 'Click another person to see their link with' },
   unsureLabel: { fr: 'Informations à vérifier', en: 'Information to check' },
   unsureHint: {
