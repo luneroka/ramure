@@ -28,6 +28,8 @@ export interface TreeCanvasHandle {
   /** Opening view: the whole tree when it stays readable, otherwise the focus person at card size. */
   initialView(): void;
   centerOn(id: string, animate?: boolean): void;
+  /** Frame these people, at a zoom where their cards stay readable. */
+  fitTo(ids: string[], animate?: boolean): void;
   zoomBy(factor: number): void;
 }
 
@@ -47,12 +49,14 @@ export interface TreeCanvasProps {
   editable?: boolean;
   /** Card drawn as a dashed preview: a relative being added, not yet saved. */
   draftId?: string;
+  /** Relationship mode: bright people and the path between them. */
+  lit?: { ids: ReadonlySet<string>; path: string[] };
 }
 
 const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
-  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable, draftId } = props;
+  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable, draftId, lit } = props;
   const handles = useMemo(() => (editable ? computeHandles(layout, tree, selectedId) : []), [editable, layout, tree, selectedId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
@@ -63,6 +67,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const anim = useRef<number | null>(null);
   // A freshly mounted canvas fits its whole layout as soon as it knows its size.
   const pendingFit = useRef(true);
+  /** People to frame as soon as the canvas has a size (a hidden pane reports none). */
+  const pendingFitIds = useRef<string[] | null>(null);
   const portraits = useRef<PortraitCache | null>(null);
   if (!portraits.current) portraits.current = new PortraitCache(() => drawRef.current());
   const RULER_GUTTER = 170; // screen px reserved on the left for generation labels
@@ -87,11 +93,12 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         rowH: ROW_H,
         handles,
         draftId,
+        lit,
         portrait: (id) => portraits.current!.get(id),
       });
       onBandChange?.(detailBand(cam.current.k), cam.current.k);
     });
-  }, [layout, tree, selectedId, lang, onBandChange, handles, draftId]);
+  }, [layout, tree, selectedId, lang, onBandChange, handles, draftId, lit]);
   // Effects that must not re-run when draw changes read it through this ref.
   const drawRef = useRef(draw);
   drawRef.current = draw;
@@ -119,6 +126,11 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (pendingFit.current) {
         pendingFit.current = false;
         fitRef.current(false);
+      }
+      if (pendingFitIds.current) {
+        const ids = pendingFitIds.current;
+        pendingFitIds.current = null;
+        fitToRef.current(ids, false);
       }
       drawRef.current();
     });
@@ -212,6 +224,38 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   );
   fitRef.current = fitNow;
 
+  const fitToIds = useCallback(
+    (ids: string[], animate: boolean) => {
+      const nodes = layout.nodes.filter((n) => ids.includes(n.id));
+      const { w, h } = size.current;
+      if (!nodes.length) return;
+      if (!w || !h) {
+        pendingFitIds.current = ids;
+        return;
+      }
+      const b = nodes.reduce(
+        (acc, n) => ({
+          minX: Math.min(acc.minX, n.x),
+          minY: Math.min(acc.minY, n.y),
+          maxX: Math.max(acc.maxX, n.x + n.w),
+          maxY: Math.max(acc.maxY, n.y + n.h),
+        }),
+        { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity },
+      );
+      const gutter = Math.min(RULER_GUTTER, w * 0.28);
+      const pad = 48;
+      const availW = w - gutter - pad,
+        availH = h - pad * 2;
+      const k = clampZoom(Math.min(availW / (b.maxX - b.minX), availH / (b.maxY - b.minY), 1));
+      const cx = (b.minX + b.maxX) / 2,
+        cy = (b.minY + b.maxY) / 2;
+      animateTo({ x: gutter + availW / 2 - cx * k, y: h / 2 - cy * k, k }, animate);
+    },
+    [layout, animateTo],
+  );
+  const fitToRef = useRef(fitToIds);
+  fitToRef.current = fitToIds;
+
   const zoomAt = useCallback(
     (sx: number, sy: number, factor: number) => {
       const c = cam.current;
@@ -236,12 +280,15 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         if (!n) return;
         centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(cam.current.k, 0.75), animate);
       },
+      fitTo(ids, animate = true) {
+        fitToIds(ids, animate);
+      },
       zoomBy(factor) {
         const { w, h } = size.current;
         zoomAt(w / 2, h / 2, factor);
       },
     }),
-    [layout, centerWorld, fitNow, zoomAt],
+    [layout, centerWorld, fitNow, zoomAt, fitToIds],
   );
 
   // ---------- Gestures ----------

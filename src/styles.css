@@ -2711,3 +2711,25 @@ textarea:focus {
 .union-children .sub-band {
   margin-top: 0;
 }
+
+/* ---------- Relationship banner over the canvas ---------- */
+.kinship-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(720px, calc(100vw - 24px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  z-index: 7;
+  font-size: 14px;
+}
+.kinship-text {
+  font-weight: 500;
+}

@@ -14,6 +14,7 @@ import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
 import { auditTree, noteKey, type CheckNote } from '../tree/audit';
+import { describeKinship } from '../tree/kinship';
 import { historyReducer, initialHistory } from './history';
 import { Home } from './Home';
 import { Login } from './Login';
@@ -150,6 +151,7 @@ export function App() {
   const [band, setBand] = useState<{ band: DetailBand; zoom: number }>({ band: 'cards', zoom: 1 });
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
+  const [kinshipIds, setKinshipIds] = useState<{ a: string; b: string } | null>(null);
   const [addMenu, setAddMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [snapshots, setSnapshots] = useState<Array<{
@@ -433,6 +435,24 @@ export function App() {
   if (dismissedFor.key !== dismissKey) setDismissedFor({ key: dismissKey, set: readDismissed(dismissKey) });
   const dismissed = dismissedFor.set;
   const setDismissed = (set: Set<string>) => setDismissedFor({ key: dismissKey, set });
+  // Relationship mode: recomputed live, cleared when either person leaves the tree.
+  const kinship = useMemo(() => {
+    if (!kinshipIds || !tree || !tree.individuals[kinshipIds.a] || !tree.individuals[kinshipIds.b]) return null;
+    return describeKinship(tree, kinshipIds.a, kinshipIds.b, lang);
+  }, [kinshipIds, tree, lang]);
+  const lit = useMemo(
+    () => (kinship && kinship.path.length > 1 ? { ids: new Set(kinship.path), path: kinship.path } : undefined),
+    [kinship],
+  );
+  const framedPath = useRef<string>('');
+  const startKinship = (a: string, b: string) => {
+    setKinshipIds({ a, b });
+    // The whole path has to be on the canvas: the overview shows everyone.
+    if (tree) {
+      const r = describeKinship(tree, a, b, lang);
+      if (layout && r.path.some((id) => !layout.nodes.some((n) => n.id === id))) setView('all');
+    }
+  };
   const reportNotes = useMemo(() => {
     if (!tree) return [];
     const stillRelevant: CheckNote[] = tree.importNotes.filter((n) => !n.ids?.length || n.ids.some((id) => tree.individuals[id]));
@@ -466,11 +486,18 @@ export function App() {
     lastKey.current = sourceKey;
     lastFocusRef.current = effectiveFocus;
     lastViewRef.current = view;
+    // A relationship being shown wins: frame its path as soon as the layout holds every person on it.
+    const litKey = lit ? lit.path.join('>') : '';
+    if (lit && litKey !== framedPath.current && lit.path.every((id) => layout.nodes.some((n) => n.id === id))) {
+      framedPath.current = litKey;
+      requestAnimationFrame(() => canvas.current?.fitTo(lit.path, true));
+      return;
+    }
     if (loadedNew) requestAnimationFrame(() => canvas.current?.initialView());
     else if (viewChanged && view === 'all')
       requestAnimationFrame(() => (effectiveFocus ? canvas.current?.centerOn(effectiveFocus, true) : canvas.current?.fit(true)));
     else if (viewChanged || focusChanged) requestAnimationFrame(() => effectiveFocus && canvas.current?.centerOn(effectiveFocus, true));
-  }, [layout, tree, sourceKey, view, effectiveFocus]);
+  }, [layout, tree, sourceKey, view, effectiveFocus, lit]);
 
   // ---------- Editing ----------
   /** The single path for changes: build an op, apply it, record it, hand it to sync. */
@@ -1043,6 +1070,7 @@ export function App() {
               onFocus={focusOn}
               onHandle={onHandle}
               draftId={draft?.preview.focusId}
+              lit={lit}
               onBandChange={onBandChange}
             />
             <div className="canvas-tools">
@@ -1119,6 +1147,19 @@ export function App() {
                   ))}
                 </ul>
               </>
+            )}
+            {kinship && (
+              <div className="kinship-banner" role="status">
+                <span className="kinship-text">{kinship.sentence}</span>
+                {kinshipIds && kinship.kind !== 'same' && (
+                  <button className="btn small subtle" onClick={() => setKinshipIds({ a: kinshipIds.b, b: kinshipIds.a })}>
+                    {t(lang, 'kinshipSwap')}
+                  </button>
+                )}
+                <button className="icon-btn" onClick={() => setKinshipIds(null)} aria-label={t(lang, 'close')}>
+                  ×
+                </button>
+              </div>
             )}
             {showReport && (
               <div className="report">
@@ -1390,6 +1431,7 @@ export function App() {
             if (commit(ops.updatePerson(id, { leads }))) toast(t(lang, 'saved'));
           }}
           onNotice={toast}
+          onKinship={startKinship}
         />
       )}
     </div>

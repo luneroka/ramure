@@ -78,6 +78,8 @@ export interface RenderState {
   selectedId?: string;
   hoverId?: string;
   draftId?: string;
+  /** Relationship mode: these people stay bright, the path between them is drawn, everything else fades. */
+  lit?: { ids: ReadonlySet<string>; path: string[] };
   /** Decoded portrait by media id; undefined while loading or missing (placeholder drawn). */
   portrait?: (mediaId: string) => ImageBitmap | undefined;
   lang: Lang;
@@ -158,6 +160,40 @@ export function isLiving(ind: Individual): boolean {
   const by = approximateYear((findEvent(ind.events, 'birth') ?? findEvent(ind.events, 'baptism'))?.date);
   if (by === undefined) return false;
   return new Date().getFullYear() - by < 110;
+}
+
+/** The relationship path: orthogonal strokes from card to card, in the accent colour. */
+function drawLitPath(ctx: CanvasRenderingContext2D, s: RenderState, k: number): void {
+  const { layout, theme: T } = s;
+  const nodeOf = (id: string) => layout.nodes.find((n) => n.id === id);
+  const path = s.lit!.path.map(nodeOf).filter((n): n is LayoutNode => !!n);
+  if (path.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = T.accent;
+  ctx.lineWidth = Math.max(1.5, 3 / k);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.globalAlpha = 0.9;
+  ctx.beginPath();
+  for (let i = 1; i < path.length; i++) {
+    const p = path[i - 1]!,
+      q = path[i]!;
+    const px = p.x + p.w / 2,
+      py = p.y + p.h / 2,
+      qx = q.x + q.w / 2,
+      qy = q.y + q.h / 2;
+    ctx.moveTo(px, py);
+    if (Math.abs(py - qy) < 1) {
+      ctx.lineTo(qx, qy);
+    } else {
+      const midY = py < qy ? (p.y + p.h + q.y) / 2 : (q.y + q.h + p.y) / 2;
+      ctx.lineTo(px, midY);
+      ctx.lineTo(qx, midY);
+      ctx.lineTo(qx, qy);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 /** A small amber « ? » disc: this person still needs checking. */
@@ -245,6 +281,7 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   // Connectors
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  if (s.lit) ctx.globalAlpha = 0.22;
   for (const l of layout.links) {
     const p0 = l.points[0]!,
       p1 = l.points[l.points.length - 1]!;
@@ -262,11 +299,13 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
     ctx.stroke();
   }
 
+  ctx.globalAlpha = 1;
   // Cards
   for (const n of layout.nodes) {
     if (!visible(n)) continue;
     const ind = tree.individuals[n.id];
     if (!ind) continue;
+    ctx.globalAlpha = s.lit && !s.lit.ids.has(n.id) ? 0.22 : 1;
     const isFocus = n.id === layout.focusId;
     const isSel = n.id === s.selectedId;
     const isDraft = n.id === s.draftId;
@@ -353,6 +392,9 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
       if (ind.unsure) drawUnsureBadge(ctx, T, n.x + n.w - 14, n.y + n.h - 14);
     }
   }
+
+  ctx.globalAlpha = 1;
+  if (s.lit) drawLitPath(ctx, s, k);
 
   // The (+) button on the selected card.
   if (band === 'cards' && s.handles?.length) {
