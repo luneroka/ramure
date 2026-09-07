@@ -1143,7 +1143,7 @@ export function App() {
                   <button
                     className="btn"
                     onClick={() => {
-                      const el = document.querySelector('.timeline');
+                      const el = document.querySelector('.frise');
                       const tlYears = Number(el?.getAttribute('data-years') ?? 0);
                       if (el && tlYears) setPxPerYear(Math.min(MAX_PPY, Math.max(MIN_PPY, (el.clientWidth - 170) / tlYears)));
                     }}

@@ -107,7 +107,7 @@ export function Timeline({ tree, lang, selectedId, focusId, onSelect, pxPerYear,
   };
 
   return (
-    <div ref={box} className="timeline" role="region" aria-label={t(lang, 'modeTimeline')} data-years={years}>
+    <div ref={box} className="frise" role="region" aria-label={t(lang, 'modeTimeline')} data-years={years}>
       <div className="tl-corner" />
       <svg className="tl-axis" width={width + LABEL_W} height={AXIS_H} style={{ left: 0 }}>
         {ticks.map((y) => (

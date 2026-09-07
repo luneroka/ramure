@@ -2739,7 +2739,7 @@ textarea:focus {
 }
 
 /* ---------- Timeline (« Frise ») ---------- */
-.timeline {
+.frise {
   position: absolute;
   inset: 0;
   overflow: auto;
