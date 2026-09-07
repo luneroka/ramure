@@ -767,15 +767,26 @@ export function App() {
     setAddMenu(null);
     if (view === 'all') setView('hourglass');
   };
-  const cycleTheme = () => setTheme((c) => (c === 'auto' ? 'light' : c === 'light' ? 'dark' : 'auto'));
+  // The bar button flips between light and dark from what is actually displayed; « Auto » lives in Paramètres.
+  const [systemDark, setSystemDark] = useState(
+    () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches,
+  );
+  useEffect(() => {
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const on = () => setSystemDark(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const effectiveTheme: ThemeChoice = theme === 'auto' ? (systemDark ? 'dark' : 'light') : theme;
+  const cycleTheme = () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark');
   const onBandChange = useCallback((b: DetailBand, zoom: number) => {
     setBand((prev) => (prev.band === b && Math.abs(prev.zoom - zoom) < 0.005 ? prev : { band: b, zoom }));
   }, []);
 
   const selected = displayTree && selectedId ? displayTree.individuals[selectedId] : undefined;
   // Both switches show what a click gives you, not the current state.
-  const nextTheme: ThemeChoice = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
-  const themeLabel = `${t(lang, 'theme')} : ${nextTheme === 'auto' ? t(lang, 'themeAuto') : nextTheme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`;
+  const nextTheme: ThemeChoice = effectiveTheme === 'dark' ? 'light' : 'dark';
+  const themeLabel = `${t(lang, 'theme')} : ${nextTheme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`;
   const syncLabel =
     sync.status === 'synced'
       ? t(lang, 'syncSynced')
