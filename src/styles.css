@@ -3024,3 +3024,14 @@ textarea:focus {
   text-align: center;
   z-index: 500;
 }
+
+.signin-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-size: 13.5px;
+}
+.signin .btn {
+  width: 100%;
+}

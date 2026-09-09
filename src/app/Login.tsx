@@ -13,7 +13,13 @@ interface Props {
 }
 
 export function Login({ lang, auth, pendingInvite, toast }: Props) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    try {
+      return sessionStorage.getItem('ramure.signinEmail') ?? '';
+    } catch {
+      return '';
+    }
+  });
   // The code screen survives a reload or a trip to the mail app: the address is kept for the session.
   const [sent, setSentState] = useState<{ email: string; link?: string; code?: string } | null>(() => {
     try {
@@ -35,7 +41,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
 
-  const request = async (e: React.FormEvent) => {
+  const request = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
@@ -49,7 +55,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     }
   };
 
-  const submitCode = async (e: React.FormEvent) => {
+  const submitCode = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!sent) return;
     setBusy(true);
@@ -63,6 +69,9 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
       setBusy(false);
     }
   };
+
+  const digits = code.replace(/\D/g, '');
+  const canCode = email.includes('@') && digits.length === 6;
 
   return (
     <div className="login">
@@ -78,61 +87,69 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
           <p className="muted">…</p>
         ) : auth.unavailable ? (
           <p className="muted">{t(lang, 'apiUnavailable')}</p>
-        ) : sent ? (
-          <div className="signin-sent">
-            <p>
-              {t(lang, 'linkSent')} <strong>{sent.email}</strong>. {t(lang, 'linkSentHint')}
-            </p>
-            <form className="signin code-form" onSubmit={submitCode}>
-              <label>
-                {t(lang, 'codeLabel')}
-                <input
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  pattern="[0-9 ]*"
-                  maxLength={7}
-                  placeholder="483 921"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, ''))}
-                  autoFocus
-                />
-              </label>
-              <button className="btn primary" disabled={busy || code.replace(/\D/g, '').length !== 6}>
-                {t(lang, 'codeSubmit')}
-              </button>
-              <p className="muted small">{t(lang, 'codeHint')}</p>
-            </form>
-            {sent.link && (
-              <p className="small">
-                <a href={sent.link}>{t(lang, 'devLink')}</a>
-                {sent.code && <span className="muted"> · code {sent.code}</span>}
-              </p>
-            )}
-            <button className="btn subtle" onClick={() => setSent(null)}>
-              {t(lang, 'otherEmail')}
-            </button>
-          </div>
         ) : (
-          <form className="signin" onSubmit={request}>
+          <form
+            className="signin"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canCode) void submitCode(e);
+              else void request(e);
+            }}
+          >
             <label>
               {t(lang, 'email')}
               <input
                 type="email"
                 required
-                autoFocus
+                autoFocus={!sent}
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vous@exemple.fr"
               />
             </label>
-            <button className="btn primary" disabled={busy || !email.includes('@')}>
-              {t(lang, 'sendLink')}
+            {sent ? (
+              <p className="signin-note">
+                {t(lang, 'linkSent')} <strong>{sent.email}</strong>. {t(lang, 'linkSentHint')}
+              </p>
+            ) : (
+              <p className="muted small">{t(lang, 'signinHint')}</p>
+            )}
+            <button
+              type="button"
+              className={`btn ${sent ? '' : 'primary'}`}
+              disabled={busy || !email.includes('@')}
+              onClick={(e) => void request(e)}
+            >
+              {t(lang, sent ? 'sendAgain' : 'sendLink')}
             </button>
-            <p className="muted small">{t(lang, 'signinHint')}</p>
-            <button type="button" className="link small" disabled={!email.includes('@')} onClick={() => setSent({ email: email.trim() })}>
-              {t(lang, 'haveCode')}
+            <label>
+              {t(lang, 'codeLabel')}
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={7}
+                placeholder="483 921"
+                value={code}
+                autoFocus={!!sent}
+                onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, ''))}
+              />
+            </label>
+            <button
+              type="button"
+              className={`btn ${sent ? 'primary' : ''}`}
+              disabled={busy || !canCode}
+              onClick={(e) => void submitCode(e)}
+            >
+              {t(lang, 'codeSubmit')}
             </button>
+            <p className="muted small">{t(lang, 'codeHint')}</p>
+            {sent?.link && (
+              <p className="small">
+                <a href={sent.link}>{t(lang, 'devLink')}</a>
+                {sent.code && <span className="muted"> · code {sent.code}</span>}
+              </p>
+            )}
           </form>
         )}
       </div>
