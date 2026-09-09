@@ -40,6 +40,8 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByPlaceholder('Rechercher une personne…').fill('marguerite lenoir');
   await page.getByRole('button', { name: 'Marguerite LENOIR' }).first().click();
   await expect(page.locator('.panel-name')).toContainText('Marguerite LENOIR');
+  // The tree recentres on the person picked (the canvas reports its focus).
+  await expect(page.locator('canvas.tree-canvas')).toHaveAttribute('data-focus', 'I1');
   await page.getByRole('tab', { name: /Famille/ }).click();
   await page.getByRole('button', { name: '+ Enfant' }).first().click();
   await page.getByLabel('Prénom(s)').fill('Testine');

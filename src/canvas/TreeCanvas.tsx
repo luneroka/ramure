@@ -169,7 +169,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       if (anim.current) cancelAnimationFrame(anim.current);
       if (!animate || reduced) {
         cam.current = target;
-        draw();
+        drawRef.current();
         return;
       }
       const from = { ...cam.current };
@@ -179,13 +179,13 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         const t = Math.min(1, (now - t0) / D);
         const e = 1 - Math.pow(1 - t, 3);
         cam.current = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e, k: from.k + (target.k - from.k) * e };
-        draw();
+        drawRef.current();
         if (t < 1) anim.current = requestAnimationFrame(step);
         else anim.current = null;
       };
       anim.current = requestAnimationFrame(step);
     },
-    [draw, reduced],
+    [reduced],
   );
 
   const centerWorld = useCallback(
@@ -270,29 +270,35 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     [draw],
   );
 
+  // The handle is created once and stays valid across layout changes: whoever holds it (the workspace, a camera
+  // effect) always reaches the current layout and the current draw, never a closure of a layout that is gone.
+  const latest = useRef({ layout, centerWorld, fitNow, zoomAt, fitToIds });
+  useEffect(() => {
+    latest.current = { layout, centerWorld, fitNow, zoomAt, fitToIds };
+  });
   useImperativeHandle(
     ref,
     () => ({
       fit(animate = true) {
-        fitNow(animate);
+        latest.current.fitNow(animate);
       },
       initialView() {
-        fitNow(false, true);
+        latest.current.fitNow(false, true);
       },
       centerOn(id, animate = true) {
-        const n = layout.nodes.find((x) => x.id === id);
+        const n = latest.current.layout.nodes.find((x) => x.id === id);
         if (!n) return;
-        centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(cam.current.k, 0.75), animate);
+        latest.current.centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(cam.current.k, 0.75), animate);
       },
       fitTo(ids, animate = true) {
-        fitToIds(ids, animate);
+        latest.current.fitToIds(ids, animate);
       },
       zoomBy(factor) {
         const { w, h } = size.current;
-        zoomAt(w / 2, h / 2, factor);
+        latest.current.zoomAt(w / 2, h / 2, factor);
       },
     }),
-    [layout, centerWorld, fitNow, zoomAt, fitToIds],
+    [],
   );
 
   // ---------- Gestures ----------
@@ -461,6 +467,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         className="tree-canvas"
         role="application"
         tabIndex={0}
+        data-focus={layout.focusId}
         aria-label={t(lang, 'canvasLabel')}
         aria-describedby="tree-canvas-keys"
         onPointerDown={onPointerDown}
