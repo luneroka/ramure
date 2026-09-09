@@ -6,6 +6,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { detectLang, t } from '../../i18n';
+import { reportError } from '../report';
 
 interface State {
   error: Error | null;
@@ -20,6 +21,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Ramure: render crashed', error, info.componentStack);
+    reportError('render', error);
   }
 
   render() {

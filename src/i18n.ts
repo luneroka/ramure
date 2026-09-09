@@ -197,6 +197,16 @@ const strings = {
   },
   showCopies: { fr: 'Voir les copies', en: 'Show copies' },
   noCopies: { fr: 'Aucune copie encore (la première est faite la nuit prochaine).', en: 'No copy yet (the first one is made tonight).' },
+  reportedErrors: { fr: 'Erreurs signalées', en: 'Reported errors' },
+  reportedErrorsHint: {
+    fr: 'Quand l’application se casse dans un navigateur, elle envoie le message et la trace ici (au plus cinq par session, sans données personnelles). Conservées trente jours.',
+    en: 'When the app breaks in a browser it sends the message and the trace here (at most five per session, no personal data). Kept thirty days.',
+  },
+  showErrors: { fr: 'Voir les erreurs', en: 'Show errors' },
+  refresh: { fr: 'Actualiser', en: 'Refresh' },
+  clearErrors: { fr: 'Tout effacer', en: 'Clear all' },
+  noErrors: { fr: 'Aucune erreur signalée.', en: 'No error reported.' },
+  details: { fr: 'Détails', en: 'Details' },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',

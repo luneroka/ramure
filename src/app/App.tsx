@@ -34,6 +34,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { ThemeIcon } from './ui/icons';
 import { UiProvider, useUi } from './ui/UiContext';
 import { UpdateBanner } from './ui/UpdateBanner';
+import { reportError } from './report';
 import { useAuth } from './useAuth';
 
 const DEFAULT_VIEW_KEY = 'ramure.defaultView';
@@ -72,9 +73,15 @@ function Shell() {
     const onRejection = (e: PromiseRejectionEvent) => {
       const reason = e.reason instanceof Error ? e.reason.message : String(e.reason);
       toast(`${t(lang, 'unexpectedError')} : ${reason}`);
+      reportError('rejection', e.reason);
     };
+    const onError = (e: ErrorEvent) => reportError('error', e.error ?? e.message);
     window.addEventListener('unhandledrejection', onRejection);
-    return () => window.removeEventListener('unhandledrejection', onRejection);
+    window.addEventListener('error', onError);
+    return () => {
+      window.removeEventListener('unhandledrejection', onRejection);
+      window.removeEventListener('error', onError);
+    };
   }, [lang, toast]);
 
   // ---------- The open tree ----------

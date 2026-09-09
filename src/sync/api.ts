@@ -55,6 +55,18 @@ export interface Me {
   deletionRequestedAt?: number | null;
 }
 
+export interface ClientErrorRow {
+  id: string;
+  at: number;
+  version: string | null;
+  kind: string;
+  message: string;
+  stack: string | null;
+  url: string | null;
+  agent: string | null;
+  email: string | null;
+}
+
 export interface AdminOverview {
   users: Array<{
     id: string;
@@ -119,6 +131,10 @@ export const api = {
   adminDeclineDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/decline`, {}),
   logout: () => call<{ ok: true }>('POST', '/api/auth/logout', {}),
   logoutAll: () => call<{ ok: true; closed: number }>('POST', '/api/auth/logout-all', {}),
+  reportError: (report: { kind: string; message: string; stack?: string; url: string; version: string }) =>
+    call<{ ok: true }>('POST', '/api/errors', report),
+  adminErrors: () => call<{ errors: ClientErrorRow[] }>('GET', '/api/admin/errors'),
+  adminClearErrors: () => call<{ ok: true; deleted: number }>('DELETE', '/api/admin/errors'),
   rename: (name: string) => call<{ user: Me }>('PATCH', '/api/auth/me', { name }),
 
   accounts: () => call<{ accounts: Account[] }>('GET', '/api/accounts'),

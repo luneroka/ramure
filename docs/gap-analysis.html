@@ -203,7 +203,7 @@
       <li>Workers Paid plan for CPU headroom and 30-day point-in-time restore, and a Durable Object per tree.</li>
       <li>Nightly per-tree exports to R2 — done 9 September 2026: each changed tree is copied as GEDCOM to <code>backups/&lt;tree&gt;/&lt;day&gt;.ged</code> after the reaper, kept thirty days (the newest always, a deleted tree's copies for the same season), listed and downloadable from the administration page. R2 object versioning and a repair endpoint remain.</li>
       <li>Your own domain for the app and the mail links; a DMARC record on the sending domain, which is the missing piece behind the Outlook warning (DKIM and SPF are already in place).</li>
-      <li>A staging Worker with its own database, migrations run from CI with an export first, error reporting from the browser, dependency updates on a schedule.</li>
+      <li>Error reporting from the browser and dependency updates on a schedule — done 9 September 2026: crashes, unhandled rejections and window errors reach <code>/api/errors</code> (capped, rate-limited, no personal data) and are read on the administration page; Dependabot opens grouped pull requests every Monday. A staging Worker with its own database and migrations run from CI with an export first remain: both need Cloudflare resources and API tokens that Yoann creates.</li>
     </ul>
   </div>
 

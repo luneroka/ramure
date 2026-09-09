@@ -124,6 +124,31 @@ async function inviteAddress(
   return { id, expiresAt: now() + APP_INVITE_TTL_MS };
 }
 
+/** What browsers reported lately, newest first. */
+admin.get('/errors', async (c) => {
+  await requireAdmin(c.env, c.get('user'));
+  const rows = await c.env.DB.prepare(
+    `SELECT e.id, e.at, e.version, e.kind, e.message, e.stack, e.url, e.agent, u.email FROM client_errors e LEFT JOIN users u ON u.id = e.user_id ORDER BY e.at DESC LIMIT 100`,
+  ).all<{
+    id: string;
+    at: number;
+    version: string | null;
+    kind: string;
+    message: string;
+    stack: string | null;
+    url: string | null;
+    agent: string | null;
+    email: string | null;
+  }>();
+  return c.json({ errors: rows.results });
+});
+
+admin.delete('/errors', async (c) => {
+  await requireAdmin(c.env, c.get('user'));
+  const r = await c.env.DB.prepare(`DELETE FROM client_errors`).run();
+  return c.json({ ok: true, deleted: r.meta.changes ?? 0 });
+});
+
 /** The nightly copies of a tree, for the operator's eyes. */
 admin.get('/backups/:treeId', async (c) => {
   await requireAdmin(c.env, c.get('user'));
