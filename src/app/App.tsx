@@ -297,13 +297,25 @@ export function App() {
 
   // Boot: URL parameters (sign-in result, invite).
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const signin = params.get('signin');
-    const invite = params.get('invite');
-    if (signin || invite) window.history.replaceState(null, '', location.pathname);
-    if (signin === 'ok') window.setTimeout(() => toast(t(lang, 'signedIn')), 0);
-    if (signin === 'expired') window.setTimeout(() => toast(t(lang, 'signinExpired')), 0);
-    if (invite) sessionStorage.setItem(INVITE_KEY, invite);
+    // Tokens arrive in the fragment (#signin=…, #invite=…): never sent to the server, stripped as soon as read.
+    // Consumed on load and whenever the fragment changes, so a link opened into an already open tab works too.
+    const consumeFragment = () => {
+      const frag = new URLSearchParams(location.hash.replace(/^#/, ''));
+      const signinToken = frag.get('signin');
+      const inviteToken = frag.get('invite');
+      if (!signinToken && !inviteToken) return null;
+      window.history.replaceState(null, '', location.pathname + '#/');
+      if (signinToken) {
+        auth
+          .verifyLink(signinToken)
+          .then(() => toast(t(lang, 'signedIn')))
+          .catch((err) => toast(t(lang, err instanceof ApiError && err.status === 403 ? 'signinOtherDevice' : 'signinExpired')));
+      }
+      if (inviteToken) sessionStorage.setItem(INVITE_KEY, inviteToken);
+      return inviteToken;
+    };
+    consumeFragment();
+    window.addEventListener('hashchange', consumeFragment);
     const token = sessionStorage.getItem(INVITE_KEY);
     if (token) {
       api
@@ -314,6 +326,7 @@ export function App() {
           window.setTimeout(() => toast(t(lang, 'inviteInvalid')), 0);
         });
     }
+    return () => window.removeEventListener('hashchange', consumeFragment);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

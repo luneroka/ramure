@@ -10,6 +10,8 @@ export interface Auth {
   requestLink(email: string): Promise<{ link?: string; code?: string }>;
   /** The six-digit code from the mail; resolves once the session is open. */
   verifyCode(email: string, code: string): Promise<void>;
+  /** The token from a mailed link, posted from this browser. */
+  verifyLink(token: string): Promise<void>;
   logout(): Promise<void>;
   refresh(): Promise<void>;
 }
@@ -44,6 +46,11 @@ export function useAuth(): Auth {
     const r = await api.requestLink(email);
     return { link: r.link, code: r.code };
   }, []);
+  const verifyLink = useCallback(async (token: string) => {
+    await api.verifyLink(token);
+    const r = await api.me();
+    setUser(r.user);
+  }, []);
   const verifyCode = useCallback(async (email: string, code: string) => {
     await api.verifyCode(email, code);
     const r = await api.me();
@@ -55,5 +62,5 @@ export function useAuth(): Auth {
     setUser(null);
   }, []);
 
-  return { user, loading, unavailable, requestLink, verifyCode, logout, refresh };
+  return { user, loading, unavailable, requestLink, verifyCode, verifyLink, logout, refresh };
 }

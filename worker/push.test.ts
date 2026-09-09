@@ -62,11 +62,11 @@ describe('push limits and validation', () => {
 describe('destructive record patches', () => {
   async function editorOn(treeId: string, accountId: string, ownerClient: Client): Promise<Client> {
     const inv = await ownerClient.call<{ link: string }>('POST', `/api/accounts/${accountId}/invites`, { role: 'member' });
-    const token = new URL(inv.body.link).searchParams.get('invite') ?? new URL(inv.body.link).hash.replace(/^#invite=/, '');
+    const token = decodeURIComponent(new URL(inv.body.link).hash.replace(/^#invite=/, ''));
     await invite('editor2@example.org');
     const e = new Client();
     await e.signIn('editor2@example.org');
-    const accept = await e.call('POST', `/api/invites/${encodeURIComponent(token)}/accept`, {});
+    const accept = await e.call('POST', '/api/invites/accept', { token });
     expect(accept.status).toBe(200);
     return e;
   }

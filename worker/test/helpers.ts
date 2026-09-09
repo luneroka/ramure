@@ -4,7 +4,13 @@ import { env } from 'cloudflare:test';
 import app from '../index';
 
 export class Client {
-  cookie = '';
+  /** A small cookie jar: several cookies, replaced by name, dropped when expired by the server. */
+  jar = new Map<string, string>();
+  /** Each client is its own address, so the per-address limits never leak between tests. */
+  ip = `203.0.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+  get cookie(): string {
+    return [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ');
+  }
 
   async call<T = Record<string, unknown>>(method: string, path: string, body?: unknown): Promise<{ status: number; body: T }> {
     const res = await app.request(
@@ -15,13 +21,19 @@ export class Client {
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...(this.cookie ? { Cookie: this.cookie } : {}),
           Origin: 'http://localhost',
+          'cf-connecting-ip': this.ip,
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
       },
       env,
     );
-    const set = res.headers.get('set-cookie');
-    if (set) this.cookie = set.split(';')[0]!;
+    for (const line of res.headers.getSetCookie()) {
+      const [pair, ...attrs] = line.split(';');
+      const [name, value] = pair!.split('=');
+      const gone = attrs.some((a) => /max-age=0/i.test(a.trim()));
+      if (gone || !value) this.jar.delete(name!.trim());
+      else this.jar.set(name!.trim(), value);
+    }
     const text = await res.text();
     let parsed: unknown;
     try {

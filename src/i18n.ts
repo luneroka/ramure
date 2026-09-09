@@ -228,6 +228,10 @@ const strings = {
     fr: 'Ce fichier dépasse 1,5 Mo, la taille maximale d’un arbre pour l’instant. Réduisez-le (notes, médias) avant l’import.',
     en: 'This file is over 1.5 MB, the largest a tree can be for now. Trim it (notes, media) before importing.',
   },
+  signinOtherDevice: {
+    fr: 'Ce lien a été demandé depuis un autre appareil. Sur celui-ci, demandez un code et saisissez-le, ou ouvrez le lien là où vous l’avez demandé.',
+    en: 'This link was requested from another device. Request a code here and type it, or open the link where you asked for it.',
+  },
   signinInviteOnly: {
     fr: 'Ramure fonctionne sur invitation. Utilisez l’adresse qui a reçu l’invitation, ou demandez-en une.',
     en: 'Ramure is invitation only. Use the address that received the invitation, or ask for one.',

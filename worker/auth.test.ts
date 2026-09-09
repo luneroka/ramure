@@ -36,7 +36,9 @@ describe('closed door', () => {
     const r = await c.call<{ code: string }>('POST', '/api/auth/request', { email: 'once@example.org' });
     expect((await c.call('POST', '/api/auth/code', { email: 'once@example.org', code: '000000' })).status).toBe(400);
     expect((await c.call('POST', '/api/auth/code', { email: 'once@example.org', code: r.body.code })).status).toBe(200);
-    expect((await new Client().call('POST', '/api/auth/code', { email: 'once@example.org', code: r.body.code })).status).toBe(400);
+    // Spent, and from a browser that never asked: refused either way.
+    expect((await new Client().call('POST', '/api/auth/code', { email: 'once@example.org', code: r.body.code })).status).toBe(403);
+    expect((await c.call('POST', '/api/auth/code', { email: 'once@example.org', code: r.body.code })).status).toBe(403);
   });
 });
 

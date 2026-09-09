@@ -10,7 +10,7 @@ import { HttpError, now, randomId, randomToken, readJson, sha256 } from './util'
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
 
-const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function requireUser(user: User | null): User {
   if (!user) throw new HttpError(401, 'sign in required');
@@ -151,7 +151,8 @@ accounts.post('/:id/invites', async (c) => {
   )
     .bind(await sha256(token), id, user.id, now(), now() + INVITE_TTL_MS, role)
     .run();
-  return c.json({ link: `${c.env.APP_ORIGIN}/?invite=${encodeURIComponent(token)}`, expiresAt: now() + INVITE_TTL_MS, role }, 201);
+  // Fragment, so the token never reaches a server log; the app reads it and posts it.
+  return c.json({ link: `${c.env.APP_ORIGIN}/#invite=${encodeURIComponent(token)}`, expiresAt: now() + INVITE_TTL_MS, role }, 201);
 });
 
 accounts.get('/:id/invites', async (c) => {
@@ -182,20 +183,24 @@ accounts.delete('/:id/invites/:inviteId', async (c) => {
 
 export const invites = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-invites.get('/:token', async (c) => {
+invites.post('/info', async (c) => {
+  const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
   const row = await c.env.DB.prepare(
     `SELECT i.account_id, i.expires_at, i.revoked_at, i.role, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
   )
-    .bind(await sha256(c.req.param('token')))
+    .bind(await sha256(token))
     .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole; name: string }>();
   if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
   return c.json({ accountId: row.account_id, accountName: row.name, role: row.role });
 });
 
-invites.post('/:token/accept', async (c) => {
+invites.post('/accept', async (c) => {
   const user = requireUser(c.get('user'));
+  const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
   const row = await c.env.DB.prepare(`SELECT account_id, expires_at, revoked_at, role FROM account_invites WHERE token_hash = ?`)
-    .bind(await sha256(c.req.param('token')))
+    .bind(await sha256(token))
     .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole }>();
   if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
   const existing = await accountRole(c.env, row.account_id, user.id);

@@ -12,4 +12,5 @@ declare module 'cloudflare:test' {
   }
 }
 
-await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
+const done = await env.DB.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'users'`).first();
+if (!done) await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);

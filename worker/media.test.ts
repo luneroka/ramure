@@ -23,7 +23,11 @@ async function editor(): Promise<{ c: Client; treeId: string }> {
 async function put(c: Client, treeId: string, id: string, bytes: Uint8Array, type: string) {
   return app.request(
     `http://localhost/api/trees/${treeId}/media/${id}`,
-    { method: 'PUT', headers: { 'Content-Type': type, Cookie: c.cookie, Origin: 'http://localhost' }, body: bytes },
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': type, Cookie: c.cookie, Origin: 'http://localhost', 'cf-connecting-ip': c.ip },
+      body: bytes,
+    },
     env,
   );
 }

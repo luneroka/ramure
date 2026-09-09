@@ -13,6 +13,8 @@ export default defineWorkersConfig(async () => {
         workers: {
           // R2's isolated storage trips over its own SQLite files; tests use distinct ids instead.
           isolatedStorage: false,
+          // One runtime, files in sequence: the shared storage is migrated once and never raced.
+          singleWorker: true,
           wrangler: { configPath: './wrangler.toml' },
           miniflare: {
             bindings: {

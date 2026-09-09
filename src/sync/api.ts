@@ -97,6 +97,7 @@ export const api = {
   me: () => call<{ user: Me | null }>('GET', '/api/auth/me'),
   requestLink: (email: string) => call<{ ok: true; link?: string; code?: string }>('POST', '/api/auth/request', { email }),
   verifyCode: (email: string, code: string) => call<{ ok: true }>('POST', '/api/auth/code', { email, code }),
+  verifyLink: (token: string) => call<{ ok: true }>('POST', '/api/auth/verify', { token }),
   requestDeletion: (note: string) => call<{ ok: true; requestedAt: number }>('POST', '/api/auth/deletion-request', { note }),
   cancelDeletion: () => call<{ ok: true }>('DELETE', '/api/auth/deletion-request'),
   adminOverview: () => call<AdminOverview>('GET', '/api/admin/overview'),
@@ -125,9 +126,8 @@ export const api = {
     call<{ invites: Array<{ id: string; createdAt: number; expiresAt: number; role: AccountRole }> }>('GET', `/api/accounts/${id}/invites`),
   revokeAccountInvite: (id: string, inviteId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/invites/${inviteId}`),
   inviteInfo: (token: string) =>
-    call<{ accountId: string; accountName: string; role: AccountRole }>('GET', `/api/invites/${encodeURIComponent(token)}`),
-  acceptInvite: (token: string) =>
-    call<{ accountId: string; role: 'owner' | 'member' }>('POST', `/api/invites/${encodeURIComponent(token)}/accept`, {}),
+    call<{ accountId: string; accountName: string; role: AccountRole }>('POST', '/api/invites/info', { token }),
+  acceptInvite: (token: string) => call<{ accountId: string; role: 'owner' | 'member' }>('POST', '/api/invites/accept', { token }),
 
   listTrees: (accountId: string) => call<{ trees: TreeSummary[] }>('GET', `/api/trees?account=${encodeURIComponent(accountId)}`),
   createTree: (accountId: string, name: string, gedcom: string) =>

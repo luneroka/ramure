@@ -140,7 +140,7 @@
   <h2>The refactoring passes, in order</h2>
   <p>Each pass is shippable on its own and verified before the next. Estimates are working days of my time; your time is the decisions marked below.</p>
 
-  <div class="phase"><h3>Pass 1, harden</h3><div class="when">2 days · before anyone outside your circle uses it</div>
+  <div class="phase"><h3>Pass 1, harden</h3><div class="when">Built 9 September on branch pass-1-harden, stacked on pass 0, pull request #2. Left for the hygiene pass: session idle timeout and purge, member emails hidden from viewers, a pepper on the code hash.</div>
     <ul>
       <li>Media allow-list by magic bytes, protective headers on media, security headers on everything.</li>
       <li>Escape the map tooltip; allow-list link schemes.</li>
@@ -215,7 +215,7 @@
     </ul>
   </div>
 
-  <div class="phase"><h3>Pass 0, closed door</h3><div class="when">1.5 days · first, because it decides who can get in at all</div>
+  <div class="phase"><h3>Pass 0, closed door</h3><div class="when">Built 9 September on branch pass-0-closed-door, pull request #1, awaiting your go to merge (run the production migration first)</div>
     <ul>
       <li>An <em>administrateur de l'application</em> flag on users; Yoann's user carries it. An « Administration » page reachable from the avatar menu for that user only.</li>
       <li>Application invitations: the admin enters an address, the app mails « Yoann vous invite sur Ramure » with a link and a code, valid seven days, single use. The address is allowed to sign in from that moment; the first sign-in creates the user.</li>

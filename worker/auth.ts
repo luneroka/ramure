@@ -11,9 +11,14 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
 import { HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { echoMode, sendMail } from './mail';
+import { clientIp, hit } from './ratelimit';
 import { consumeInvite, isAdmin, mayEnter } from './admin';
 
 export const SESSION_COOKIE = 'ramure_session';
+/** Set when a sign-in is requested; the link or code only works from the browser that holds it. */
+export const SIGNIN_COOKIE = 'ramure_signin';
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILED_CODES = 10;
 const LINK_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
@@ -95,6 +100,7 @@ auth.get('/me', async (c) => {
 auth.post('/request', async (c) => {
   const body = await readJson<{ email?: string }>(c.req.raw, 2048);
   const email = normaliseEmail(body.email);
+  await hit(c.env, `req:ip:${clientIp(c.req.raw)}`, 20, WINDOW_MS);
   // Closed door: only existing users and invited addresses get a mail. Same answer either way for outsiders.
   if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
   // At most three links per address per quarter hour: keeps a mistyped form or a bot from burning the mail quota.
@@ -104,10 +110,20 @@ auth.post('/request', async (c) => {
   if ((recent?.n ?? 0) >= 3) throw new HttpError(429, 'too many requests, try again later');
   const token = randomToken();
   const code = randomCode();
-  await c.env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at, code_hash) VALUES (?, ?, ?, ?)`)
-    .bind(await sha256(token), email, now() + LINK_TTL_MS, await sha256(`${email}:${code}`))
+  // The browser that asks gets a nonce; the link and the code are only honoured alongside it.
+  const nonce = getCookie(c, SIGNIN_COOKIE) || randomToken();
+  setCookie(c, SIGNIN_COOKIE, nonce, {
+    httpOnly: true,
+    secure: c.env.APP_ORIGIN.startsWith('https://'),
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: LINK_TTL_MS / 1000,
+  });
+  await c.env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at, code_hash, browser_hash) VALUES (?, ?, ?, ?, ?)`)
+    .bind(await sha256(token), email, now() + LINK_TTL_MS, await sha256(`${email}:${code}`), await sha256(nonce))
     .run();
-  const link = `${c.env.APP_ORIGIN}/api/auth/verify?token=${encodeURIComponent(token)}`;
+  // The token travels in the fragment: it never reaches a server or a log, and opening the page has no effect by itself.
+  const link = `${c.env.APP_ORIGIN}/#signin=${encodeURIComponent(token)}`;
   await sendMagicLink(c.env, c.req.url, email, link, code);
   return c.json({ ok: true, ...(echoMode(c.env, c.req.url) ? { link, code } : {}) });
 });
@@ -118,31 +134,57 @@ auth.post('/code', async (c) => {
   const email = normaliseEmail(body.email);
   const code = String(body.code ?? '').replace(/\D/g, '');
   if (code.length !== 6) throw new HttpError(400, 'bad code');
-  const row = await c.env.DB.prepare(
-    `SELECT token_hash, code_hash, attempts FROM magic_links WHERE email = ? AND used_at IS NULL AND expires_at > ? AND code_hash IS NOT NULL ORDER BY expires_at DESC LIMIT 1`,
+  await hit(c.env, `code:ip:${clientIp(c.req.raw)}`, 30, WINDOW_MS);
+  const nonce = getCookie(c, SIGNIN_COOKIE);
+  if (!nonce) throw new HttpError(403, 'other device');
+  const browserHash = await sha256(nonce);
+  // Failures count across every live link for the address, so a new request does not reset them.
+  const failed = await c.env.DB.prepare(`SELECT COALESCE(SUM(attempts), 0) AS n FROM magic_links WHERE email = ? AND expires_at > ?`)
+    .bind(email, now())
+    .first<{ n: number }>();
+  if ((failed?.n ?? 0) >= MAX_FAILED_CODES) throw new HttpError(429, 'too many attempts, try again later');
+  const rows = await c.env.DB.prepare(
+    `SELECT token_hash, code_hash, browser_hash FROM magic_links WHERE email = ? AND used_at IS NULL AND expires_at > ? AND code_hash IS NOT NULL ORDER BY expires_at DESC`,
   )
     .bind(email, now())
-    .first<{ token_hash: string; code_hash: string; attempts: number }>();
-  if (!row || row.attempts >= 5) throw new HttpError(400, 'code expired');
-  if (row.code_hash !== (await sha256(`${email}:${code}`))) {
-    await c.env.DB.prepare(`UPDATE magic_links SET attempts = attempts + 1 WHERE token_hash = ?`).bind(row.token_hash).run();
+    .all<{ token_hash: string; code_hash: string; browser_hash: string | null }>();
+  const mine = rows.results.filter((r) => r.browser_hash === browserHash);
+  if (!mine.length) throw new HttpError(rows.results.length ? 403 : 400, rows.results.length ? 'other device' : 'code expired');
+  const expected = await sha256(`${email}:${code}`);
+  const match = mine.find((r) => r.code_hash === expected);
+  if (!match) {
+    await c.env.DB.prepare(`UPDATE magic_links SET attempts = attempts + 1 WHERE token_hash = ?`).bind(mine[0]!.token_hash).run();
     throw new HttpError(400, 'wrong code');
   }
-  await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), row.token_hash).run();
+  await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), match.token_hash).run();
   await openSession(c, email);
+  deleteCookie(c, SIGNIN_COOKIE, { path: '/' });
   return c.json({ ok: true });
 });
 
-auth.get('/verify', async (c) => {
+/** Links mailed before this flow existed carried the token in the query: send them into the fragment flow. */
+auth.get('/verify', (c) => {
   const token = c.req.query('token') ?? '';
+  return c.redirect(`${c.env.APP_ORIGIN}/#signin=${encodeURIComponent(token)}`);
+});
+
+/** The app posts the token from the link; only the browser that asked for it may use it. */
+auth.post('/verify', async (c) => {
+  const body = await readJson<{ token: string }>(c.req.raw, 2048);
+  const token = String(body.token ?? '');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
+  await hit(c.env, `verify:ip:${clientIp(c.req.raw)}`, 30, WINDOW_MS);
   const hash = await sha256(token);
-  const row = await c.env.DB.prepare(`SELECT email, expires_at, used_at FROM magic_links WHERE token_hash = ?`)
+  const row = await c.env.DB.prepare(`SELECT email, expires_at, used_at, browser_hash FROM magic_links WHERE token_hash = ?`)
     .bind(hash)
-    .first<{ email: string; expires_at: number; used_at: number | null }>();
-  if (!row || row.used_at || row.expires_at < now()) return c.redirect(`${c.env.APP_ORIGIN}/?signin=expired`);
+    .first<{ email: string; expires_at: number; used_at: number | null; browser_hash: string | null }>();
+  if (!row || row.used_at || row.expires_at < now()) throw new HttpError(400, 'link expired');
+  const nonce = getCookie(c, SIGNIN_COOKIE);
+  if (!nonce || (await sha256(nonce)) !== row.browser_hash) throw new HttpError(403, 'other device');
   await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
   await openSession(c, row.email);
-  return c.redirect(`${c.env.APP_ORIGIN}/?signin=ok`);
+  deleteCookie(c, SIGNIN_COOKIE, { path: '/' });
+  return c.json({ ok: true });
 });
 
 auth.post('/logout', async (c) => {
