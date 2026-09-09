@@ -1,0 +1,18 @@
+# Copy to `.dev.vars` (git-ignored) to run the Worker locally.
+#
+# The origin the browser uses. It must match the port Vite actually serves on,
+# or sign-in redirects land somewhere the session cookie does not exist.
+APP_ORIGIN=http://localhost:5175
+
+# Show sign-in links and codes in the app instead of mailing them.
+# Only works together with the two conditions below, so it cannot leak in production.
+DEV_ECHO_LINKS=1
+
+# RESEND_API_KEY is deliberately absent.
+#
+# Echo mode above requires that there is no key, that this flag is `1`, and
+# that the request host is localhost. Putting even a placeholder key here
+# switches echo mode off and breaks sign-in locally — it has happened.
+#
+# The real key and CODE_PEPPER are production secrets, set by hand with
+# `wrangler secret put`, and never live in a file.

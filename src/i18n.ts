@@ -277,6 +277,11 @@ const strings = {
     fr: 'Qui peut entrer, qui demande à partir, et ce que pèse chaque compte famille.',
     en: 'Who may come in, who asked to leave, and what each family account weighs.',
   },
+  configProblems: { fr: 'Configuration', en: 'Configuration' },
+  configProblemsHint: {
+    fr: 'Réglages manquants sur ce déploiement. Ceux en orange font échouer une opération plutôt que de la laisser tourner à moitié.',
+    en: 'Settings this deployment is missing. The ones in orange make an operation refuse rather than run half-safely.',
+  },
   appInvites: { fr: 'Invitations', en: 'Invitations' },
   appInviteHint: {
     fr: 'La personne reçoit un courriel et peut se connecter avec cette adresse pendant sept jours. Sans invitation, personne n’entre.',

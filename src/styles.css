@@ -437,6 +437,11 @@ textarea:focus {
   background: var(--accent-soft);
   color: var(--accent);
 }
+/* A setting whose absence makes an operation refuse, on the administration page. */
+.tag.alarm {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
+}
 .panel h3 {
   font-size: 12px;
   letter-spacing: 0.06em;

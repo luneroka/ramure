@@ -84,6 +84,24 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
       </div>
       <p className="muted">{t(lang, 'adminHint')}</p>
 
+      {data?.config?.length ? (
+        <section className="home-card admin-config" id="admin-config">
+          <h2>{t(lang, 'configProblems')}</h2>
+          <p className="muted small">{t(lang, 'configProblemsHint')}</p>
+          <ul className="member-list">
+            {data.config.map((p) => (
+              <li key={p.setting}>
+                <span className="grow">
+                  <span className={p.severity === 'fatal' ? 'tag alarm' : 'tag'}>{p.setting}</span>{' '}
+                  {/* The reason comes from the Worker in English: it is an operator diagnostic, like a log line, not app text. */}
+                  <span className="muted small">{p.message}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="home-card" id="admin-invites">
         <h2>{t(lang, 'appInvites')}</h2>
         <form className="row" onSubmit={invite}>

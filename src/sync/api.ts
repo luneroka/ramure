@@ -82,6 +82,8 @@ export interface AdminOverview {
   accounts: Array<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>;
   requests: Array<{ id: string; email: string; message: string | null; requested_at: number }>;
   trees: Array<{ id: string; name: string; version: number; people: number; updated_at: number; account_name: string | null }>;
+  /** Settings this deployment is missing. Names and reasons only, never values. */
+  config: Array<{ setting: string; severity: 'fatal' | 'warning'; message: string }>;
 }
 
 export interface TreeSummary {

@@ -38,7 +38,11 @@ fix (say why).
 
 ## Tier 1 — can bite in production
 
-### `[ ]` H1. Nothing validates configuration at boot
+### `[x]` H1. Nothing validates configuration at boot
+
+_Done 2026-09-09, pass 1 — but **not** the way this finding first proposed;
+see "How H1 was actually solved" below._
+
 
 `CODE_PEPPER` is optional in [worker/env.ts](../worker/env.ts), and `hmac()`
 in [worker/util.ts](../worker/util.ts) **silently degrades to a plain SHA-256**
@@ -53,7 +57,42 @@ to sign in, not at deploy time.
 do the same: a `requireProductionConfig(env)` called once per isolate that
 throws when `APP_ORIGIN` is https and a required secret is missing.
 
-### `[ ]` H2. No secret scanning, and the CI gate is unreachable
+#### How H1 was actually solved
+
+Copying ccig's boot-refusal directly would have been a mistake, and the
+difference is worth recording. ccig runs in a container: a process that
+refuses to start means the deploy fails and the **previous container keeps
+serving**. A Worker has no equivalent — throwing from a request handler does
+not roll a deployment back, it takes live traffic down. A missing
+`ADMIN_EMAIL` would have taken the whole app offline for everyone already
+signed in, which is far worse than the problem.
+
+[worker/config.ts](../worker/config.ts) serves the same intent in three
+graded ways instead:
+
+1. **Log once per isolate** — every problem appears in the Workers dashboard
+   on the first request, without waiting for a user to complain.
+2. **Report on `/api/health`** — a one-word verdict (`ok` / `degraded` /
+   `misconfigured`) so a deploy can be checked from outside. The settings at
+   fault are named on the administration page only; anonymous callers get the
+   verdict alone.
+3. **Refuse the unsafe operation, not the app** — `requireCodePepper` makes
+   `codeHash` throw in production when the pepper is missing. Sign-in fails
+   loudly; tree sync, and everyone already signed in, are untouched.
+
+Severity is calibrated to that: `fatal` means an operation refuses (only
+`CODE_PEPPER`, whose absence is otherwise *invisible* — everything keeps
+working and the hashes are simply weaker). Everything else is a `warning`,
+because a missing mail key breaks new sign-ins but must not break a working
+app. Problems carry setting names and reasons, never values — there is a test
+asserting that.
+
+### `[x]` H2. No secret scanning, and the CI gate is unreachable
+
+_Done 2026-09-09, pass 1: [.github/workflows/secret-scan.yml](../.github/workflows/secret-scan.yml),
+on push and pull request, with `fetch-depth: 0` so it scans history and not
+just the tip._
+
 
 `ccig-app` runs Gitleaks on every push and pull request. Ramure runs nothing:
 [.github/workflows/ci.yml](../.github/workflows/ci.yml) is `workflow_dispatch`
@@ -65,7 +104,11 @@ Gitleaks is free on public repositories and runs in seconds. This is the one
 check worth having automated even with no Actions budget — it should be its
 own tiny workflow, not a job inside the disabled one.
 
-### `[ ]` H3. `coverage/` is committed to git
+### `[x]` H3. `coverage/` is committed to git
+
+_Done 2026-09-09, pass 1: untracked with `git rm --cached` and added to
+`.gitignore`. The files stay on disk; they are simply no longer in git._
+
 
 40 files under [coverage/](../coverage/) are tracked, including
 `coverage-final.json`. It is absent from [.gitignore](../.gitignore), so every
@@ -165,7 +208,11 @@ no error that names the cause.
 Pin it: `port: 5175, strictPort: true`. A loud failure beats a silent
 misconfiguration.
 
-### `[ ]` H8. No `.dev.vars.example`
+### `[x]` H8. No `.dev.vars.example`
+
+_Done 2026-09-09, pass 1: [.dev.vars.example](../.dev.vars.example), with the
+reason `RESEND_API_KEY` must stay absent spelled out._
+
 
 `.dev.vars` is correctly git-ignored, and correctly never contains a real key
 — but nothing in the repository records what it must contain. A fresh clone
@@ -223,7 +270,13 @@ and `src/db.ts`, the IndexedDB layer it wraps, sits at the `src/` root beside
 `i18n.ts` and `main.tsx`, as though it were a top-level concern. It is
 imported only by `src/store/local.ts`. Move it to `src/store/idb.ts`.
 
-### `[ ]` H13. No LICENSE
+### `[x]` H13. No LICENSE
+
+_Decided by Yoann 2026-09-09: free of charge, not free to reuse.
+[COPYRIGHT.md](../COPYRIGHT.md) states all rights reserved, with the reason the
+source is published at all. Deliberately reversible — it can be opened up
+later; MIT could not have been taken back._
+
 
 The README calls Ramure "a free family-tree builder". With no licence file the
 repository is, legally, all rights reserved — the opposite of what it says.
