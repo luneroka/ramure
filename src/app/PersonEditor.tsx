@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { approximateYear, type GDate } from '../gedcom/dates';
 import {
   placeText,
@@ -168,13 +168,17 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
     if (portrait) void mediaStore.delete(portrait.id);
     onCancel();
   };
+  // Escape cancels through a ref, so a portrait picked after mount is still cleaned up.
+  const cancelRef = useRef(cancel);
+  useEffect(() => {
+    cancelRef.current = cancel;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cancel();
+      if (e.key === 'Escape') cancelRef.current();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const update = (key: number, patch: Partial<EventDraft>) =>

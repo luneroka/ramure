@@ -20,3 +20,22 @@ jobs:
       - run: npm run build
       - run: npm run test:worker
       - run: npm audit --audit-level=critical --omit=dev
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: printf 'APP_ORIGIN=http://localhost:8787\nDEV_ECHO_LINKS=1\n' > .dev.vars
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: test-results

@@ -47,5 +47,16 @@ export default defineConfig({
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: { host: true, port: 5173, proxy: { '/api': { target: 'http://localhost:8787', changeOrigin: false } } },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/tree/**', 'src/sync/**', 'src/gedcom/**', 'src/app/history.ts', 'src/app/router.ts'],
+      exclude: ['**/*.test.*'],
+      // Measured at 90 / 79 / 82 on 9 September 2026; the bar sits just under, so a regression fails and progress raises it.
+      thresholds: { lines: 85, functions: 75, branches: 75 },
+    },
+  },
 });
