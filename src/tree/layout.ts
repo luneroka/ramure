@@ -54,6 +54,8 @@ export interface LayoutLink {
   kind: 'parent' | 'child' | 'partner';
   /** Polyline in world coordinates. */
   points: Array<[number, number]>;
+  /** The family this line belongs to, so the selected person's own lines can be told from the others. */
+  family?: string;
 }
 
 export interface Layout {
@@ -93,12 +95,12 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     return n;
   };
 
-  const parentsOf = (ind: Individual): { father?: string; mother?: string } => {
+  const parentsOf = (ind: Individual): { father?: string; mother?: string; familyId?: string } => {
     const link = ind.childOf.find((l) => l.pedigree !== 'adopted' && l.pedigree !== 'foster') ?? ind.childOf[0];
     if (!link) return {};
     const fam = tree.families[link.familyId];
     if (!fam) return {};
-    return { father: fam.husbandId, mother: fam.wifeId };
+    return { father: fam.husbandId, mother: fam.wifeId, familyId: fam.id };
   };
 
   // ---------- Ancestors ----------
@@ -138,7 +140,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
   /** Place the parents of `child` (already placed) inside [left, left + width]. */
   const placeParents = (child: LayoutNode, gen: number, left: number): void => {
     if (gen > opts.maxUp) return;
-    const { father, mother } = parentsOf(tree.individuals[child.id]!);
+    const { father, mother, familyId } = parentsOf(tree.individuals[child.id]!);
     const f = father && tree.individuals[father] ? father : undefined;
     const m = mother && tree.individuals[mother] ? mother : undefined;
     if (!f && !m) return;
@@ -163,6 +165,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     for (const p of placed)
       links.push({
         kind: 'parent',
+        family: familyId,
         points: [
           [p.x + p.w / 2, p.y + p.h],
           [p.x + p.w / 2, busY],
@@ -171,6 +174,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     if (placed.length === 2)
       links.push({
         kind: 'parent',
+        family: familyId,
         points: [
           [placed[0]!.x + placed[0]!.w / 2, busY],
           [placed[1]!.x + placed[1]!.w / 2, busY],
@@ -179,6 +183,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
     const anchorX = placed.length === 2 ? (placed[0]!.x + placed[1]!.x + opts.cardW) / 2 : placed[0]!.x + opts.cardW / 2;
     links.push({
       kind: 'parent',
+      family: familyId,
       points: [
         [anchorX, busY],
         [childTopX, busY],
@@ -240,6 +245,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
         const p = place(fam.partnerId, px, gen, 'partner');
         links.push({
           kind: 'partner',
+          family: fam.famId,
           points: [
             [px - opts.partnerGap, self.y + self.h / 2],
             [px, self.y + self.h / 2],
@@ -258,6 +264,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
       busIndex++;
       links.push({
         kind: 'child',
+        family: fam.famId,
         points: [
           [anchorX, anchorY],
           [anchorX, busY],
@@ -271,6 +278,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
         childCenters.push(tx);
         links.push({
           kind: 'child',
+          family: fam.famId,
           points: [
             [tx, busY],
             [tx, n.y],
@@ -283,6 +291,7 @@ export function layoutHourglass(tree: Tree, focusId: string, opts: LayoutOptions
         hi = Math.max(anchorX, ...childCenters);
       links.push({
         kind: 'child',
+        family: fam.famId,
         points: [
           [lo, busY],
           [hi, busY],

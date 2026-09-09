@@ -76,6 +76,7 @@ interface Bus {
   minX: number;
   maxX: number;
   lane: number;
+  family: string;
 }
 /** Horizontal room two buses in one lane keep between them. */
 const BUS_CLEARANCE = 12;
@@ -140,6 +141,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
         const y = l.y + l.h / 2;
         links.push({
           kind: 'partner',
+          family: fid,
           points: [
             [l.x + l.w, y],
             [r.x, y],
@@ -160,7 +162,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       const kids = f.childIds.map((c) => byId.get(c)).filter((n): n is LayoutNode => !!n);
       if (!kids.length) continue;
       const centers = kids.map((k) => k.x + k.w / 2);
-      buses.push({ rowY: (h ?? w)!.y, ax, ay, kids, minX: Math.min(ax, ...centers), maxX: Math.max(ax, ...centers), lane: 0 });
+      buses.push({ rowY: (h ?? w)!.y, ax, ay, kids, minX: Math.min(ax, ...centers), maxX: Math.max(ax, ...centers), lane: 0, family: fid });
     }
     offsetX += maxX - minX + compGap;
   }
@@ -182,6 +184,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       const busY = b.rowY + opts.cardH + (opts.rowGap * (b.lane + 1)) / (lanes + 1);
       links.push({
         kind: 'child',
+        family: b.family,
         points: [
           [b.ax, b.ay],
           [b.ax, busY],
@@ -190,6 +193,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       for (const k of b.kids)
         links.push({
           kind: 'child',
+          family: b.family,
           points: [
             [k.x + k.w / 2, busY],
             [k.x + k.w / 2, k.y],
@@ -197,6 +201,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
         });
       links.push({
         kind: 'child',
+        family: b.family,
         points: [
           [b.minX, busY],
           [b.maxX, busY],
@@ -401,27 +406,46 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
     shift = blocks.length ? shift / blocks.length / 2 : 0;
     blocks.forEach((b, k) => b.ids.forEach((id, m) => x.set(id, ltr[k]! + shift + b.offsets[m]!)));
   };
-  for (let iter = 0; iter < 10; iter++) {
-    // Bottom-up: parents over children.
-    for (const g of [...gens].reverse()) {
-      const row = rows.get(g)!;
-      const want = new Map<string, number>();
-      for (const id of row) {
-        const d = desired(id, iter > 2, true);
-        if (d !== undefined) want.set(id, d);
+  const relax = () => {
+    for (let iter = 0; iter < 10; iter++) {
+      // Bottom-up: parents over children.
+      for (const g of [...gens].reverse()) {
+        const row = rows.get(g)!;
+        const want = new Map<string, number>();
+        for (const id of row) {
+          const d = desired(id, iter > 2, true);
+          if (d !== undefined) want.set(id, d);
+        }
+        placeRow(row, want);
       }
-      placeRow(row, want);
+      // Top-down: children under parents.
+      for (const g of gens) {
+        const row = rows.get(g)!;
+        const want = new Map<string, number>();
+        for (const id of row) {
+          const d = desired(id, true, iter > 2);
+          if (d !== undefined) want.set(id, d);
+        }
+        placeRow(row, want);
+      }
     }
-    // Top-down: children under parents.
+  };
+  relax();
+  // The first order was decided before anyone had a position, so a couple whose only tie is a child placed
+  // far away (a spouse's parents, typically) ended up at the row's end and stayed there, its bus crossing the
+  // whole row. Reorder each row by where the relatives actually are, settle again, and repeat.
+  for (let pass = 0; pass < 8; pass++) {
     for (const g of gens) {
       const row = rows.get(g)!;
-      const want = new Map<string, number>();
-      for (const id of row) {
-        const d = desired(id, true, iter > 2);
-        if (d !== undefined) want.set(id, d);
-      }
-      placeRow(row, want);
+      const scored = row.map((id) => {
+        const xs = [...parentsOf(id), ...childrenOf(id), ...partnersOf(id)].map(center);
+        return { id, b: xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : center(id) };
+      });
+      scored.sort((a, b) => a.b - b.b);
+      rows.set(g, keepCouplesTogether(scored.map((s) => s.id)));
     }
+    reindex();
+    relax();
   }
 
   const out: Placed[] = [];

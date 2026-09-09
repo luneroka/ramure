@@ -74,3 +74,14 @@ describe('layoutHourglass', () => {
     expect(generationLabel(4, 'fr')).toBe('Arrière-arrière-grands-parents');
   });
 });
+
+describe('connector ownership (hourglass)', () => {
+  it('tags parent, partner and child connectors with their family', () => {
+    const L = layoutHourglass(tree, 'I1');
+    expect(L.links.length).toBeGreaterThan(0);
+    for (const l of L.links) expect(l.family, `${l.kind} link without a family`).toBeTruthy();
+    // Marguerite's own parents are family F2; the ancestors above carry their own families.
+    expect(L.links.some((l) => l.kind === 'parent' && l.family === 'F2')).toBe(true);
+    expect(L.links.some((l) => l.kind === 'parent' && l.family === 'F3')).toBe(true);
+  });
+});

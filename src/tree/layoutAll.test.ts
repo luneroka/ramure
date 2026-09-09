@@ -74,3 +74,11 @@ describe('child buses in the overview', () => {
       }
   });
 });
+
+describe('connector ownership', () => {
+  it('tags every connector with its family so the selected person’s lines can be told apart', () => {
+    const L = layoutEverything(tree);
+    for (const l of L.links) expect(l.family, `${l.kind} link without a family`).toBeTruthy();
+    expect(L.links.some((l) => l.family === 'F2')).toBe(true);
+  });
+});

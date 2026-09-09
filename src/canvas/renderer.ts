@@ -7,7 +7,7 @@
 
 import { approximateYear, formatDate, type GDate } from '../gedcom/dates';
 import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
-import { generationLabel, type Layout, type LayoutNode } from '../tree/layout';
+import { generationLabel, type Layout, type LayoutLink, type LayoutNode } from '../tree/layout';
 import { formatAge, t, tg, type Lang } from '../i18n';
 import { computeAge } from '../gedcom/age';
 import { drawMedallion } from '../media/portraits';
@@ -303,25 +303,38 @@ export function render(ctx: CanvasRenderingContext2D, width: number, height: num
   };
   const visible = (n: LayoutNode) => n.x + n.w >= vis.minX && n.x <= vis.maxX && n.y + n.h >= vis.minY && n.y <= vis.maxY;
 
-  // Connectors
+  // Connectors. The selected person's own families (as child, as partner or parent) are drawn last and in the
+  // accent, so their lines stand out from the buses of other families running through the same rows.
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   if (s.lit) ctx.globalAlpha = 0.22;
-  for (const l of layout.links) {
+  const own = new Set<string>();
+  const sel = s.selectedId ? tree.individuals[s.selectedId] : undefined;
+  if (sel) {
+    for (const l of sel.childOf) own.add(l.familyId);
+    for (const f of sel.partnerIn) own.add(f);
+  }
+  const offscreen = (l: LayoutLink) => {
     const p0 = l.points[0]!,
       p1 = l.points[l.points.length - 1]!;
-    if (
+    return (
       Math.max(p0[0], p1[0]) < vis.minX ||
       Math.min(p0[0], p1[0]) > vis.maxX ||
       Math.max(p0[1], p1[1]) < vis.minY ||
       Math.min(p0[1], p1[1]) > vis.maxY
-    )
-      continue;
-    ctx.strokeStyle = T.connector;
-    ctx.lineWidth = Math.min(1.25 / Math.max(k, 0.35), 2.4);
-    ctx.beginPath();
-    tracePolyline(ctx, l.points, 10);
-    ctx.stroke();
+    );
+  };
+  const baseWidth = Math.min(1.25 / Math.max(k, 0.35), 2.4);
+  for (const pass of ['others', 'own'] as const) {
+    for (const l of layout.links) {
+      const mine = !!l.family && own.has(l.family);
+      if ((pass === 'own') !== mine || offscreen(l)) continue;
+      ctx.strokeStyle = mine ? T.accent : T.connector;
+      ctx.lineWidth = mine ? baseWidth * 1.8 : baseWidth;
+      ctx.beginPath();
+      tracePolyline(ctx, l.points, 10);
+      ctx.stroke();
+    }
   }
 
   ctx.globalAlpha = 1;
