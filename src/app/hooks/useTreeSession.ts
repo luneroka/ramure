@@ -10,6 +10,7 @@ import { CloudMediaStore } from '../../store/cloudMedia';
 import { setActiveMediaStore } from '../../store';
 import type { Role } from '../../sync/api';
 import { SyncEngine, type EngineEvent, type SyncStatus } from '../../sync/engine';
+import { setPendingEdits } from '../../sync/pendingEdits';
 
 /** The open tree. Every tree lives in the account; the device keeps a synced copy. */
 export interface Source {
@@ -45,6 +46,7 @@ export function useTreeSession(onEvent: (e: EngineEvent, engine: SyncEngine) => 
     setActiveMediaStore(null);
     setSource(null);
     setSync({ status: 'synced', pending: 0 });
+    setPendingEdits(0);
     localStorage.removeItem(LAST_TREE_KEY);
   }, []);
 
@@ -58,6 +60,7 @@ export function useTreeSession(onEvent: (e: EngineEvent, engine: SyncEngine) => 
     eng.subscribe((e) => {
       if (gen !== generation.current) return;
       setSync({ status: e.status, pending: e.pending });
+      setPendingEdits(e.pending);
       onEventRef.current(e, eng);
     });
     try {
