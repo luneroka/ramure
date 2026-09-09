@@ -124,7 +124,17 @@ people's addresses, and staging is a second place they could leak from.
 ## What staging deliberately does not have
 
 - **No cron.** The nightly backup and the reaper belong to production. Trigger
-  the handler by hand if you are testing them.
+  the handler by hand if you are testing them:
+
+  ```bash
+  curl "https://ramure-staging.ramure.workers.dev/cdn-cgi/handler/scheduled"
+  ```
+
+  This needs `[env.staging.triggers] crons = []` — an **empty** list, not an
+  absent one. Unlike bindings and vars, triggers _are_ inherited from the top of
+  `wrangler.toml`, so the first staging deploy silently picked up production's
+  nightly schedule. Leaving the section out does not mean "no cron".
+
 - **No custom domain.** The `workers.dev` URL is enough.
 - **No separate Resend domain.** Mail comes from the same sender; if that ever
   becomes confusing, add a staging sender and change `MAIL_FROM` under
