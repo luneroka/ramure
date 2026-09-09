@@ -16,7 +16,7 @@ import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
 import { cleanText, emailFor, HttpError, now, randomId, readJson, requireId } from './util';
 import type { ErrorCode } from './errorCodes';
-import { extensionOf, sniffMediaType } from './media';
+import { extensionOf, MAX_ACCOUNT_BYTES, MAX_MEDIA_BYTES, sniffMediaType } from './media';
 
 /** D1 stores a row in at most 2 MB; the document is measured in bytes with room for the row's other columns. */
 export const MAX_DOC_BYTES = 1_500_000;
@@ -30,7 +30,6 @@ const PATCH_SNAPSHOT_REMOVALS = 3;
 const PATCH_SNAPSHOT_TOUCHED = 20;
 const PATCH_OWNER_REMOVALS = 20;
 const SNAPSHOT_EVERY = 100;
-const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
 /**
  * How deep a `batch` op may nest. Flattening and replaying both recurse, so an
  * op nested far enough overflows the stack and the push answers 500 instead of
@@ -400,6 +399,15 @@ trees.put('/:id/media/:mediaId', async (c) => {
   if (bytes.byteLength > MAX_MEDIA_BYTES) throw new HttpError(413, 'file_too_large');
   const type = sniffMediaType(bytes);
   if (!type) throw new HttpError(415, 'unsupported_media_type');
+  const used = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(m.size), 0) AS bytes FROM media m JOIN trees t ON t.id = m.tree_id
+      WHERE t.account_id = (SELECT account_id FROM trees WHERE id = ?)`,
+  )
+    .bind(id)
+    .first<{ bytes: number }>();
+  const usedBytes = used?.bytes ?? 0;
+  if (usedBytes + bytes.byteLength > MAX_ACCOUNT_BYTES)
+    throw new HttpError(413, 'account_storage_full', { limitBytes: MAX_ACCOUNT_BYTES, usedBytes });
   // A media id is written once: the row and the object never change under an id others may have cached.
   const existing = await c.env.DB.prepare(`SELECT tree_id FROM media WHERE id = ?`).bind(mediaId).first<{ tree_id: string }>();
   if (existing) throw new HttpError(409, existing.tree_id === id ? 'media_already_stored' : 'media_id_in_use');

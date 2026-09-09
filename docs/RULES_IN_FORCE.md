@@ -252,6 +252,32 @@ sweep in [worker/backup.ts](../worker/backup.ts).
 **10 MB per file**, checked from `content-length` before the body is read, then
 again on the bytes.
 
+**2 GB per account**, checked before the object is written
+(`MAX_ACCOUNT_BYTES`). Uploading was the only unbounded write an ordinary user
+had, so the first sign of a runaway would have been the bill. The total counts
+**every** media row, deleted ones included, because that is what R2 is holding —
+a file marked deleted stays for thirty days so an undo can bring it back, and
+counting only live rows would let the same space be spent over and over inside
+that window. The storage screen reports `pendingBytes` alongside the live total
+so the two numbers reconcile.
+
+**The nightly backups are deliberately not encrypted.** They hold the same
+GEDCOM text as the `doc` column, in the same bucket, the same account and behind
+the same credentials, and R2 already encrypts at rest; the key would have to live
+in a Worker secret beside the lock. Encrypting would cost the property the whole
+design exists for — that a copy is readable in any genealogy program, with or
+without Ramure. What the decision rests on instead is that the buckets are
+private, which `scripts/check-buckets.sh` asserts on every `/preflight` rather
+than leaving to memory. The reasoning is in
+[SECURITY_AUDIT_2026-09.md](SECURITY_AUDIT_2026-09.md) § S6.
+
+**A deleted tree's backups outlive it by up to 30 days.** The sweep removes an
+unknown tree's whole prefix only once _every_ dated copy is past the keep, so
+deleting a tree today leaves readable copies for the rest of the season. That is
+deliberate — it is what makes an accidental deletion recoverable — but "deleted"
+meaning "in a month" should not be a surprise to anyone reading
+[worker/backup.ts](../worker/backup.ts).
+
 ## 7. The browser side
 
 **Every user-facing string goes through `t()`** with `fr` and `en`. French is

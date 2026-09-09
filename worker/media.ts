@@ -4,6 +4,25 @@
  * app's own origin.
  */
 
+/** One file. Checked from the header before the body is read, then again on the bytes. */
+export const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
+
+/**
+ * How much R2 one family may hold.
+ *
+ * Uploading was the only unbounded write an ordinary user had: ten megabytes a
+ * file and no ceiling above it, so the first anyone would learn of a runaway is
+ * the bill. Two gigabytes is far past a family's photographs and document scans
+ * — several accounts still fit inside R2's free tier — and the point is that
+ * there is a floor at all, not where exactly it sits.
+ *
+ * Counted over *every* media row rather than the live ones, because that is what
+ * R2 is holding: a deleted file stays for thirty days so an undo can bring it
+ * back, and counting only live rows would let the same space be spent again and
+ * again inside that window.
+ */
+export const MAX_ACCOUNT_BYTES = 2 * 1024 * 1024 * 1024;
+
 export type MediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' | 'image/heic' | 'application/pdf';
 
 const EXT: Record<MediaType, string> = {

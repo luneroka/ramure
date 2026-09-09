@@ -390,7 +390,30 @@ sign-in mail everyone depends on.
 **Fix.** A per-account and per-user limit on invitations sent, in the D1
 counters already there. Ten a day per account is far past what a family needs.
 
-#### `[ ]` S6 — Nightly backups are plaintext GEDCOM in R2, and the case for encrypting them is narrower than it looks
+#### `[-]` S6 — Nightly backups are plaintext GEDCOM in R2, and the case for encrypting them is narrower than it looks
+
+_**Won't fix the encryption** — decided 2026-09-09, pass 4, on the delegation
+recorded under "Decisions taken". The two things the finding asked for
+regardless **are** done._
+
+_The trade was not close once written out. The copies sit beside a D1 column
+holding the identical plaintext, under the same credentials; R2 already encrypts
+at rest; the key would live in a Worker secret in the same account as the lock;
+and `r2.dev` does not permit listing, so even an accidental exposure yields
+nothing without knowing a tree id. Against that, encrypting costs the property
+CLAUDE.md names as the point of the design — that a backup is readable in any
+genealogy program, with or without Ramure — and adds a secret whose loss would
+take the backups with it. Revisit only if the copies ever leave this bucket, or
+if the bucket is ever shared with something outside the Worker; either changes
+the premise._
+
+_What shipped instead: [scripts/check-buckets.sh](../scripts/check-buckets.sh),
+which asserts both buckets have `r2.dev` disabled and no custom domain, is part
+of `/preflight`, and exits 127 rather than passing quietly when wrangler is not
+signed in. Its failure path was verified by pointing it at a bucket that does
+not exist — it fails closed and exits 1. And the retention the finding asked to
+have written down is now in [RULES_IN_FORCE.md](RULES_IN_FORCE.md) §6: a deleted
+tree's backups outlive it by up to 30 days, deliberately._
 
 **Reviewed**, with the bucket configuration **verified**.
 
@@ -442,7 +465,16 @@ Two things should happen whichever way this goes:
   `wrangler r2 bucket` commands used above, in a script beside
   `scan-secrets.sh`, turn it into something `/preflight` can assert.
 
-#### `[ ]` S7 — Nothing caps how much a family can store
+#### `[x]` S7 — Nothing caps how much a family can store
+
+_Done 2026-09-09, pass 4. `MAX_ACCOUNT_BYTES` is 2 GB, checked before the object
+is written and answered as `413 account_storage_full` carrying the limit and the
+usage, translated in both languages. The total counts **every** media row rather
+than the live ones: a deleted file occupies R2 for thirty more days, and
+counting only live rows would have left the quota trivially bypassable by
+deleting and re-uploading inside that window — the test asserts exactly that.
+`GET /api/accounts/:id/storage` gained `pendingBytes` and `limitBytes` so the
+number a person sees reconciles with the number that refused them._
 
 **Reviewed.** `PUT /api/trees/:id/media/:mediaId`
 ([worker/trees.ts:362](../worker/trees.ts#L362)) enforces 10 MB per file and

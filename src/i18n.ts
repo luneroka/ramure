@@ -312,6 +312,10 @@ const strings = {
     en: 'Removing that many records at once is for owners.',
   },
   errFileTooLarge: { fr: 'Ce fichier dépasse 10 Mo.', en: 'That file is over 10 MB.' },
+  errAccountStorageFull: {
+    fr: 'Ce compte n’a plus de place pour des fichiers. Supprimez-en quelques-uns avant d’en ajouter.',
+    en: 'This account has no room left for files. Remove a few before adding more.',
+  },
   errUnsupportedMediaType: {
     fr: 'Images (JPEG, PNG, WebP, GIF, HEIC) et PDF uniquement.',
     en: 'Images (JPEG, PNG, WebP, GIF, HEIC) and PDFs only.',
