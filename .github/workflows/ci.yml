@@ -46,7 +46,15 @@ jobs:
       # to do with this project and that a re-run only sometimes clears. Playwright downloads
       # its own Chromium, so the repository is not needed here: dropping it removes the flake
       # rather than retrying around it.
-      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
+      # The runner image names this file differently depending on the release (`.list` on older
+      # images, deb822 `.sources` on noble), so match on content rather than guessing a name.
+      - name: Drop Google's apt repository
+        run: |
+          sudo find /etc/apt/sources.list.d -type f \
+            \( -name '*google*' -o -exec grep -lq 'dl\.google\.com' {} \; \) -print -delete || true
+          sudo sed -i '/dl\.google\.com/d' /etc/apt/sources.list || true
+          echo "--- remaining sources mentioning google ---"
+          grep -rl 'dl\.google\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || echo "none"
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: printf 'APP_ORIGIN=http://localhost:8787\nDEV_ECHO_LINKS=1\n' > .dev.vars
