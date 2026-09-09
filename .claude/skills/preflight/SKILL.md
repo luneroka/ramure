@@ -23,12 +23,20 @@ npm test
 npm run build
 npm run test:worker
 ./scripts/scan-secrets.sh
+./scripts/check-buckets.sh
 node scripts/check-thresholds.mjs
 ```
 
 `scan-secrets.sh` runs gitleaks over the whole history. It exits 127 with
 install instructions if gitleaks is missing (`brew install gitleaks`) rather
 than passing quietly — "did not run" must never look like "found nothing".
+
+`check-buckets.sh` asserts that neither R2 bucket is reachable from the open
+internet. The nightly GEDCOM copies are deliberately **not** encrypted
+([SECURITY_AUDIT_2026-09.md](../../../docs/SECURITY_AUDIT_2026-09.md) § S6), and
+this is what that decision rests on — so it is checked rather than remembered.
+It needs `wrangler` signed in at account level and exits 127 saying so if it is
+not, rather than passing quietly. It changes nothing.
 
 `check-thresholds.mjs` evaluates the tripwires on deferred work in
 [docs/DEFERRED.md](../../../docs/DEFERRED.md). It never fails. If one fires,

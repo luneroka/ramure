@@ -26,7 +26,8 @@
     "test:worker": "vitest run --config vitest.workers.config.ts",
     "test:all": "npm test && npm run test:worker",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:buckets": "./scripts/check-buckets.sh"
   },
   "dependencies": {
     "hono": "^4.13.7",

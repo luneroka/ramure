@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
 import { echoMode, sendMail } from './mail';
 import { cleanText, emailFor, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { MAX_ACCOUNT_BYTES } from './media';
 import { hit } from './ratelimit';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
@@ -108,9 +109,19 @@ accounts.get('/:id/storage', async (c) => {
     .bind(id)
     .all<{ id: string; name: string; files: number; bytes: number }>();
   const trees = rows.results;
+  // Files marked deleted still occupy R2 until the reaper takes them, and the upload quota counts
+  // them, so they are reported rather than left to make the two numbers disagree.
+  const pending = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(m.size), 0) AS bytes FROM media m JOIN trees t ON t.id = m.tree_id
+      WHERE t.account_id = ? AND m.deleted_at IS NOT NULL`,
+  )
+    .bind(id)
+    .first<{ bytes: number }>();
   return c.json({
     bytes: trees.reduce((n, r) => n + r.bytes, 0),
     files: trees.reduce((n, r) => n + r.files, 0),
+    pendingBytes: pending?.bytes ?? 0,
+    limitBytes: MAX_ACCOUNT_BYTES,
     trees,
   });
 });

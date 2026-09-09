@@ -62,6 +62,7 @@ export const ERROR_MESSAGES = {
   media_already_stored: 'media already stored',
   media_id_in_use: 'media id in use',
   file_too_large: 'file too large',
+  account_storage_full: 'this account has no room left for files',
   unsupported_media_type: 'images (JPEG, PNG, WebP, GIF, HEIC) and PDFs only',
   no_copy: 'no copy',
 
