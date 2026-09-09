@@ -1,7 +1,7 @@
 /** The two bar menus: the tree switcher on the tree name, and the user menu under the avatar. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { t, type Lang } from '../i18n';
+import { t, tn, type Lang } from '../i18n';
 import type { Me, TreeSummary } from '../sync/api';
 
 function useDismiss(open: boolean, close: () => void) {
@@ -110,9 +110,7 @@ export function TreeMenu(p: TreeMenuProps) {
             }}
           >
             {tr.name}
-            <span className="dd-meta">
-              {tr.people} {t(lang, 'people')}
-            </span>
+            <span className="dd-meta">{tn(lang, 'peopleCount', tr.people)}</span>
           </button>
         ))}
         {item(`+ ${t(lang, 'newTree')}`, p.onNewTree, 'accent')}

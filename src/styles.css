@@ -3076,3 +3076,26 @@ textarea:focus {
   color: var(--ink);
   resize: vertical;
 }
+
+/* ---------- Crash surface ---------- */
+.crash {
+  max-width: 440px;
+  margin: 12vh auto;
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+}
+.crash h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+.crash-detail {
+  font:
+    12px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--ink-3);
+  white-space: pre-wrap;
+  margin: 0;
+}

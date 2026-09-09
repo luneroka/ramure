@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { t, type Lang } from '../i18n';
+import { localeOf } from './format';
 import { formatBytes } from '../media/documents';
 import { api, ApiError, type AdminOverview } from '../sync/api';
 import type { AskSpec } from './Modal';
@@ -21,7 +22,7 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+  const locale = localeOf(lang);
   const day = (ms: number) => new Date(ms).toLocaleDateString(locale);
 
   useEffect(() => {

@@ -4,7 +4,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { t, type Lang } from '../i18n';
+import { t, tn, type Lang } from '../i18n';
+import { localeOf } from './format';
 import { api, type Account, type TreeSummary } from '../sync/api';
 
 interface Props {
@@ -20,6 +21,9 @@ interface Props {
   busy: boolean;
   /** Lets the parent reuse the list (tree switcher). */
   onTrees?(trees: TreeSummary[]): void;
+  /** The server could not be reached; nothing to list. */
+  unavailable?: boolean;
+  onRetry?(): void;
 }
 
 export function Home(p: Props) {
@@ -45,7 +49,21 @@ export function Home(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, p.refreshKey]);
 
-  if (accounts === null) return <div className="home">…</div>;
+  if (accounts === null)
+    return (
+      <div className="home">
+        {p.unavailable ? (
+          <div className="home-card">
+            <p className="muted">{t(lang, 'apiUnavailable')}</p>
+            <button className="btn" onClick={p.onRetry}>
+              {t(lang, 'retry')}
+            </button>
+          </div>
+        ) : (
+          '…'
+        )}
+      </div>
+    );
 
   if (accounts.length === 0 || !account) {
     return (
@@ -119,7 +137,7 @@ export function Home(p: Props) {
               <button className="tree-card-main" onClick={() => p.onOpenTree(tr)}>
                 <span className="tree-card-name">{tr.name}</span>
                 <span className="tree-card-meta">
-                  {tr.people} {t(lang, 'people')} · {new Date(tr.updated_at).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}
+                  {tn(lang, 'peopleCount', tr.people)} · {new Date(tr.updated_at).toLocaleDateString(localeOf(lang))}
                 </span>
                 <span className="tree-card-open">{t(lang, 'openTree')} →</span>
               </button>

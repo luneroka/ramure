@@ -16,6 +16,26 @@ export interface Auth {
   refresh(): Promise<void>;
 }
 
+const ME_KEY = 'ramure.me';
+
+/** The last known identity, so a reload without network still opens the device copy of the tree. */
+function readCachedMe(): Me | null {
+  try {
+    return JSON.parse(localStorage.getItem(ME_KEY) ?? 'null') as Me | null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheMe(me: Me | null): void {
+  try {
+    if (me) localStorage.setItem(ME_KEY, JSON.stringify(me));
+    else localStorage.removeItem(ME_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function useAuth(): Auth {
   const [user, setUser] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,9 +53,16 @@ export function useAuth(): Auth {
       .then((r) => {
         if (!alive) return;
         setUser(r.user);
+        cacheMe(r.user);
         setUnavailable(false);
       })
-      .catch(() => alive && setUnavailable(true))
+      .catch(() => {
+        if (!alive) return;
+        // Out of reach: carry on as the last known person; the sync engine reports offline on its own.
+        const cached = readCachedMe();
+        if (cached) setUser(cached);
+        else setUnavailable(true);
+      })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -50,16 +77,19 @@ export function useAuth(): Auth {
     await api.verifyLink(token);
     const r = await api.me();
     setUser(r.user);
+    cacheMe(r.user);
   }, []);
   const verifyCode = useCallback(async (email: string, code: string) => {
     await api.verifyCode(email, code);
     const r = await api.me();
     setUser(r.user);
+    cacheMe(r.user);
   }, []);
 
   const logout = useCallback(async () => {
-    await api.logout();
+    cacheMe(null);
     setUser(null);
+    await api.logout();
   }, []);
 
   return { user, loading, unavailable, requestLink, verifyCode, verifyLink, logout, refresh };

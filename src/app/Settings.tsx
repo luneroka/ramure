@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { formatBytes } from '../media/documents';
 import { t, type Lang, type ThemeChoice } from '../i18n';
+import { localeOf } from './format';
 import { api, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
 import type { AskSpec } from './Modal';
 
@@ -211,7 +212,7 @@ export function Settings(p: Props) {
                       <li key={i.id}>
                         <span className="member-name">
                           {t(lang, 'activeLink')} · {roleLabel(i.role)} · {t(lang, 'until')}{' '}
-                          {new Date(i.expiresAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}
+                          {new Date(i.expiresAt).toLocaleDateString(localeOf(lang))}
                         </span>
                         <button
                           className="btn small"
@@ -287,7 +288,7 @@ export function Settings(p: Props) {
         {p.user.deletionRequestedAt ? (
           <div className="row">
             <span className="grow">
-              {t(lang, 'deletionPending')} {new Date(p.user.deletionRequestedAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}
+              {t(lang, 'deletionPending')} {new Date(p.user.deletionRequestedAt).toLocaleDateString(localeOf(lang))}
             </span>
             <button
               className="btn"
