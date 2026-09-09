@@ -75,16 +75,19 @@ export function Dropdown({
   onClose,
   children,
   align = 'left',
+  placement = 'down',
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   align?: 'left' | 'right';
+  /** Opens below the trigger by default; « up » for a trigger at the bottom of the screen. */
+  placement?: 'down' | 'up';
 }) {
   const ref = useDismiss(open, onClose);
   if (!open) return null;
   return (
-    <div ref={ref} className={`dropdown ${align}`} role="menu">
+    <div ref={ref} className={`dropdown ${align} ${placement}`} role="menu">
       {children}
     </div>
   );

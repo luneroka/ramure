@@ -1,6 +1,8 @@
 /** The corner tools of the stage: view mode, then what the current mode needs (views and zoom, or the timeline scale). */
 
+import { useState } from 'react';
 import { t } from '../../i18n';
+import { Dropdown } from '../Menus';
 import { MAX_PPY, MIN_PPY } from '../Timeline';
 import type { ViewMode } from '../editorState';
 import { useWorkspace } from '../session/Workspace';
@@ -21,23 +23,41 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
   const { lang } = useUi();
   const w = useWorkspace();
   const { mode, view } = w.editor;
+  const [modeOpen, setModeOpen] = useState(false);
   return (
     <div className="canvas-tools">
-      <label className="btn mode-btn" title={t(lang, 'stageMode')}>
-        <ModeIcon mode={mode} />
-        <select
-          className="mode-select"
+      <div className="mode-menu">
+        <button
+          className="btn mode-btn"
+          aria-haspopup="menu"
+          aria-expanded={modeOpen}
           aria-label={t(lang, 'stageMode')}
-          value={mode}
-          onChange={(e) => w.dispatch({ type: 'setMode', mode: e.target.value as StageMode })}
+          title={t(lang, 'stageMode')}
+          onClick={() => setModeOpen((v) => !v)}
         >
+          <ModeIcon mode={mode} />
+          {t(lang, MODE_KEY[mode])}
+        </button>
+        <Dropdown open={modeOpen} onClose={() => setModeOpen(false)} placement="up">
           {MODES.map((m) => (
-            <option key={m} value={m}>
-              {t(lang, MODE_KEY[m])}
-            </option>
+            <button
+              key={m}
+              role="menuitem"
+              className={`dd-item ${m === mode ? 'current' : ''}`}
+              onClick={() => {
+                setModeOpen(false);
+                w.dispatch({ type: 'setMode', mode: m });
+              }}
+            >
+              <span className="dd-lead">
+                <ModeIcon mode={m} />
+                {t(lang, MODE_KEY[m])}
+              </span>
+              {m === mode && <span className="dd-meta">✓</span>}
+            </button>
           ))}
-        </select>
-      </label>
+        </Dropdown>
+      </div>
       {mode === 'map' ? null : mode === 'timeline' ? (
         <>
           <button className="btn" onClick={() => onPxPerYear(Math.max(MIN_PPY, pxPerYear / 1.3))} aria-label={t(lang, 'zoomOut')}>
