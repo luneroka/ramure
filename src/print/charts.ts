@@ -139,7 +139,7 @@ function fan(table: Map<number, Individual>, gens: number, width: number, height
           const [tx, ty] = polar(cx, cy, rText, mid + (offset / rText) * (180 / Math.PI) * (rightSide ? -1 : 1));
           const rot = rightSide ? -mid : 180 - mid;
           parts.push(
-            `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" transform="rotate(${rot.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})" text-anchor="${rightSide ? 'start' : 'end'}" dominant-baseline="middle" font-size="${k === 2 ? fontSize - 1 : fontSize}" font-weight="${k === 1 ? 600 : 400}" fill="${k === 2 ? INK_2 : INK}">${esc(l)}</text>`,
+            `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" transform="rotate(${rot.toFixed(1)} ${tx.toFixed(1)} ${ty.toFixed(1)})" text-anchor="start" dominant-baseline="middle" font-size="${k === 2 ? fontSize - 1 : fontSize}" font-weight="${k === 1 ? 600 : 400}" fill="${k === 2 ? INK_2 : INK}">${esc(l)}</text>`,
           );
         });
       }

@@ -20,7 +20,9 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
   const [kind, setKind] = useState<ChartKind>('fan');
   const [generations, setGenerations] = useState(5);
   const [dates, setDates] = useState(true);
-  const [orientation, setOrientation] = useState<ChartOptions['orientation']>('portrait');
+  // A half fan is wide, a pedigree is tall: each kind has its natural sheet unless the person chooses.
+  const [chosenOrientation, setOrientation] = useState<ChartOptions['orientation'] | null>(null);
+  const orientation: ChartOptions['orientation'] = chosenOrientation ?? (kind === 'fan' ? 'landscape' : 'portrait');
   const [title, setTitle] = useState<string | null>(null);
   const defaultTitle = root
     ? `${t(lang, 'chartOf')} ${displayName(root)} · ${w.source.name} · ${new Date().toLocaleDateString(localeOf(lang))}`
