@@ -4,18 +4,17 @@
  */
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { displayName } from '../gedcom/model';
-import { t, tn } from '../i18n';
+import { t } from '../i18n';
 import { api, ApiError, type Role, type TreeSummary } from '../sync/api';
-import { SyncEngine, type EngineEvent, type SyncStatus } from '../sync/engine';
-import { describeOp } from '../tree/ops';
+import { SyncEngine } from '../sync/engine';
 import { Admin } from './Admin';
 import { Home } from './Home';
 import { Login } from './Login';
-import { Settings, type DefaultView } from './Settings';
+import type { DefaultView } from './Settings';
 import { historyReducer, initialHistory } from './history';
 import { useAccounts } from './hooks/useAccounts';
 import { useBoot } from './hooks/useBoot';
+import { useEngineEvents } from './hooks/useEngineEvents';
 import { useInvites } from './hooks/useInvites';
 import { useSnapshots } from './hooks/useSnapshots';
 import { useTreeFiles } from './hooks/useTreeFiles';
@@ -25,6 +24,7 @@ import { useHashRoute } from './router';
 import { WorkspaceProvider } from './session/Workspace';
 import { PersonPanelHost } from './stage/PersonPanelHost';
 import { ResourcesHost } from './stage/ResourcesHost';
+import { SettingsHost } from './stage/SettingsHost';
 import { SnapshotsDialog } from './stage/SnapshotsDialog';
 import { TopBar } from './stage/TopBar';
 import { TreeStage } from './stage/TreeStage';
@@ -75,41 +75,12 @@ function Shell() {
   }, [lang, toast]);
 
   // ---------- The open tree ----------
-  const lastStatus = useRef<SyncStatus>('synced');
   const goHomeRef = useRef<() => void>(() => {});
   const setCommitting = useCallback((on: boolean) => {
     committing.current = on;
   }, []);
-  const onEngineEvent = useCallback(
-    (e: EngineEvent, eng: SyncEngine) => {
-      const prev = lastStatus.current;
-      lastStatus.current = e.status;
-      if (e.status === 'gone' && prev !== 'gone') {
-        toast(t(lang, 'treeGone'));
-        void eng.forget();
-        goHomeRef.current();
-      }
-      if (e.status === 'signedout' && prev !== 'signedout') void auth.refresh();
-      if (committing.current) return;
-      if (e.notice?.remote || e.notice?.dropped?.length) {
-        historyDispatch({ type: 'replace', tree: e.tree, keepHistory: false });
-        if (e.notice.dropped?.length) {
-          const what = e.notice.dropped
-            .slice(0, 2)
-            .map((d) => describeOp(d.envelope.op, lang))
-            .join(', ');
-          toast(`${tn(lang, 'droppedChangesCount', e.notice.dropped.length)} : ${what}`);
-        } else toast(t(lang, 'remoteChanges'));
-      } else historyDispatch({ type: 'replace', tree: e.tree, keepHistory: true });
-      if (e.notice?.overwrote?.length) {
-        const names = e.notice.overwrote.map((id) => (e.tree.individuals[id] ? displayName(e.tree.individuals[id]!) : id)).join(', ');
-        toast(`${t(lang, 'overwroteChanges')} ${names}`);
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lang, toast, auth.refresh],
-  );
-  const session = useTreeSession(onEngineEvent);
+  const events = useEngineEvents({ lang, toast, historyDispatch, committing, goHome: goHomeRef, refreshAuth: auth.refresh });
+  const session = useTreeSession(events.onEvent);
   const { source, sync, engine } = session;
 
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
@@ -148,7 +119,7 @@ function Shell() {
       try {
         const opened = await session.open(id, name, role);
         if (!opened) return;
-        lastStatus.current = 'synced';
+        events.reset();
         historyDispatch({ type: 'load', tree: opened, fileName: name });
         dispatch({ type: 'treeOpened', focusId: defaultFocus(opened), view: defaultView });
         navigate({ name: 'tree', id }, true);
@@ -161,7 +132,7 @@ function Shell() {
         toast(err instanceof ApiError && err.status === 404 ? t(lang, 'inviteInvalid') : t(lang, 'syncError'));
       }
     },
-    [session, dispatch, defaultView, navigate, toast, lang],
+    [session, events, dispatch, defaultView, navigate, toast, lang],
   );
   const openSummary = useCallback((tr: TreeSummary) => void openTree(tr.id, tr.name, tr.role), [openTree]);
 
@@ -309,35 +280,13 @@ function Shell() {
         ) : route.name === 'admin' && auth.user.isAdmin ? (
           <Admin lang={lang} onBack={() => navigate({ name: 'home' })} toast={toast} ask={ask} />
         ) : route.name === 'settings' ? (
-          <Settings
-            lang={lang}
-            user={auth.user}
-            account={account}
-            accounts={accounts.accounts ?? []}
-            theme={ui.theme}
-            defaultView={defaultView}
+          <SettingsHost
+            auth={auth}
+            accounts={accounts}
             section={settingsSection}
-            onSelectAccount={accounts.select}
-            onAccountRenamed={(name) => {
-              if (account) accounts.setAccount({ ...account, name });
-              void accounts.load(account?.id);
-              toast(t(lang, 'saved'));
-            }}
-            onLeftAccount={() => {
-              void accounts.load();
-              navigate({ name: 'home' });
-            }}
-            onProfileRenamed={() => {
-              void auth.refresh();
-              toast(t(lang, 'saved'));
-            }}
-            onDeletionChanged={() => void auth.refresh()}
-            onLang={ui.setLang}
-            onTheme={ui.setTheme}
+            defaultView={defaultView}
             onDefaultView={setDefaultView}
-            onBack={() => navigate({ name: 'home' })}
-            toast={toast}
-            ask={ask}
+            navigate={navigate}
           />
         ) : (
           <Home
