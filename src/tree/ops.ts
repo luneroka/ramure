@@ -222,6 +222,7 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
     case 'setResources':
       return fr ? 'Ressources modifiées' : 'Resources edited';
     case 'updateTree':
+      if (op.patch.dismissedChecks) return fr ? 'Vérification ignorée' : 'Check dismissed';
       return fr ? 'Ressources modifiées' : 'Resources edited';
     case 'geocodePlaces':
       return fr ? 'Lieux localisés' : 'Places located';

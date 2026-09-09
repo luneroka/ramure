@@ -8,6 +8,7 @@ import type { TreeCanvasHandle } from '../../canvas/TreeCanvas';
 import type { HandleKind } from '../../canvas/renderer';
 import { t, type Lang } from '../../i18n';
 import type { SyncEngine, SyncStatus } from '../../sync/engine';
+import { ops } from '../../tree/ops';
 import type { AskSpec } from '../Modal';
 import { editorReducer, initialEditor, type EditorAction, type EditorState } from '../editorState';
 import type { HistoryAction, HistoryState } from '../history';
@@ -53,7 +54,7 @@ export function useWorkspaceState(a: Args): {
 
   const { layoutOpts, effectiveFocus, layout, count, hiddenCount } = useTreeLayout(tree, displayTree, editor.focusId, editor.view);
   const { kinship, lit } = useKinship(tree, editor.kinshipIds, lang);
-  const { reportNotes, dismissNote } = useReport(tree, source?.id);
+  const { reportNotes, dismissLocally } = useReport(tree, source?.id);
   useCamera({ canvas, layout, tree, sourceKey: source?.id ?? '', view: editor.view, effectiveFocus, lit, draft: editor.draft });
 
   const onCommitted = useCallback((subject: string | undefined, opts: { select?: boolean; edit?: boolean; focus?: boolean }) => {
@@ -93,6 +94,17 @@ export function useWorkspaceState(a: Args): {
     toast,
   });
   const cancelDraft = useCallback(() => dispatch({ type: 'cancelDraft' }), []);
+
+  // A dismissed check is an edit like any other, so it holds for the whole family; a viewer keeps it on the device.
+  const dismissNote = useCallback(
+    (key: string) => {
+      const known = tree?.dismissedChecks ?? [];
+      if (!readOnly && tree && !known.includes(key) && commit(ops.updateTree({ dismissedChecks: [...known, key] }), { select: false }))
+        return;
+      dismissLocally(key);
+    },
+    [tree, readOnly, commit, dismissLocally],
+  );
 
   const startKinship = useCallback(
     (x: string, y: string) => {

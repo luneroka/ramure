@@ -67,9 +67,23 @@ interface Placed {
   order: number;
 }
 
+/** A family's child connector before it gets a height: where it starts, whom it reaches, how wide it is. */
+interface Bus {
+  rowY: number;
+  ax: number;
+  ay: number;
+  kids: LayoutNode[];
+  minX: number;
+  maxX: number;
+  lane: number;
+}
+/** Horizontal room two buses in one lane keep between them. */
+const BUS_CLEARANCE = 12;
+
 export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOUT): Layout {
   const nodes: LayoutNode[] = [];
   const links: LayoutLink[] = [];
+  const buses: Bus[] = [];
   const rowH = opts.cardH + opts.rowGap;
   const compGap = opts.cardW; // horizontal space between components
   let offsetX = 0;
@@ -113,26 +127,8 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       byId.set(p.id, n);
       allGens.add(p.gen);
     }
-    // A parent with children from several unions gets one bus height per union, left to right.
-    const slots = new Map<string, { i: number; n: number }>();
-    for (const id of comp.ids) {
-      const fams = tree.individuals[id]!.partnerIn.map((f) => tree.families[f]).filter(
-        (f): f is NonNullable<typeof f> => !!f && f.childIds.some((c) => byId.has(c)),
-      );
-      if (fams.length < 2) continue;
-      const xOf = (f: (typeof fams)[number]) => {
-        const other = f.husbandId === id ? f.wifeId : f.husbandId;
-        const n = other ? byId.get(other) : undefined;
-        return n?.x ?? byId.get(id)?.x ?? 0;
-      };
-      fams
-        .sort((a, b) => xOf(a) - xOf(b))
-        .forEach((f, i) => {
-          const cur = slots.get(f.id);
-          if (!cur || fams.length > cur.n) slots.set(f.id, { i, n: fams.length });
-        });
-    }
-    // Connectors: one bus per family with children; partner ties.
+    // Connectors: partner ties now; child buses are collected and laid out per row once every component is placed,
+    // so two families whose buses would cross in the same row get different heights instead of one merged line.
     for (const fid of new Set(comp.ids.flatMap((id) => tree.individuals[id]!.partnerIn))) {
       const f = tree.families[fid];
       if (!f) continue;
@@ -163,17 +159,35 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       }
       const kids = f.childIds.map((c) => byId.get(c)).filter((n): n is LayoutNode => !!n);
       if (!kids.length) continue;
-      const slot = slots.get(fid) ?? { i: 0, n: 1 };
-      const busY = (h ?? w)!.y + opts.cardH + (opts.rowGap * (slot.i + 1)) / (slot.n + 1);
+      const centers = kids.map((k) => k.x + k.w / 2);
+      buses.push({ rowY: (h ?? w)!.y, ax, ay, kids, minX: Math.min(ax, ...centers), maxX: Math.max(ax, ...centers), lane: 0 });
+    }
+    offsetX += maxX - minX + compGap;
+  }
+
+  // Buses in one row take lanes: a bus goes to the first lane where nothing it would cross is already drawn.
+  const byRow = new Map<number, Bus[]>();
+  for (const b of buses) (byRow.get(b.rowY) ?? byRow.set(b.rowY, []).get(b.rowY)!).push(b);
+  for (const row of byRow.values()) {
+    row.sort((a, b) => a.minX - b.minX || a.maxX - b.maxX);
+    const laneEnd: number[] = [];
+    for (const b of row) {
+      let lane = laneEnd.findIndex((end) => end + BUS_CLEARANCE < b.minX);
+      if (lane < 0) lane = laneEnd.push(-Infinity) - 1;
+      laneEnd[lane] = b.maxX;
+      b.lane = lane;
+    }
+    const lanes = laneEnd.length;
+    for (const b of row) {
+      const busY = b.rowY + opts.cardH + (opts.rowGap * (b.lane + 1)) / (lanes + 1);
       links.push({
         kind: 'child',
         points: [
-          [ax, ay],
-          [ax, busY],
+          [b.ax, b.ay],
+          [b.ax, busY],
         ],
       });
-      const centers = kids.map((k) => k.x + k.w / 2);
-      for (const k of kids)
+      for (const k of b.kids)
         links.push({
           kind: 'child',
           points: [
@@ -184,12 +198,11 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
       links.push({
         kind: 'child',
         points: [
-          [Math.min(ax, ...centers), busY],
-          [Math.max(ax, ...centers), busY],
+          [b.minX, busY],
+          [b.maxX, busY],
         ],
       });
     }
-    offsetX += maxX - minX + compGap;
   }
 
   const rows = [...allGens].sort((a, b) => b - a);

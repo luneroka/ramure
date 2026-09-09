@@ -56,3 +56,21 @@ describe('layoutEverything', () => {
     expect(L.nodes).toHaveLength(Object.keys(r.tree.individuals).length);
   });
 });
+
+describe('child buses in the overview', () => {
+  it('never lets two families share a horizontal bus segment in one row', () => {
+    // Josephine Battaglia's union and Rina Benelli's parents sat on the same height with overlapping spans,
+    // which read as one connection; buses that would cross now take different lanes.
+    const L = layoutEverything(exported);
+    const buses = L.links.filter((l) => l.kind === 'child' && l.points[0]![1] === l.points[1]![1]); // horizontal segments
+    for (let i = 0; i < buses.length; i++)
+      for (let j = i + 1; j < buses.length; j++) {
+        const a = buses[i]!,
+          b = buses[j]!;
+        if (a.points[0]![1] !== b.points[0]![1]) continue;
+        const [a0, a1] = [a.points[0]![0], a.points[1]![0]];
+        const [b0, b1] = [b.points[0]![0], b.points[1]![0]];
+        expect(a0 < b1 && b0 < a1, `two buses share a segment at y=${a.points[0]![1]}`).toBe(false);
+      }
+  });
+});

@@ -215,6 +215,10 @@ function parseHeader(ctx: Ctx, r: GedcomRecord): void {
   if (plac) h.placeFormat = childValue(plac, 'FORM');
   h.notes = notesOf(ctx, r);
   ctx.tree.resources = leadsOf(r);
+  const dismissed = children(r, '_DISMISS')
+    .map((c) => c.value.trim())
+    .filter(Boolean);
+  if (dismissed.length) ctx.tree.dismissedChecks = dismissed;
   ctx.tree.documentIds = children(r, '_DOC')
     .map((c) => pointerId(c.value))
     .filter((id): id is string => !!id);

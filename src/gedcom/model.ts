@@ -240,6 +240,8 @@ export interface Tree {
   resources: Lead[];
   /** Documents that belong to the tree itself, not to a person (custom _DOC pointers under HEAD). */
   documentIds: string[];
+  /** Checks the family chose to ignore (custom _DISMISS keys under HEAD): shared by everyone, like the data. */
+  dismissedChecks?: string[];
 }
 
 export function emptyTree(): Tree {

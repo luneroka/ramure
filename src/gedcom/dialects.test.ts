@@ -97,3 +97,11 @@ describe('foreign dialects', () => {
     expect(note?.message).toContain('SUBM');
   });
 });
+
+describe('dismissed checks', () => {
+  it('travel with the tree through export and import', () => {
+    const text = ged(['1 _DISMISS date-order:I1', '1 _DISMISS unknown-given:I2', '0 @I1@ INDI', '1 NAME A /B/'].join('\n'));
+    for (const tree of [parseGedcom(text), roundTrip(text)]) expect(tree.dismissedChecks).toEqual(['date-order:I1', 'unknown-given:I2']);
+    expect(parseGedcom(ged('0 @I1@ INDI\n1 NAME A /B/')).dismissedChecks).toBeUndefined();
+  });
+});

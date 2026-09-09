@@ -357,6 +357,8 @@ export interface TreePatch {
   media?: MediaObject[];
   /** The tree's own documents, in order. */
   documentIds?: string[];
+  /** Checks ignored by the family, replaced wholesale. */
+  dismissedChecks?: string[];
 }
 
 /** Tree-level things that are not people: resources and the tree's documents. */
@@ -369,6 +371,7 @@ export function updateTree(tree: Tree, patch: TreePatch): EditResult {
   }
   if (patch.resources) t = { ...t, resources: patch.resources };
   if (patch.documentIds) t = { ...t, documentIds: patch.documentIds };
+  if (patch.dismissedChecks) t = { ...t, dismissedChecks: patch.dismissedChecks };
   return { tree: t };
 }
 
