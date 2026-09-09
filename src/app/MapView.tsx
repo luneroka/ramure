@@ -9,9 +9,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Tree } from '../gedcom/model';
-import { eventLabel, t, type Lang } from '../i18n';
+import { t, type Lang } from '../i18n';
 import { geocodeAll } from '../places/geocode';
-import { collectPlaces, type Geocode, type PlaceEntry } from '../tree/places';
+import { collectPlaces, type Geocode } from '../tree/places';
+import { esc, popupFor } from './mapPopup';
 
 interface Props {
   tree: Tree;
@@ -155,21 +156,4 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
       {located.length === 0 && !progress && missing.length === 0 && <div className="map-empty muted">{t(lang, 'noPlaces')}</div>}
     </div>
   );
-}
-
-function esc(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
-
-function popupFor(p: PlaceEntry, lang: Lang): string {
-  const rows = [...p.mentions]
-    .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
-    .map(
-      (m) =>
-        `<li><button type="button" data-person="${esc(m.personId)}">${esc(m.personName)}</button> <span class="muted">${esc(
-          eventLabel(lang, m.type, m.customType),
-        )}${m.year !== undefined ? ` · ${m.year}` : ''}</span></li>`,
-    )
-    .join('');
-  return `<strong>${esc(p.text)}</strong><ul class="map-list">${rows}</ul>`;
 }

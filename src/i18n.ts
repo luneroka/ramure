@@ -637,6 +637,11 @@ const strings = {
 
 type StringKey = Exclude<keyof typeof strings, 'event'>;
 
+/** The whole table, for tests that check every key has both languages. */
+export const stringTable = Object.fromEntries(
+  Object.entries(strings as Record<string, { fr: unknown; en: unknown }>).filter(([, v]) => typeof v.fr === 'string'),
+) as Record<string, { fr: string; en: string }>;
+
 export function t(lang: Lang, key: StringKey): string {
   return strings[key][lang];
 }

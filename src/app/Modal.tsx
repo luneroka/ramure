@@ -36,7 +36,17 @@ export function Modal({ pending, lang }: { pending: Pending | null; lang: Lang }
     setTyped('');
   }
   useEffect(() => {
-    if (pending) first.current?.focus();
+    if (!pending) return;
+    const before = document.activeElement as HTMLElement | null;
+    first.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') pending.resolve(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      before?.focus?.();
+    };
   }, [pending]);
   if (!pending) return null;
   const { spec, resolve } = pending;
