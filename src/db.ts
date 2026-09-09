@@ -35,7 +35,7 @@ export async function kvGet<T>(key: string): Promise<T | undefined> {
   }
 }
 
-export async function kvSet(key: string, value: unknown): Promise<void> {
+export async function kvSet(key: string, value: unknown): Promise<boolean> {
   try {
     const db = await open();
     await new Promise<void>((resolve, reject) => {
@@ -44,8 +44,10 @@ export async function kvSet(key: string, value: unknown): Promise<void> {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
+    return true;
   } catch {
-    /* storage unavailable: the app still works for the session */
+    /* storage unavailable: the app still works for the session, and says so */
+    return false;
   }
 }
 

@@ -59,6 +59,7 @@ interface TreeMenuProps {
   onSaveVersion(): void;
   onReport(): void;
   onResources(): void;
+  onReload(): void;
   onDelete(): void;
 }
 
@@ -133,6 +134,7 @@ export function TreeMenu(p: TreeMenuProps) {
           {p.checkCount > 0 && <span className="dd-meta">{p.checkCount}</span>}
         </button>
         {item(t(lang, 'resources'), p.onResources)}
+        {item(t(lang, 'reloadFromServer'), p.onReload)}
         {p.owner && item(t(lang, 'deleteTree'), p.onDelete, 'danger')}
       </Dropdown>
     </div>
