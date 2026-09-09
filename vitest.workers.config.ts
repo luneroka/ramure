@@ -1,10 +1,13 @@
 /// <reference types="@cloudflare/vitest-pool-workers" />
 import { defineWorkersConfig, readD1Migrations } from '@cloudflare/vitest-pool-workers/config';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 /** Worker tests run inside workerd with an isolated D1 and R2 per test file; migrations are applied in setup. */
 export default defineWorkersConfig(async () => {
   const migrations = await readD1Migrations(path.join(__dirname, 'migrations'));
+  // wrangler.toml points at the built assets; the tests never serve them, but the folder must exist.
+  mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
   return {
     test: {
       include: ['worker/**/*.test.ts'],
