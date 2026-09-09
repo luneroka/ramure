@@ -26,6 +26,8 @@ Nothing tells an arriving agent what the invariants are, the folder structure
 half-committed to an organisation and stopped, the API has no stable error
 contract, and the safety nets that catch mistakes automatically (secret
 scanning, config validation, an enforced CI gate) are absent or unreachable.
+_All three of those closed in pass 1; the CI gate came back by making the
+repository public, which is what made its minutes free._
 
 Findings are ordered by consequence. **Tier 1** can produce a production
 incident or silent data loss. **Tier 2** costs correctness or agent time daily.
@@ -87,7 +89,7 @@ because a missing mail key breaks new sign-ins but must not break a working
 app. Problems carry setting names and reasons, never values — there is a test
 asserting that.
 
-### `[~]` H2. No secret scanning, and the CI gate is unreachable
+### `[x]` H2. No secret scanning, and the CI gate is unreachable
 
 _Pass 1, 2026-09-09. The first attempt was **wrong** and is recorded here
 because the mistake is the useful part; see "What H2 turned out to be"._
@@ -143,9 +145,14 @@ harvested, and it names the one account worth targeting. It is a secret now.
 Public does **not** mean reusable: [COPYRIGHT.md](../COPYRIGHT.md) keeps all
 rights reserved, which makes this source-available.
 
-**Still open:** restoring `ci.yml` to run on push and pull request. It waits
-until the repository is actually public, so the checks do not go red again in
-the meantime.
+**Closed 2026-09-09.** The repository is public, `ADMIN_EMAIL` is a secret, and
+both workflows run again: `ci.yml` (the full suite) and `secret-scan.yml`
+(Gitleaks over history). `push` is limited to `main` on both — a PR branch is
+already covered by the `pull_request` trigger, and listing both bare would run
+every check twice on each push to an open PR.
+
+The local suite stays in `/preflight` and stays expected before a merge: CI is
+now the slower second opinion rather than the only gate.
 
 ### `[x]` H3. `coverage/` is committed to git
 

@@ -1,14 +1,14 @@
 ---
 name: preflight
-description: Run Ramure's full pre-merge check suite locally — lint, typecheck, format, unit tests, build, Worker tests, and the Playwright journey. Use before opening or merging any PR, or whenever asked to "run the checks", "run CI", or confirm a branch is green. GitHub Actions is manual-only on this repo, so this is the only gate.
+description: Run Ramure's full pre-merge check suite locally — lint, typecheck, format, unit tests, build, Worker tests, the Playwright journey, and a secret scan. Use before opening or merging any PR, or whenever asked to "run the checks", "run CI", or confirm a branch is green.
 ---
 
 # Preflight
 
-GitHub Actions on this repo runs on `workflow_dispatch` only — the account's
-free minutes are gone and will not be paid for. This suite is therefore the
-real gate, and it runs locally. Never report a check as green that you did not
-actually run.
+CI runs the same checks on every push to main and every pull request. Run them
+locally first anyway: it is faster than waiting on a runner, and it catches the
+mistake before it is pushed rather than after. Never report a check as green
+that you did not actually run.
 
 ## Run, in this order
 

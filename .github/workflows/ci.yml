@@ -1,8 +1,17 @@
 name: CI
-# Runs only when started by hand (Actions → CI → Run workflow): the account's free minutes are not spent on
-# every push. The same checks run locally before each merge: npm run lint, typecheck, format:check, test,
-# build, test:worker, then npx playwright test against wrangler dev.
+# Runs on every push and pull request again. This was `workflow_dispatch` only while the repository was
+# private and the account's 2 000 free Actions minutes were spent; public repositories do not consume that
+# quota at all, which is why the repository was opened on 9 September 2026.
+#
+# The same checks still run locally before a merge (`/preflight`), because a green tick here is not a reason
+# to skip them — but they are no longer the *only* gate, so forgetting one is no longer a silent failure.
+#
+# `push` is limited to main: a pull-request branch is already covered by the `pull_request` trigger, and
+# listing both bare would run every check twice on each push to an open PR.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 jobs:
   check:

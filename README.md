@@ -70,8 +70,9 @@ anything. [`docs/`](docs/README.md) holds the map:
 [architecture](docs/ARCHITECTURE.md) for where things live,
 [rules in force](docs/RULES_IN_FORCE.md) for the invariants you must not break.
 
-GitHub Actions runs on demand only, so the full suite runs locally before every
-merge:
+CI runs on every push to main and every pull request. Run the same suite
+locally before a merge anyway — it is faster than waiting, and it is what
+catches a mistake before it is pushed:
 
 ```bash
 npm run lint && npm run typecheck && npm run format:check

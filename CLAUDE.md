@@ -31,10 +31,10 @@ Cloudflare Workers Builds.
    account or an admin surface without `requireUser` and a `requireRole` /
    `requireAccountRole` / `requireAdmin` call. There is no exception; adding a
    route without one is a security bug, not a shortcut.
-4. **The full local suite passes before any merge.** See below. GitHub Actions
-   is `workflow_dispatch` only — the free minutes are gone and will not be
-   paid for — so CI green is _your_ responsibility, locally. Never report a
-   check as passing that you did not run.
+4. **The full local suite passes before any merge.** See below. CI runs on
+   every push to main and every pull request, but a green tick there is not a
+   reason to skip the local run — it is the slower second opinion, not the
+   first. Never report a check as passing that you did not run.
 5. **Migrations are forward-only and numbered.** Add `migrations/00NN_*.sql`;
    never edit an applied one. When a schema changes, run `npm run db:migrate`
    against production before merging.
