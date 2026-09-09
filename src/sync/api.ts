@@ -77,7 +77,8 @@ export interface AccountMember {
 
 export const api = {
   me: () => call<{ user: Me | null }>('GET', '/api/auth/me'),
-  requestLink: (email: string) => call<{ ok: true; link?: string }>('POST', '/api/auth/request', { email }),
+  requestLink: (email: string) => call<{ ok: true; link?: string; code?: string }>('POST', '/api/auth/request', { email }),
+  verifyCode: (email: string, code: string) => call<{ ok: true }>('POST', '/api/auth/code', { email, code }),
   logout: () => call<{ ok: true }>('POST', '/api/auth/logout', {}),
   rename: (name: string) => call<{ user: Me }>('PATCH', '/api/auth/me', { name }),
 

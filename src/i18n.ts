@@ -194,10 +194,17 @@ const strings = {
   sendLink: { fr: 'Recevoir un lien', en: 'Send me a link' },
   linkSent: { fr: 'Lien envoyé à', en: 'Link sent to' },
   linkSentHint: {
-    fr: 'Ouvrez-le depuis cet appareil, il est valable 15 minutes.',
-    en: 'Open it from this device; it is valid for 15 minutes.',
+    fr: 'Saisissez le code reçu ci-dessous, ou ouvrez le lien du courriel depuis cet appareil. Valable 15 minutes.',
+    en: 'Type the code you received below, or open the link from this device. Valid for 15 minutes.',
   },
   devLink: { fr: 'Lien de développement (aucun courriel envoyé)', en: 'Development link (no email sent)' },
+  codeLabel: { fr: 'Code reçu par courriel', en: 'Code from the email' },
+  codeSubmit: { fr: 'Se connecter', en: 'Sign in' },
+  codeHint: {
+    fr: 'Le courriel contient un code à six chiffres et un lien : l’un ou l’autre suffit.',
+    en: 'The email carries a six-digit code and a link: either one works.',
+  },
+  codeWrong: { fr: 'Code incorrect ou expiré. Demandez un nouveau courriel.', en: 'Wrong or expired code. Request a new email.' },
   otherEmail: { fr: 'Autre adresse', en: 'Other address' },
   signinFailed: { fr: 'Envoi impossible. Vérifiez l’adresse.', en: 'Could not send. Check the address.' },
   signinThrottled: {

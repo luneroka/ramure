@@ -14,17 +14,33 @@ interface Props {
 
 export function Login({ lang, auth, pendingInvite, toast }: Props) {
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState<{ email: string; link?: string } | null>(null);
+  const [sent, setSent] = useState<{ email: string; link?: string; code?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
 
   const request = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
-      const link = await auth.requestLink(email.trim());
-      setSent({ email: email.trim(), link });
+      const r = await auth.requestLink(email.trim());
+      setSent({ email: email.trim(), ...r });
+      setCode('');
     } catch (err) {
       toast(t(lang, err instanceof ApiError && err.status === 429 ? 'signinThrottled' : 'signinFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sent) return;
+    setBusy(true);
+    try {
+      await auth.verifyCode(sent.email, code);
+      toast(t(lang, 'signedIn'));
+    } catch {
+      toast(t(lang, 'codeWrong'));
     } finally {
       setBusy(false);
     }
@@ -49,9 +65,29 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             <p>
               {t(lang, 'linkSent')} <strong>{sent.email}</strong>. {t(lang, 'linkSentHint')}
             </p>
+            <form className="signin code-form" onSubmit={submitCode}>
+              <label>
+                {t(lang, 'codeLabel')}
+                <input
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9 ]*"
+                  maxLength={7}
+                  placeholder="483 921"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/[^0-9 ]/g, ''))}
+                  autoFocus
+                />
+              </label>
+              <button className="btn primary" disabled={busy || code.replace(/\D/g, '').length !== 6}>
+                {t(lang, 'codeSubmit')}
+              </button>
+              <p className="muted small">{t(lang, 'codeHint')}</p>
+            </form>
             {sent.link && (
               <p className="small">
                 <a href={sent.link}>{t(lang, 'devLink')}</a>
+                {sent.code && <span className="muted"> · code {sent.code}</span>}
               </p>
             )}
             <button className="btn subtle" onClick={() => setSent(null)}>
