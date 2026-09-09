@@ -222,9 +222,27 @@ the two can coexist during migration.
 
 ### `[ ]` H5. `src/app/` is half-organised
 
-The directory is committed to an organisation it never finished. `stage/`,
-`ui/`, `fields/`, `hooks/` and `session/` exist — but 24 files remain at the
-root mixing four different kinds of thing:
+_Shape decided by Yoann on 2026-09-09: **by kind, shallow** — the layout below,
+not a feature-first tree. Feature-first (`features/tree/components/…`) was
+considered and rejected for two reasons. This app's core is **one screen**, so
+its features are not separable the way billing and inventory are: the canvas,
+the `Workspace` context and the person panel touch each other constantly, and
+the boundaries would be artificial. And the repository is worked on mostly by
+agents, for which a shallow tree is materially better — a file's home is
+guessable from its name, `ls src/app/` stays informative, and there are fewer
+wrong path guesses. Do not re-open this without a reason that answers both._
+
+
+The directory is committed to an organisation it never finished — **37 files
+at the root against 36 in subfolders**. `stage/`, `ui/`, `fields/`, `hooks/`
+and `session/` exist, but the root still mixes four different kinds of thing:
+
+(Two things that look like disorder here are not. Tests sitting beside their
+subject is the *dominant* TypeScript convention — the Vitest default — and only
+looks odd next to ccig-app, which follows the pytest convention of a separate
+`tests/` tree. And the rest of `src/` — `gedcom/`, `tree/`, `canvas/`, `sync/`,
+`store/` — is cleanly separated already. The mess is one room, not the house.)
+
 
 | Kind | Files at `src/app/` root |
 |---|---|
