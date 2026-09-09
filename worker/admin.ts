@@ -5,6 +5,7 @@
 
 import { Hono, type Context } from 'hono';
 import type { Env, User, Vars } from './env';
+import { BACKUP_PREFIX, listBackups } from './backup';
 import { sendMail } from './mail';
 import { HttpError, normaliseEmail, now, randomId, readJson } from './util';
 
@@ -75,7 +76,16 @@ admin.get('/overview', async (c) => {
     message: string | null;
     requested_at: number;
   }>();
-  return c.json({ users: users.results, invites: invites.results, accounts: accounts.results, requests: requests.results });
+  const trees = await c.env.DB.prepare(
+    `SELECT t.id, t.name, t.version, t.people, t.updated_at, a.name AS account_name FROM trees t LEFT JOIN accounts a ON a.id = t.account_id ORDER BY t.updated_at DESC`,
+  ).all<{ id: string; name: string; version: number; people: number; updated_at: number; account_name: string | null }>();
+  return c.json({
+    users: users.results,
+    invites: invites.results,
+    accounts: accounts.results,
+    requests: requests.results,
+    trees: trees.results,
+  });
 });
 
 /** Create and mail an invitation for an address; any pending access request for it is settled. */
@@ -113,6 +123,31 @@ async function inviteAddress(
   await c.env.DB.prepare(`DELETE FROM access_requests WHERE email = ?`).bind(email).run();
   return { id, expiresAt: now() + APP_INVITE_TTL_MS };
 }
+
+/** The nightly copies of a tree, for the operator's eyes. */
+admin.get('/backups/:treeId', async (c) => {
+  await requireAdmin(c.env, c.get('user'));
+  const treeId = c.req.param('treeId');
+  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId)) throw new HttpError(400, 'bad id');
+  return c.json({ backups: await listBackups(c.env, treeId) });
+});
+
+/** One copy as a GEDCOM file. */
+admin.get('/backups/:treeId/:day', async (c) => {
+  await requireAdmin(c.env, c.get('user'));
+  const treeId = c.req.param('treeId'),
+    day = c.req.param('day');
+  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new HttpError(400, 'bad id');
+  const obj = await c.env.MEDIA.get(`${BACKUP_PREFIX}${treeId}/${day}.ged`);
+  if (!obj) throw new HttpError(404, 'no copy');
+  return new Response(obj.body, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${treeId}-${day}.ged"`,
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+});
 
 admin.post('/invites', async (c) => {
   const me = await requireAdmin(c.env, c.get('user'));

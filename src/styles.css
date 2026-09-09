@@ -3228,3 +3228,12 @@ textarea:focus {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+.backup-list {
+  list-style: none;
+  padding: 6px 0 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
