@@ -214,51 +214,125 @@ admin.delete('/invites/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-/** Remove a user entirely: sessions, memberships, and any account they were the sole owner of, with its trees and files. */
+/**
+ * Remove a user entirely: their sessions and memberships, the accounts they
+ * were the sole owner of with everything in them, and every row that names
+ * them.
+ *
+ * The order here is the whole of the correctness, and it used to be wrong in
+ * two compounding ways.
+ *
+ * Four columns reference `users(id)` with no ON DELETE clause — `trees.owner_id`,
+ * `accounts.created_by`, `account_invites.created_by`, and two more in tables
+ * dropped by migration 0012 — and only one branch ever reassigned them: the one
+ * where the person co-owned an account with somebody else. Two ordinary
+ * situations fell outside it. A member may create a tree, which records them as
+ * its owner in an account that outlives them; and an owner who created an
+ * account may later be demoted, leaving `created_by` pointing at them. Either
+ * way the final batch hit `FOREIGN KEY constraint failed` and the person was
+ * not deleted.
+ *
+ * And the failure was not clean, because the destructive work ran first. The
+ * accounts and their files were already gone by the time the batch threw, so
+ * approving a deletion request destroyed the person's own genealogy — with no
+ * snapshot, since the account went with it — and left them signed in, with the
+ * request still queued inviting a second press of the same button.
+ *
+ * So now: everything is worked out before anything is written, every reference
+ * is reassigned or removed inside the *same* batch that deletes the person, and
+ * R2 comes last. A crash after the batch leaves files that nothing points at,
+ * which `reap` sweeps nightly — the one failure mode worth having.
+ */
 export async function deleteUser(env: Env, userId: string): Promise<{ accountsDeleted: number }> {
+  const user = await env.DB.prepare(`SELECT email FROM users WHERE id = ?`).bind(userId).first<{ email: string }>();
+  if (!user) return { accountsDeleted: 0 };
+
+  /** An owner of this account who is not the person being deleted, or null when there is none. */
+  const survivingOwner = async (accountId: string): Promise<string | null> => {
+    const row = await env.DB.prepare(`SELECT user_id FROM account_members WHERE account_id = ? AND role = 'owner' AND user_id != ? LIMIT 1`)
+      .bind(accountId, userId)
+      .first<{ user_id: string }>();
+    return row?.user_id ?? null;
+  };
+
+  // Which accounts go, and which live on under somebody else.
   const owned = await env.DB.prepare(`SELECT account_id FROM account_members WHERE user_id = ? AND role = 'owner'`)
     .bind(userId)
     .all<{ account_id: string }>();
-  let accountsDeleted = 0;
+  const doomed: string[] = [];
+  const heirs = new Map<string, string>();
   for (const { account_id } of owned.results) {
-    const other = await env.DB.prepare(
-      `SELECT user_id FROM account_members WHERE account_id = ? AND role = 'owner' AND user_id != ? LIMIT 1`,
-    )
-      .bind(account_id, userId)
-      .first<{ user_id: string }>();
-    if (other) {
-      // The account lives on under the other owner.
-      await env.DB.batch([
-        env.DB.prepare(`UPDATE accounts SET created_by = ? WHERE id = ? AND created_by = ?`).bind(other.user_id, account_id, userId),
-        env.DB.prepare(`UPDATE trees SET owner_id = ? WHERE account_id = ? AND owner_id = ?`).bind(other.user_id, account_id, userId),
-        env.DB.prepare(`UPDATE account_invites SET created_by = ? WHERE account_id = ? AND created_by = ?`).bind(
-          other.user_id,
-          account_id,
-          userId,
-        ),
-      ]);
-      continue;
-    }
-    // Sole owner: the account and everything in it goes, files first.
-    const trees = await env.DB.prepare(`SELECT id FROM trees WHERE account_id = ?`).bind(account_id).all<{ id: string }>();
-    for (const t of trees.results) {
-      let cursor: string | undefined;
-      do {
-        const page = await env.MEDIA.list({ prefix: `trees/${t.id}/media/`, cursor });
-        if (page.objects.length) await env.MEDIA.delete(page.objects.map((o) => o.key));
-        cursor = page.truncated ? page.cursor : undefined;
-      } while (cursor);
-    }
-    await env.DB.prepare(`DELETE FROM accounts WHERE id = ?`).bind(account_id).run();
-    accountsDeleted++;
+    const heir = await survivingOwner(account_id);
+    if (heir) heirs.set(account_id, heir);
+    else doomed.push(account_id);
   }
+
+  // Files of the doomed accounts' trees, listed now while the rows still exist.
+  const doomedTrees: string[] = [];
+  for (const accountId of doomed) {
+    const trees = await env.DB.prepare(`SELECT id FROM trees WHERE account_id = ?`).bind(accountId).all<{ id: string }>();
+    doomedTrees.push(...trees.results.map((t) => t.id));
+  }
+
+  // Everything this person is named by that a surviving account keeps. The heir is worked out
+  // per account rather than in a subquery so that "there is nobody to hand this to" is an error
+  // with a name, and not a NOT NULL violation buried inside a batch.
+  const reassign: D1PreparedStatement[] = [];
+  const trees = await env.DB.prepare(`SELECT id, account_id FROM trees WHERE owner_id = ?`)
+    .bind(userId)
+    .all<{ id: string; account_id: string | null }>();
+  for (const t of trees.results) {
+    if (!t.account_id || doomed.includes(t.account_id)) continue;
+    const heir = heirs.get(t.account_id) ?? (await survivingOwner(t.account_id));
+    if (!heir) throw new Error(`cannot delete ${userId}: tree ${t.id} has no other owner to inherit it`);
+    reassign.push(env.DB.prepare(`UPDATE trees SET owner_id = ? WHERE id = ?`).bind(heir, t.id));
+  }
+  const madeAccounts = await env.DB.prepare(`SELECT id FROM accounts WHERE created_by = ?`).bind(userId).all<{ id: string }>();
+  for (const a of madeAccounts.results) {
+    if (doomed.includes(a.id)) continue;
+    const heir = heirs.get(a.id) ?? (await survivingOwner(a.id));
+    if (!heir) throw new Error(`cannot delete ${userId}: account ${a.id} has no other owner to inherit it`);
+    reassign.push(env.DB.prepare(`UPDATE accounts SET created_by = ? WHERE id = ?`).bind(heir, a.id));
+  }
+  const sentInvites = await env.DB.prepare(`SELECT token_hash, account_id FROM account_invites WHERE created_by = ?`)
+    .bind(userId)
+    .all<{ token_hash: string; account_id: string }>();
+  for (const inv of sentInvites.results) {
+    if (doomed.includes(inv.account_id)) continue;
+    const heir = heirs.get(inv.account_id) ?? (await survivingOwner(inv.account_id));
+    // An invitation is not worth failing a deletion over: with nobody to attribute it to, it goes.
+    reassign.push(
+      heir
+        ? env.DB.prepare(`UPDATE account_invites SET created_by = ? WHERE token_hash = ?`).bind(heir, inv.token_hash)
+        : env.DB.prepare(`DELETE FROM account_invites WHERE token_hash = ?`).bind(inv.token_hash),
+    );
+  }
+
+  // One batch: either this person is gone, or nothing moved.
   await env.DB.batch([
+    ...doomed.map((id) => env.DB.prepare(`DELETE FROM accounts WHERE id = ?`).bind(id)),
+    ...reassign,
+    // Rows that carry the address itself. The op log keeps `actor_id`, and snapshots keep
+    // `created_by`: those are the family's edit history, and the id no longer resolves to anybody.
+    env.DB.prepare(`DELETE FROM magic_links WHERE email = ?`).bind(user.email),
+    env.DB.prepare(`DELETE FROM access_requests WHERE email = ?`).bind(user.email),
+    env.DB.prepare(`DELETE FROM client_errors WHERE user_id = ?`).bind(userId),
     env.DB.prepare(`DELETE FROM account_members WHERE user_id = ?`).bind(userId),
     env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId),
     env.DB.prepare(`DELETE FROM deletion_requests WHERE user_id = ?`).bind(userId),
     env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(userId),
   ]);
-  return { accountsDeleted };
+
+  // Only now, with the rows committed, the files.
+  for (const treeId of doomedTrees) {
+    let cursor: string | undefined;
+    do {
+      const page = await env.MEDIA.list({ prefix: `trees/${treeId}/media/`, cursor });
+      if (page.objects.length) await env.MEDIA.delete(page.objects.map((o) => o.key));
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+  }
+  return { accountsDeleted: doomed.length };
 }
 
 admin.post('/deletions/:userId/approve', async (c) => {
