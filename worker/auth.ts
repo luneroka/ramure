@@ -212,7 +212,7 @@ auth.patch('/me', async (c) => {
 
 /** Anyone may ask for an invitation; the administrator hears about it by mail and decides. Same answer whatever the address. */
 auth.post('/access-request', async (c) => {
-  const body = await c.req.json<{ email?: string; message?: string }>().catch(() => ({}) as { email?: string; message?: string });
+  const body = await readJson<{ email: string; message: string }>(c.req.raw, 4096);
   const email = normaliseEmail(body.email);
   const message = String(body.message ?? '')
     .trim()
