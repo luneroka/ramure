@@ -1,8 +1,9 @@
 name: CI
+# Runs only when started by hand (Actions → CI → Run workflow): the account's free minutes are not spent on
+# every push. The same checks run locally before each merge: npm run lint, typecheck, format:check, test,
+# build, test:worker, then npx playwright test against wrangler dev.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 jobs:
   check:
     runs-on: ubuntu-latest
