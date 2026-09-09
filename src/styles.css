@@ -260,6 +260,7 @@ textarea:focus {
 }
 .canvas-tools {
   position: absolute;
+  z-index: 1001; /* above Leaflet's panes and controls on the map */
   right: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
   display: flex;
@@ -275,6 +276,7 @@ textarea:focus {
 }
 .hud {
   position: absolute;
+  z-index: 1001;
   left: 12px;
   bottom: max(12px, env(safe-area-inset-bottom));
   font-family: var(--mono);
