@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
-import { HttpError, now, randomId, randomToken, sha256 } from './util';
+import { HttpError, now, randomId, randomToken, readJson, sha256 } from './util';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
 
@@ -46,7 +46,7 @@ accounts.get('/', async (c) => {
 
 accounts.post('/', async (c) => {
   const user = requireUser(c.get('user'));
-  const body = await c.req.json<{ name?: string }>().catch(() => ({}) as { name?: string });
+  const body = await readJson<{ name?: string }>(c.req.raw, 4096);
   const name =
     String(body.name ?? '')
       .trim()
@@ -64,7 +64,7 @@ accounts.patch('/:id', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
-  const body = await c.req.json<{ name?: string }>();
+  const body = await readJson<{ name?: string }>(c.req.raw, 4096);
   const name = String(body.name ?? '')
     .trim()
     .slice(0, 80);
@@ -110,7 +110,7 @@ accounts.patch('/:id/members/:userId', async (c) => {
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
   const target = c.req.param('userId');
-  const body = await c.req.json<{ role?: AccountRole }>();
+  const body = await readJson<{ role?: AccountRole }>(c.req.raw, 4096);
   if (body.role !== 'owner' && body.role !== 'member' && body.role !== 'viewer') throw new HttpError(400, 'bad role');
   if (target === user.id && body.role !== 'owner') {
     const owners = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM account_members WHERE account_id = ? AND role = 'owner'`)
@@ -143,7 +143,7 @@ accounts.post('/:id/invites', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
-  const body = await c.req.json<{ role?: string }>().catch(() => ({}) as { role?: string });
+  const body = await readJson<{ role?: string }>(c.req.raw, 4096);
   const role: AccountRole = body.role === 'viewer' ? 'viewer' : 'member';
   const token = randomToken();
   await c.env.DB.prepare(

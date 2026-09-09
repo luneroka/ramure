@@ -11,6 +11,8 @@ export default defineWorkersConfig(async () => {
       setupFiles: ['./worker/test/setup.ts'],
       poolOptions: {
         workers: {
+          // R2's isolated storage trips over its own SQLite files; tests use distinct ids instead.
+          isolatedStorage: false,
           wrangler: { configPath: './wrangler.toml' },
           miniflare: {
             bindings: {

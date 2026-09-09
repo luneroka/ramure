@@ -18,10 +18,23 @@ interface Props {
   onNotice(message: string): void;
 }
 
+/** Only web and mail addresses are kept; anything else (javascript:, data:, file:) becomes nothing. */
 export function normalizeUrl(raw: string): string {
   const s = raw.trim();
   if (!s) return '';
-  return /^[a-z]+:\/\//i.test(s) ? s : `https://${s}`;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
+  return safeHref(withScheme);
+}
+
+/** The address if it is http, https or mailto, else an empty string: what an <a> may point at. */
+export function safeHref(url: string | undefined): string {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:' || u.protocol === 'mailto:' ? u.href : '';
+  } catch {
+    return '';
+  }
 }
 
 /** Add / edit form for a lead or a resource. */
@@ -130,8 +143,8 @@ export function LeadsTab(p: Props) {
           />
         </label>
         <div className="lead-body">
-          {l.url ? (
-            <a className="lead-title" href={l.url} target="_blank" rel="noopener">
+          {safeHref(l.url) ? (
+            <a className="lead-title" href={safeHref(l.url)} target="_blank" rel="noopener noreferrer">
               {l.title}
             </a>
           ) : (
@@ -193,7 +206,7 @@ export function LeadsTab(p: Props) {
           <>
             <div className="search-links">
               {links.map((l) => (
-                <a key={l.id} className="chip" href={l.url} target="_blank" rel="noopener">
+                <a key={l.id} className="chip" href={l.url} target="_blank" rel="noopener noreferrer">
                   {l.label} ↗
                 </a>
               ))}

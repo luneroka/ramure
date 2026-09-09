@@ -9,7 +9,7 @@
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
-import { HttpError, normaliseEmail, now, randomId, randomToken, sha256 } from './util';
+import { HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { echoMode, sendMail } from './mail';
 import { consumeInvite, isAdmin, mayEnter } from './admin';
 
@@ -93,7 +93,7 @@ auth.get('/me', async (c) => {
 });
 
 auth.post('/request', async (c) => {
-  const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
+  const body = await readJson<{ email?: string }>(c.req.raw, 2048);
   const email = normaliseEmail(body.email);
   // Closed door: only existing users and invited addresses get a mail. Same answer either way for outsiders.
   if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
@@ -114,7 +114,7 @@ auth.post('/request', async (c) => {
 
 /** The code from the mail, typed on the sign-in page. Five tries per link. */
 auth.post('/code', async (c) => {
-  const body = await c.req.json<{ email?: string; code?: string }>().catch(() => ({}) as { email?: string; code?: string });
+  const body = await readJson<{ email?: string; code?: string }>(c.req.raw, 2048);
   const email = normaliseEmail(body.email);
   const code = String(body.code ?? '').replace(/\D/g, '');
   if (code.length !== 6) throw new HttpError(400, 'bad code');
@@ -158,7 +158,7 @@ auth.post('/logout', async (c) => {
 auth.patch('/me', async (c) => {
   const user = c.get('user');
   if (!user) throw new HttpError(401, 'sign in required');
-  const body = await c.req.json<{ name?: string }>();
+  const body = await readJson<{ name?: string }>(c.req.raw, 2048);
   const name = String(body.name ?? '')
     .trim()
     .slice(0, 80);
@@ -207,7 +207,7 @@ auth.post('/access-request', async (c) => {
 auth.post('/deletion-request', async (c) => {
   const user = c.get('user');
   if (!user) throw new HttpError(401, 'sign in required');
-  const body = await c.req.json<{ note?: string }>().catch(() => ({}) as { note?: string });
+  const body = await readJson<{ note?: string }>(c.req.raw, 2048);
   const note = String(body.note ?? '')
     .trim()
     .slice(0, 500);

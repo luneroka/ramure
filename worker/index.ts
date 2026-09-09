@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
+import { secureHeaders } from 'hono/secure-headers';
 import { auth, SESSION_COOKIE, userFromRequest } from './auth';
 import type { Env, Vars } from './env';
 import { accounts, invites } from './accounts';
@@ -14,12 +15,13 @@ import { HttpError } from './util';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
+app.use('/api/*', secureHeaders({ crossOriginResourcePolicy: 'same-origin', referrerPolicy: 'strict-origin-when-cross-origin' }));
 app.use('/api/*', async (c, next) => {
-  c.set('user', await userFromRequest(c.env, getCookie(c, SESSION_COOKIE)));
-  // Same-origin only: the app and the API share a host, so cross-site requests are refused.
+  // Same-origin only, checked before anything costs a query: the app and the API share a host.
   const origin = c.req.header('origin');
   if (origin && c.req.method !== 'GET' && origin !== c.env.APP_ORIGIN && origin !== new URL(c.req.url).origin)
     throw new HttpError(403, 'cross-site request');
+  c.set('user', await userFromRequest(c.env, getCookie(c, SESSION_COOKIE)));
   await next();
 });
 

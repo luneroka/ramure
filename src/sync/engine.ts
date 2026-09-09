@@ -30,7 +30,8 @@ interface Persisted {
 
 const PUSH_DEBOUNCE_MS = 600;
 const PULL_INTERVAL_MS = 20_000;
-const MAX_PUSH = 200;
+/** The server accepts at most this many ops per push (D1 binds at most 100 parameters per statement). */
+const MAX_PUSH = 50;
 
 export class SyncEngine {
   private state: SyncState | null = null;

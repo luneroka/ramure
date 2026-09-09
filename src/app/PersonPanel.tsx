@@ -499,7 +499,7 @@ export function PersonPanel(props: Props) {
         <input
           ref={photoInput}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/heic"
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0];

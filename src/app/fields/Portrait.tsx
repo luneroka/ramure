@@ -85,7 +85,7 @@ export function PortraitPicker({ lang, current, onChange, allocateId, compact }:
         <input
           ref={input}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/heic"
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0];

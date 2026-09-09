@@ -10,9 +10,12 @@ const MAX_IMAGE_SIDE = 2400;
 
 export type DocumentError = 'too-big' | 'unsupported';
 
+/** What the server stores; the same list as its byte sniffing. SVG is refused everywhere. */
+export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'application/pdf'];
+
 export function documentError(file: File): DocumentError | undefined {
   if (file.size > MAX_DOCUMENT_BYTES) return 'too-big';
-  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') return 'unsupported';
+  if (!ACCEPTED_TYPES.includes(file.type)) return 'unsupported';
   return undefined;
 }
 

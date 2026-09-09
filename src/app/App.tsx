@@ -683,6 +683,10 @@ export function App() {
   };
 
   const openFile = async (file: File) => {
+    if (file.size > 1_500_000) {
+      toast(t(lang, 'treeTooLarge'));
+      return;
+    }
     const buf = await file.arrayBuffer();
     let text: string;
     try {

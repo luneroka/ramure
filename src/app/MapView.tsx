@@ -76,7 +76,7 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
         fillOpacity: mine ? 0.55 : 0.35,
         className: 'map-pin',
       });
-      marker.bindTooltip(`${p.text} · ${p.mentions.length}`, { direction: 'top', offset: [0, -r] });
+      marker.bindTooltip(`${esc(p.text)} · ${p.mentions.length}`, { direction: 'top', offset: [0, -r] });
       marker.on('click', () => marker.bindPopup(popupFor(p, lang), { maxWidth: 320, className: 'map-popup' }).openPopup());
       g.addLayer(marker);
     }

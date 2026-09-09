@@ -8,7 +8,7 @@ import type { Lead, MediaObject, Tree } from '../gedcom/model';
 import { t, type Lang } from '../i18n';
 import { newId } from '../tree/ids';
 import { DocumentList } from './Documents';
-import { LeadForm } from './Leads';
+import { LeadForm, safeHref } from './Leads';
 
 interface Props {
   lang: Lang;
@@ -65,8 +65,8 @@ export function ResourcesPage({ lang, tree, treeName, readOnly, onSaveLinks, onS
             ) : (
               <li key={r.id} className="lead">
                 <div className="lead-body">
-                  {r.url ? (
-                    <a className="lead-title" href={r.url} target="_blank" rel="noopener">
+                  {safeHref(r.url) ? (
+                    <a className="lead-title" href={safeHref(r.url)} target="_blank" rel="noopener noreferrer">
                       {r.title} ↗
                     </a>
                   ) : (

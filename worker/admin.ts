@@ -6,7 +6,7 @@
 import { Hono, type Context } from 'hono';
 import type { Env, User, Vars } from './env';
 import { sendMail } from './mail';
-import { HttpError, normaliseEmail, now, randomId } from './util';
+import { HttpError, normaliseEmail, now, randomId, readJson } from './util';
 
 export const APP_INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -116,7 +116,7 @@ async function inviteAddress(
 
 admin.post('/invites', async (c) => {
   const me = await requireAdmin(c.env, c.get('user'));
-  const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
+  const body = await readJson<{ email?: string }>(c.req.raw, 4096);
   const email = normaliseEmail(body.email);
   const r = await inviteAddress(c, me, email);
   return c.json({ id: r.id, email, expiresAt: r.expiresAt }, 201);

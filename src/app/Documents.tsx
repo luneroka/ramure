@@ -194,7 +194,7 @@ export function DocumentList(p: DocumentListProps) {
           <input
             ref={input}
             type="file"
-            accept="image/*,application/pdf"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,application/pdf"
             hidden
             onChange={(e) => {
               const f = e.target.files?.[0];

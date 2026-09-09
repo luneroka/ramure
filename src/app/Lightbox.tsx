@@ -21,7 +21,7 @@ export function Lightbox({ media, lang, onClose }: { media: MediaObject; lang: L
         <strong>{media.title}</strong>
         <span className="spacer" />
         {url && (
-          <a className="btn small" href={url} target="_blank" rel="noopener">
+          <a className="btn small" href={url} target="_blank" rel="noopener noreferrer">
             {t(lang, 'open')}
           </a>
         )}
@@ -33,7 +33,7 @@ export function Lightbox({ media, lang, onClose }: { media: MediaObject; lang: L
         {!url ? (
           <p className="muted">{t(lang, 'missingFile')}</p>
         ) : isPdf(media.format) ? (
-          <iframe src={url} title={media.title ?? 'PDF'} />
+          <iframe src={url} title={media.title ?? 'PDF'} sandbox="" />
         ) : (
           <img src={url} alt={media.title ?? ''} onClick={onClose} />
         )}

@@ -224,6 +224,10 @@ const strings = {
   codeWrong: { fr: 'Code incorrect ou expiré. Demandez un nouveau courriel.', en: 'Wrong or expired code. Request a new email.' },
   otherEmail: { fr: 'Autre adresse', en: 'Other address' },
   signinFailed: { fr: 'Envoi impossible. Vérifiez l’adresse.', en: 'Could not send. Check the address.' },
+  treeTooLarge: {
+    fr: 'Ce fichier dépasse 1,5 Mo, la taille maximale d’un arbre pour l’instant. Réduisez-le (notes, médias) avant l’import.',
+    en: 'This file is over 1.5 MB, the largest a tree can be for now. Trim it (notes, media) before importing.',
+  },
   signinInviteOnly: {
     fr: 'Ramure fonctionne sur invitation. Utilisez l’adresse qui a reçu l’invitation, ou demandez-en une.',
     en: 'Ramure is invitation only. Use the address that received the invitation, or ask for one.',
