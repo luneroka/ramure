@@ -52,9 +52,15 @@ npm run build
 npm run test:worker
 npx playwright test        # after: npm run build && restart npm run dev:api
 ./scripts/scan-secrets.sh   # gitleaks over the whole history
+node scripts/check-thresholds.mjs   # has any deferred work come due?
 ```
 
 `/preflight` runs this for you.
+
+Work that was deliberately put off is in [docs/DEFERRED.md](docs/DEFERRED.md),
+each entry with a measurable condition that says when it stops being sensible
+to defer. `scripts/check-thresholds.mjs` checks them; a tripwire is a
+conversation to raise, never a licence to start the work mid-task.
 
 ## How work is shaped
 

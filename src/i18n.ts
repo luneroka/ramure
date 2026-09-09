@@ -323,6 +323,10 @@ const strings = {
   errAlreadyHasAMother: { fr: 'Cette personne a déjà une mère.', en: 'This person already has a mother.' },
   errCannotBeOwnChild: { fr: 'Une personne ne peut pas être son propre enfant.', en: 'A person cannot be their own child.' },
   errSamePerson: { fr: 'C’est la même personne.', en: 'That is the same person.' },
+  adminOnlyExplain: {
+    fr: 'Cette page est réservée à l’administrateur. Votre compte n’a pas ce droit sur cet appareil : déconnectez-vous puis reconnectez-vous pour le rafraîchir.',
+    en: 'This page is for the administrator. Your account does not hold that right here: sign out and back in to refresh it.',
+  },
   configProblems: { fr: 'Configuration', en: 'Configuration' },
   configProblemsHint: {
     fr: 'Réglages manquants sur ce déploiement. Ceux en orange font échouer une opération plutôt que de la laisser tourner à moitié.',

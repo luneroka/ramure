@@ -295,6 +295,20 @@ function Shell() {
           </WorkspaceProvider>
         ) : route.name === 'admin' && auth.user.isAdmin ? (
           <Admin lang={lang} onBack={() => navigate({ name: 'home' })} toast={toast} ask={ask} />
+        ) : route.name === 'admin' ? (
+          // Not an administrator. Say so: this used to fall through to the library, which looked
+          // like the link was broken rather than like an answer.
+          <div className="settings">
+            <div className="settings-head">
+              <button className="btn subtle" onClick={() => navigate({ name: 'home' })}>
+                ← {t(lang, 'library')}
+              </button>
+              <h1>{t(lang, 'administration')}</h1>
+            </div>
+            <section className="home-card">
+              <p>{t(lang, 'adminOnlyExplain')}</p>
+            </section>
+          </div>
         ) : route.name === 'settings' ? (
           <SettingsHost
             auth={auth}

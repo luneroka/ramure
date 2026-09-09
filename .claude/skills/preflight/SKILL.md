@@ -23,11 +23,17 @@ npm test
 npm run build
 npm run test:worker
 ./scripts/scan-secrets.sh
+node scripts/check-thresholds.mjs
 ```
 
 `scan-secrets.sh` runs gitleaks over the whole history. It exits 127 with
 install instructions if gitleaks is missing (`brew install gitleaks`) rather
 than passing quietly — "did not run" must never look like "found nothing".
+
+`check-thresholds.mjs` evaluates the tripwires on deferred work in
+[docs/DEFERRED.md](../../../docs/DEFERRED.md). It never fails. If one fires,
+finish what you were asked to do, then tell Yoann which one and what it would
+take — do not start the deferred work uninvited, and do not stay quiet either.
 
 `npm run typecheck` checks both projects — the app and the Worker, which have
 separate tsconfigs. `npm run format:check` fails on unformatted files; fix with
