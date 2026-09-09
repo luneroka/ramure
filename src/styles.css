@@ -2926,3 +2926,99 @@ textarea:focus {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* ---------- Map (« Carte ») ---------- */
+.map-view {
+  position: absolute;
+  inset: 0;
+}
+.map-box {
+  position: absolute;
+  inset: 0;
+  background: var(--ground);
+}
+.map-dark .leaflet-tile-pane {
+  filter: brightness(0.62) invert(1) contrast(2.6) hue-rotate(195deg) saturate(0.35) brightness(0.72);
+}
+.leaflet-container {
+  font: inherit;
+}
+.leaflet-control-zoom {
+  margin-bottom: max(64px, env(safe-area-inset-bottom)) !important;
+}
+.leaflet-bar a {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-bottom-color: var(--line) !important;
+}
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 80%, transparent) !important;
+  color: var(--ink-3) !important;
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a {
+  color: var(--ink-2) !important;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow) !important;
+}
+.leaflet-popup-content {
+  margin: 10px 14px !important;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.leaflet-tooltip {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  font-size: 12px;
+}
+.map-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+  max-height: 220px;
+  overflow: auto;
+}
+.map-list button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.map-list button:hover {
+  text-decoration: underline;
+}
+.map-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font-size: 13.5px;
+  z-index: 500;
+  white-space: nowrap;
+}
+.map-empty {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 500;
+}

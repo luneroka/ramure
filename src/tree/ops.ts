@@ -8,6 +8,7 @@
  */
 
 import type { Lead, Tree } from '../gedcom/model';
+import { geocodePlaces, type Geocode } from './places';
 import { parseGedcom } from '../gedcom/parse';
 import {
   addChild,
@@ -48,6 +49,7 @@ export type Op =
   | { t: 'mergePeople'; keepId: string; dropId: string }
   | { t: 'setResources'; resources: Lead[] }
   | { t: 'updateTree'; patch: TreePatch }
+  | { t: 'geocodePlaces'; fixes: Geocode[] }
   /** Replace the whole tree (snapshot restore). Carries the GEDCOM text so it replays anywhere. */
   | { t: 'replaceTree'; gedcom: string }
   /** Several ops applied as one step (one undo, one sync record), e.g. "add child" then "fill in the card". */
@@ -111,6 +113,7 @@ export const ops = {
   mergePeople: (keepId: string, dropId: string): Op => ({ t: 'mergePeople', keepId, dropId }),
   setResources: (resources: Lead[]): Op => ({ t: 'setResources', resources }),
   updateTree: (patch: TreePatch): Op => ({ t: 'updateTree', patch }),
+  geocodePlaces: (fixes: Geocode[]): Op => ({ t: 'geocodePlaces', fixes }),
   replaceTree: (gedcom: string): Op => ({ t: 'replaceTree', gedcom }),
   batch: (list: Op[]): Op => ({ t: 'batch', ops: list }),
 };
@@ -146,6 +149,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       return setResources(tree, op.resources);
     case 'updateTree':
       return updateTree(tree, op.patch);
+    case 'geocodePlaces':
+      return geocodePlaces(tree, op.fixes);
     case 'replaceTree':
       return { tree: parseGedcom(op.gedcom) };
     case 'patchRecords':
@@ -215,6 +220,8 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
       return fr ? 'Ressources modifiées' : 'Resources edited';
     case 'updateTree':
       return fr ? 'Ressources modifiées' : 'Resources edited';
+    case 'geocodePlaces':
+      return fr ? 'Lieux localisés' : 'Places located';
     case 'replaceTree':
       return fr ? 'Sauvegarde restaurée' : 'Snapshot restored';
     case 'patchRecords':

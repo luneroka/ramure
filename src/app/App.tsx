@@ -25,6 +25,7 @@ import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
 import { PersonPanel } from './PersonPanel';
 import { MAX_PPY, MIN_PPY, Timeline } from './Timeline';
+import { MapView } from './MapView';
 import { ResourcesPage } from './Resources';
 import { useAuth } from './useAuth';
 
@@ -154,8 +155,9 @@ export function App() {
   const [query, setQuery] = useState('');
   const [showReport, setShowReport] = useState(false);
   /** What the stage shows for the open tree: the canvas or the timeline (the map comes later). */
-  const [mode, setMode] = useState<'tree' | 'timeline'>('tree');
+  const [mode, setMode] = useState<'tree' | 'timeline' | 'map'>('tree');
   const [pxPerYear, setPxPerYear] = useState(6);
+  const nextMode = mode === 'tree' ? 'timeline' : mode === 'timeline' ? 'map' : 'tree';
   const [kinshipIds, setKinshipIds] = useState<{ a: string; b: string } | null>(null);
   /** Kinship lookup started from a card: the next card tapped completes it. */
   const [kinshipFrom, setKinshipFrom] = useState<string | null>(null);
@@ -1068,6 +1070,24 @@ export function App() {
       <main className={`stage ${tree && layout && route.name === 'tree' ? '' : 'page'}`}>
         {tree && layout && route.name === 'tree' ? (
           <>
+            {mode === 'map' && (
+              <MapView
+                tree={displayTree ?? tree}
+                lang={lang}
+                selectedId={selectedId}
+                readOnly={readOnly}
+                dark={effectiveTheme === 'dark'}
+                onSelect={(id) => {
+                  setDraft(null);
+                  setEditing(false);
+                  setSelectedId(id);
+                }}
+                onGeocoded={(fixes) => {
+                  if (commit(ops.geocodePlaces(fixes))) toast(`${fixes.length} ${t(lang, 'placesLocated')}`);
+                }}
+                onNotice={toast}
+              />
+            )}
             {mode === 'timeline' && (
               <Timeline
                 tree={displayTree ?? tree}
@@ -1114,25 +1134,36 @@ export function App() {
               <button
                 className="btn mode-btn"
                 onClick={() => {
-                  setMode((m) => (m === 'tree' ? 'timeline' : 'tree'));
+                  setMode((m) => (m === 'tree' ? 'timeline' : m === 'timeline' ? 'map' : 'tree'));
                   setAddMenu(null);
                   setKinshipIds(null);
                   setKinshipFrom(null);
                 }}
-                title={t(lang, mode === 'tree' ? 'modeTimeline' : 'modeTree')}
+                title={t(lang, nextMode === 'timeline' ? 'modeTimeline' : nextMode === 'map' ? 'modeMap' : 'modeTree')}
               >
-                {mode === 'tree' ? (
+                {nextMode === 'timeline' ? (
                   <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
                     <path d="M3 5h9M3 10h14M3 15h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                  </svg>
+                ) : nextMode === 'map' ? (
+                  <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path
+                      d="M10 17s-5-4.6-5-8.5a5 5 0 0 1 10 0C15 12.4 10 17 10 17Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                    <circle cx="10" cy="8.5" r="1.8" fill="currentColor" />
                   </svg>
                 ) : (
                   <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
                     <path d="M10 3v5M4 8h12M4 8v4M16 8v4M10 8v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
                   </svg>
                 )}
-                {t(lang, mode === 'tree' ? 'modeTimeline' : 'modeTree')}
+                {t(lang, nextMode === 'timeline' ? 'modeTimeline' : nextMode === 'map' ? 'modeMap' : 'modeTree')}
               </button>
-              {mode === 'timeline' ? (
+              {mode === 'map' ? null : mode === 'timeline' ? (
                 <>
                   <button className="btn" onClick={() => setPxPerYear((v) => Math.max(MIN_PPY, v / 1.3))} aria-label={t(lang, 'zoomOut')}>
                     −
