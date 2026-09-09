@@ -494,7 +494,38 @@ computes it already exists in `/storage`.
 
 ### LOW, and decisions
 
-#### `[ ]` S8 — `style-src 'unsafe-inline'` in the CSP
+#### `[-]` S8 — `style-src 'unsafe-inline'` in the CSP
+
+_**Won't fix** — 2026-09-09, pass 5, and the reason is a thing the finding did
+not know._
+
+_The plan was to split the directive so `style-src 'self'` blocked injected
+`<style>` elements while `style-src-attr 'unsafe-inline'` kept React's attribute
+styles working. Grepping for what would break first turned up
+[src/app/screens/PrintPage.tsx:69](../src/app/screens/PrintPage.tsx#L69), which
+renders a **live inline `<style>` element** — `@page { size: A4 ${orientation} }`
+— because `@page` cannot be selected by a class and the paper size has to be
+written at runtime. Tightening the directive would stop that rule applying, and
+printing would silently come out in the wrong orientation. A CSP failure makes no
+noise, printing is not something the test suite can assert, and nobody could
+check it by hand this week._
+
+_Two narrower variants were considered and rejected. `style-src-elem` without
+`'unsafe-inline'` breaks the same rule wherever it is supported. Pinning the two
+possible `@page` strings by hash would work and would break the moment anybody
+edited that line — a trap worse than the thing it guards._
+
+_Set against that: there is **no reachable HTML-injection sink** in this
+codebase. Every value that could carry markup is escaped, verified in "What is
+already solid". So the directive is defending against a vulnerability that does
+not exist, at the cost of a feature that does._
+
+_**What it would take**, for whoever picks this up: move the `@page` rule to a
+constructed stylesheet — `new CSSStyleSheet()` plus `document.adoptedStyleSheets`
+— which is CSSOM rather than markup and is not governed by `style-src` at all.
+Then `style-src 'self' https://fonts.googleapis.com` with
+`style-src-attr 'unsafe-inline'` is safe. Do it alongside someone who can print a
+chart and look at the paper._
 
 [public/_headers:3](../public/_headers#L3). Present because React writes inline
 `style` attributes, which `style-src` governs. Honestly sized: with no HTML
@@ -509,7 +540,17 @@ https://fonts.googleapis.com` blocks an injected `<style>` element, while
 load or execute anything. Verify the built app in a browser afterwards —
 `unsafe-inline` in a CSP fails silently by design.
 
-#### `[ ]` S9 — Ten development vulnerabilities, six high, all in one held dependency chain
+#### `[x]` S9 — Ten development vulnerabilities, six high, all in one held dependency chain
+
+_Done 2026-09-09, pass 5, as the finding framed it: the hold stays, and
+something now notices when it stops being necessary.
+[DEFERRED.md](DEFERRED.md) § `dev-dependency-advisories` records the reasoning,
+and `scripts/check-thresholds.mjs` reads `fixAvailable` from `npm audit --json`
+and trips on any high or critical development advisory fixable **without** a
+major bump — npm's own way of saying the held version is no longer what is
+blocking the fix. All ten report `isSemVerMajor: true` today, so it reads 0/0;
+the fire path was checked by forcing the value, and an audit that cannot run
+says so in its label rather than reporting a clean result._
 
 **Verified**: `npm audit --omit=dev` → 0. `npm audit` → 10 (1 low, 3 moderate,
 6 high). Every one of them is under `wrangler` / `miniflare` /
@@ -741,7 +782,12 @@ someone reading the schema to work out who can see what.
 **Fix.** A forward-only migration dropping both. Staging first; it is empty, so
 the migration proves only that it runs, and production is where it matters.
 
-#### `[ ]` S16 — CI's dependency check is weaker than it reads
+#### `[x]` S16 — CI's dependency check is weaker than it reads
+
+_Done 2026-09-09, pass 5. The production audit is `--audit-level=high`, so a
+high-severity hole in hono or react fails the build instead of passing. A second
+step reports the whole tree and never blocks, for the reason
+[HYGIENE_2026-09.md](HYGIENE_2026-09.md) §H2 already paid to learn._
 
 `.github/workflows/ci.yml` runs `npm audit --audit-level=critical --omit=dev`.
 Production high-severity advisories therefore pass silently, and development
@@ -754,7 +800,11 @@ Keep it non-blocking: a held major (S9) must not turn every build red, which is
 the mistake [HYGIENE_2026-09.md](HYGIENE_2026-09.md) §H2 already records paying
 for once.
 
-#### `[ ]` S17 — The secret-scan script argues from a premise that is no longer true
+#### `[x]` S17 — The secret-scan script argues from a premise that is no longer true
+
+_Done 2026-09-09, pass 5. The header says what is true — it runs locally as the
+first gate and in CI as the second opinion — and keeps the story of why it was
+briefly local-only, because the failure mode it names is worth remembering._
 
 [scripts/scan-secrets.sh:4-8](../scripts/scan-secrets.sh#L4-L8) explains that it
 runs locally _"rather than in CI on purpose: the repository is private, so
