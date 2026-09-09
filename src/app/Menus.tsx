@@ -83,6 +83,7 @@ interface TreeMenuProps {
   onSaveVersion(): void;
   onReport(): void;
   onResources(): void;
+  onPrint(): void;
   onReload(): void;
   onDelete(): void;
 }
@@ -142,6 +143,7 @@ export function TreeMenu(p: TreeMenuProps) {
         <div className="dd-section">{t(lang, 'thisTree')}</div>
         {p.owner && item(t(lang, 'renameTree'), p.onRename)}
         {item(t(lang, 'export'), p.onExport)}
+        {item(t(lang, 'print'), p.onPrint)}
         {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
         {item(t(lang, 'versionHistory'), p.onSnapshots)}
         <button

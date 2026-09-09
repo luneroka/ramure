@@ -115,6 +115,7 @@ export const api = {
   adminApproveDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/approve`, {}),
   adminDeclineDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/decline`, {}),
   logout: () => call<{ ok: true }>('POST', '/api/auth/logout', {}),
+  logoutAll: () => call<{ ok: true; closed: number }>('POST', '/api/auth/logout-all', {}),
   rename: (name: string) => call<{ user: Me }>('PATCH', '/api/auth/me', { name }),
 
   accounts: () => call<{ accounts: Account[] }>('GET', '/api/accounts'),

@@ -24,6 +24,21 @@ export async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** HMAC-SHA256 as hex; with no key it degrades to a plain hash (development). */
+export async function hmac(key: string | undefined, text: string): Promise<string> {
+  if (!key) return sha256(text);
+  const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const buf = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** « j***@example.org »: enough to recognise a fellow member, not enough to write to them. */
+export function maskEmail(email: string): string {
+  const at = email.indexOf('@');
+  if (at <= 0) return '***';
+  return `${email.charAt(0)}***${email.slice(at)}`;
+}
+
 export const now = (): number => Date.now();
 
 export class HttpError extends Error {

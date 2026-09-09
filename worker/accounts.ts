@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
-import { HttpError, now, randomId, randomToken, readJson, sha256 } from './util';
+import { HttpError, maskEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
 
@@ -76,13 +76,15 @@ accounts.patch('/:id', async (c) => {
 accounts.get('/:id/members', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
-  await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
+  const mine = await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
   const rows = await c.env.DB.prepare(
     `SELECT u.id, u.email, u.name, m.role, m.added_at FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? ORDER BY m.added_at`,
   )
     .bind(id)
     .all<{ id: string; email: string; name: string | null; role: AccountRole; added_at: number }>();
-  return c.json({ members: rows.results });
+  // Owners manage the roster and see addresses; everyone else sees names and masked addresses.
+  const members = rows.results.map((m) => (mine === 'owner' || m.id === user.id ? m : { ...m, email: maskEmail(m.email) }));
+  return c.json({ members });
 });
 
 /** Storage used by the account's trees: every file in R2, per tree. */

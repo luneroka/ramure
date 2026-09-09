@@ -23,6 +23,7 @@ import { useWorkspaceState } from './hooks/useWorkspaceState';
 import { useHashRoute } from './router';
 import { WorkspaceProvider } from './session/Workspace';
 import { PersonPanelHost } from './stage/PersonPanelHost';
+import { PrintPage } from './PrintPage';
 import { ResourcesHost } from './stage/ResourcesHost';
 import { SettingsHost } from './stage/SettingsHost';
 import { SnapshotsDialog } from './stage/SnapshotsDialog';
@@ -234,7 +235,7 @@ function Shell() {
     const f = e.dataTransfer.files[0];
     if (f && account && account.role !== 'viewer') void files.openFile(f);
   };
-  const onTree = workspace && (route.name === 'tree' || route.name === 'resources');
+  const onTree = workspace && (route.name === 'tree' || route.name === 'resources' || route.name === 'print');
 
   return (
     <div className="app" onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
@@ -277,7 +278,13 @@ function Shell() {
       <main className={`stage ${onTree && route.name === 'tree' ? '' : 'page'}`}>
         {onTree ? (
           <WorkspaceProvider value={workspace}>
-            {route.name === 'tree' ? <TreeStage onHandle={onHandle} /> : <ResourcesHost navigate={navigate} />}
+            {route.name === 'tree' ? (
+              <TreeStage onHandle={onHandle} />
+            ) : route.name === 'print' ? (
+              <PrintPage navigate={navigate} />
+            ) : (
+              <ResourcesHost navigate={navigate} />
+            )}
           </WorkspaceProvider>
         ) : route.name === 'admin' && auth.user.isAdmin ? (
           <Admin lang={lang} onBack={() => navigate({ name: 'home' })} toast={toast} ask={ask} />
@@ -289,6 +296,7 @@ function Shell() {
             defaultView={defaultView}
             onDefaultView={setDefaultView}
             navigate={navigate}
+            onSignedOutEverywhere={() => void signOut()}
           />
         ) : (
           <Home

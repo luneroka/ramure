@@ -64,7 +64,7 @@ export function useBoot(a: Args) {
       }
       const last = readLastTree();
       const r = latest.current.route;
-      if (r.name === 'tree' || r.name === 'resources') {
+      if (r.name === 'tree' || r.name === 'resources' || r.name === 'print') {
         if (last && r.id === last.id) await openTree(last.id, last.name, last.role);
         else {
           try {
@@ -87,7 +87,7 @@ export function useBoot(a: Args) {
       const r = parseRoute(location.hash);
       const { source, treeList, openTree, closeTree } = latest.current;
       // The resources page belongs to the open tree: the tree stays loaded behind it.
-      const onTree = r.name === 'tree' || r.name === 'resources';
+      const onTree = r.name === 'tree' || r.name === 'resources' || r.name === 'print';
       if (!onTree && source) closeTree();
       else if (onTree && (!source || source.id !== r.id)) {
         const tr = treeList.find((x) => x.id === r.id);

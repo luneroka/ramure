@@ -140,7 +140,7 @@
   <h2>The refactoring passes, in order</h2>
   <p>Each pass is shippable on its own and verified before the next. Estimates are working days of my time; your time is the decisions marked below.</p>
 
-  <div class="phase"><h3>Pass 1, harden</h3><div class="when">Deployed to production on 9 September 2026 (migration 0007 applied). Left for the hygiene pass: session idle timeout and purge, member emails hidden from viewers, a pepper on the code hash.</div>
+  <div class="phase"><h3>Pass 1, harden</h3><div class="when">Deployed to production on 9 September 2026 (migration 0007 applied). The hygiene items (session idle timeout and purge, member emails hidden from viewers, a pepper on the code hash) followed in pass 6.</div>
     <ul>
       <li>Media allow-list by magic bytes, protective headers on media, security headers on everything.</li>
       <li>Escape the map tooltip; allow-list link schemes.</li>
@@ -175,7 +175,7 @@
     <div class="done">Done when: CI is red on any of the bugs listed in the reviews if reintroduced.</div>
   </div>
 
-  <div class="phase"><h3>Pass 4, restructure the app shell</h3><div class="when">3 days · behind the tests from pass 3</div>
+  <div class="phase"><h3>Pass 4, restructure the app shell</h3><div class="when">Deployed on 9 September 2026: App.tsx went from 1 629 lines to a 330-line shell; a UI context, a tree session with a generation counter (the open race is closed), one editor reducer, a workspace context read by top bar, stage, tools, hud, menus, banners, report and snapshot dialog; error boundary and rejection toast; a reload without network reopens the device copy of the last tree; counted and filled strings (tn, tf); 39 dead string keys removed. Not reached: the 250-line target (the remaining 80 lines are route wiring).</div>
     <ul>
       <li>UI context for language, theme, toast and modal; a tree session object owning the engine and media store with a generation counter; an editing hook with commit, undo and shortcuts; a drafts hook; one reducer for selection, focus, editing, mode and kinship so the eight scattered reset sequences become one.</li>
       <li>Top bar, stage, tools, hud, menus, banners, report and snapshot dialog as their own components; duplicated document and selection handlers merged.</li>
@@ -185,7 +185,7 @@
     <div class="done">Done when: the main component is under 250 lines, every prior behaviour is covered by a test, and the offline reload opens the last tree.</div>
   </div>
 
-  <div class="phase"><h3>Pass 5, performance, accessibility, imports</h3><div class="when">3 days</div>
+  <div class="phase"><h3>Pass 5, performance, accessibility, imports</h3><div class="when">Deployed on 9 September 2026: relative row memoised, portrait cache bounded to 300, Leaflet in its own lazy chunk, zoom state kept out of the shell; keyboard on the canvas (arrows, Enter, A, R, live region), focus trap and Escape on every dialog, arrow keys in menus and tabs, grey token at 4.5:1, pinch zoom back on pages; name-level notes and sources, several files per media, several repositories per source, place substructures, inline media ids never collide, ANSEL/UTF-16/Windows-1252 by header, an import note lists the tags kept verbatim; updates by prompt. Not done: the 4,000-person benchmark and the Gramps round-trip were not run.</div>
     <ul>
       <li>Cached working tree and incremental persistence; the family row hoisted out of render; bounded portrait cache; the map and Leaflet loaded lazily; render no longer triggered per zoom frame.</li>
       <li>Keyboard access to cards and handles, focus traps and Escape on every dialog, arrow keys in menus and tabs, contrast fix on the grey token, pinch zoom re-enabled on pages.</li>
@@ -193,6 +193,9 @@
       <li>Service worker updates by prompt, so an open tab never runs old code against a new API.</li>
     </ul>
     <div class="done">Done when: a 4,000-person synthetic tree edits without visible lag; a Gramps export round-trips with no unreported loss.</div>
+  </div>
+
+  <div class="phase"><h3>Pass 6, hygiene left over from pass 1</h3><div class="when">Deployed on 9 September 2026 (migration 0009, CODE_PEPPER secret set): sessions end after thirty days without use and the reaper purges them; « Se déconnecter partout » in Paramètres closes every session; the roster shows addresses to owners only, others see « j***@example.org »; sign-in code hashes are keyed with the pepper.</div>
   </div>
 
   <div class="phase"><h3>Operations, in parallel</h3><div class="when">half a day of setup, then ongoing</div>

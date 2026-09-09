@@ -3,6 +3,7 @@
  *   #/               home (the account's trees)
  *   #/arbre/<id>     a tree
  *   #/arbre/<id>/ressources   the tree's resources
+ *   #/arbre/<id>/imprimer     printable charts of the tree
  *   #/parametres     settings
  *   #/administration the operator's page
  */
@@ -10,12 +11,19 @@
 import { useCallback, useEffect, useState } from 'react';
 
 export type Route =
-  { name: 'home' } | { name: 'tree'; id: string } | { name: 'resources'; id: string } | { name: 'settings' } | { name: 'admin' };
+  | { name: 'home' }
+  | { name: 'tree'; id: string }
+  | { name: 'resources'; id: string }
+  | { name: 'print'; id: string }
+  | { name: 'settings' }
+  | { name: 'admin' };
 
 export function parseRoute(hash: string): Route {
   const h = hash.replace(/^#/, '');
   const res = /^\/arbre\/([^/?]+)\/ressources/.exec(h);
   if (res) return { name: 'resources', id: decodeURIComponent(res[1]!) };
+  const pr = /^\/arbre\/([^/?]+)\/imprimer/.exec(h);
+  if (pr) return { name: 'print', id: decodeURIComponent(pr[1]!) };
   const tree = /^\/arbre\/([^/?]+)/.exec(h);
   if (tree) return { name: 'tree', id: decodeURIComponent(tree[1]!) };
   if (/^\/parametres/.test(h) || /^\/settings/.test(h)) return { name: 'settings' };
@@ -31,6 +39,8 @@ export function routeHash(r: Route): string {
       return `#/arbre/${encodeURIComponent(r.id)}`;
     case 'resources':
       return `#/arbre/${encodeURIComponent(r.id)}/ressources`;
+    case 'print':
+      return `#/arbre/${encodeURIComponent(r.id)}/imprimer`;
     case 'settings':
       return '#/parametres';
     case 'admin':
