@@ -165,17 +165,11 @@ sniffing), `backup.ts` and `maintenance.ts` (the nightly cron).
 ```bash
 npm run db:migrate:local   # once
 npm run dev:api            # Worker on :8787 with emulated D1 and R2
-npm run dev                # app on :5173 (see note), /api proxied to :8787
+npm run dev                # app on :5175, /api proxied to :8787
 ```
 
 Sign-in links and codes are shown in the app instead of emailed while
 `DEV_ECHO_LINKS` is set in `.dev.vars`.
-
-> **Port note.** [vite.config.ts](../vite.config.ts) asks for 5173, but Docker
-> holds that port on Yoann's machine so Vite falls through to 5175, which is
-> what `.dev.vars` declares as `APP_ORIGIN`. The two must agree or sign-in
-> redirects land on the wrong origin. Pinning this is item H7 in
-> [HYGIENE_2026-09.md](HYGIENE_2026-09.md).
 
 Playwright runs against the **built** app served by `wrangler dev` on 8787,
 not against the Vite dev server — so `npm run build` must precede it, and the

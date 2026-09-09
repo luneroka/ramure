@@ -284,7 +284,11 @@ The repo's rule is `foo.ts` → `foo.test.ts`, honoured everywhere except:
 
 Rename to `Leads.test.ts` and move `DateField.test.tsx` into `fields/`.
 
-### `[ ]` H7. Configured dev port and actual dev port disagree
+### `[x]` H7. Configured dev port and actual dev port disagree
+
+_Done 2026-09-09, pass 5: `port: 5175, strictPort: true`. A busy port now fails
+loudly instead of sliding to another one and sending sign-in redirects to an
+origin where the session cookie does not exist._
 
 [vite.config.ts](../vite.config.ts) asks for `port: 5173`. Docker holds 5173
 on Yoann's machine, so Vite falls through to 5175 — which is what `.dev.vars`
@@ -354,7 +358,33 @@ file and produce an inconsistent codebase.
 Recommendation: adopt it, as part of H5 — the moves rewrite those import paths
 anyway.
 
-### `[ ]` H11. `src/styles.css` is 3252 lines in one file
+### `[-]` H11. `src/styles.css` is 3252 lines in one file
+
+_**Won't fix as proposed** — 2026-09-09, pass 5. The finding asked for a split
+into `src/styles/`. Doing it would have made the file harder to navigate, not
+easier, and the reasoning is worth keeping._
+
+_A split has to preserve cascade order, so the files must be contiguous slices
+of the original. But the rules for one component are **not** contiguous: the
+person panel alone lives in five clusters between lines 390 and 2167, and menu
+rules run from 703 to 3254. A file called `person.css` would therefore hold one
+fifth of the person styles, with the rest scattered through `account.css` and
+`screens.css` — names that actively lie._
+
+_Grouping them honestly means reordering, and that is the dangerous option:
+**27 selectors are declared more than once** (`.panel` three times, `.topbar`,
+`.union`, `textarea:focus` twice each), so source order decides which
+declaration wins. Reordering changes that silently, and a screenshot would not
+catch a specificity conflict on a state nobody photographed._
+
+_What was done instead, at no risk: an index at the top listing every section in
+source order, so the file is navigated by searching for a banner rather than
+scrolled; and the one section named after **when** it was written — « Phase 2:
+editing » — renamed for **what** it styles. The reasoning is repeated in the
+file itself so the next reader does not re-propose the split._
+
+_Revisit only alongside a deliberate CSS refactor with visual regression
+coverage, which is a project, not hygiene._
 
 Sectioned by comment banners, which is better than nothing, but one section is
 named `/* ---------- Phase 2: editing ---------- */` — organised by _when it
@@ -388,7 +418,9 @@ repository is, legally, all rights reserved — the opposite of what it says.
 Pick one deliberately (MIT if "free" means free to reuse; none, stated
 explicitly, if it means free of charge only).
 
-### `[ ]` H14. `.claude/launch.json` points at the wrong port
+### `[x]` H14. `.claude/launch.json` points at the wrong port
+
+_Done 2026-09-09, pass 5, with H7._
 
 It launches `npm run dev` expecting port 5173; see H7. Fold into that fix.
 
