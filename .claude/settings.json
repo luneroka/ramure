@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run format)",
+      "Bash(npm run format:check)",
+      "Bash(npm test)",
+      "Bash(npm run test:worker)",
+      "Bash(npm run test:all)",
+      "Bash(npm run test:coverage)",
+      "Bash(npm run build)",
+      "Bash(npx vitest run:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(npm run db:migrate:local)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git ls-files:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh run list:*)"
+    ],
+    "ask": ["Bash(npm run db:migrate)", "Bash(npm run deploy)", "Bash(npx wrangler deploy:*)", "Bash(npx wrangler d1 execute:*)"],
+    "deny": ["Bash(npx wrangler secret put:*)", "Bash(npx wrangler versions secret put:*)", "Read(./.dev.vars)"]
+  }
+}

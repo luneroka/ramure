@@ -1,0 +1,274 @@
+# Code hygiene pass — September 2026
+
+_Audited 2026-09-09 against `main @ 1a1ebb0`. Report and plan only: no code was
+changed, no database write was made._
+
+A read of the whole repository against the habits proven on `ccig-app` (the
+adjacent project: stable error codes, rules-in-force page, boot-time config
+validation, secret scanning, auditable structure) and against general practice
+for a codebase that AI agents navigate daily.
+
+## Verdict
+
+**The code itself is in better shape than the brief implied.** TypeScript is
+strict with `noUncheckedIndexedAccess`; there are **zero** `any` in `src/` and
+`worker/`; no `TODO`, `FIXME` or dead-code markers anywhere; every module opens
+with a block comment explaining *why*; 189 tests across 46 files all pass; lint
+and Prettier are clean. Authorization is applied systematically — every tree,
+account and admin route goes through `requireUser` plus a role check, and "not
+a member" is a 404 while "wrong role" is a 403. Input validation is
+disciplined: byte-capped JSON, magic-byte file sniffing, allow-listed link
+schemes, parameter-bound SQL throughout, a real CSP. The hardening passes 0–6
+did their job.
+
+**What is missing is not code quality — it is the scaffolding around it.**
+Nothing tells an arriving agent what the invariants are, the folder structure
+half-committed to an organisation and stopped, the API has no stable error
+contract, and the safety nets that catch mistakes automatically (secret
+scanning, config validation, an enforced CI gate) are absent or unreachable.
+
+Findings are ordered by consequence. **Tier 1** can produce a production
+incident or silent data loss. **Tier 2** costs correctness or agent time daily.
+**Tier 3** changes no behaviour and only misleads the next reader.
+
+**Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` won't
+fix (say why).
+
+---
+
+## Tier 1 — can bite in production
+
+### `[ ]` H1. Nothing validates configuration at boot
+
+`CODE_PEPPER` is optional in [worker/env.ts](../worker/env.ts), and `hmac()`
+in [worker/util.ts](../worker/util.ts) **silently degrades to a plain SHA-256**
+when it is absent. That is correct for development and dangerous in
+production: a six-digit sign-in code hashed without a pepper is a 10⁶ search
+an attacker with a database copy finishes instantly. It is set in production
+today — but nothing would tell anyone if a redeploy lost it. The same is true
+of `RESEND_API_KEY`: its absence surfaces as a 500 at the moment someone tries
+to sign in, not at deploy time.
+
+`ccig-app` refuses to start on incomplete production settings. Ramure should
+do the same: a `requireProductionConfig(env)` called once per isolate that
+throws when `APP_ORIGIN` is https and a required secret is missing.
+
+### `[ ]` H2. No secret scanning, and the CI gate is unreachable
+
+`ccig-app` runs Gitleaks on every push and pull request. Ramure runs nothing:
+[.github/workflows/ci.yml](../.github/workflows/ci.yml) is `workflow_dispatch`
+only, so `npm audit` and every other check are effectively never executed
+either. The local suite covers correctness, but a human or an agent running it
+cannot catch a secret that has already been committed.
+
+Gitleaks is free on public repositories and runs in seconds. This is the one
+check worth having automated even with no Actions budget — it should be its
+own tiny workflow, not a job inside the disabled one.
+
+### `[ ]` H3. `coverage/` is committed to git
+
+40 files under [coverage/](../coverage/) are tracked, including
+`coverage-final.json`. It is absent from [.gitignore](../.gitignore), so every
+`npm run test:coverage` dirties the working tree and any PR touching coverage
+carries dozens of meaningless file changes — which is exactly how a real change
+gets waved through unread.
+
+Untrack it and ignore it. Same for `dist/` (already ignored, but present) and
+`test-results/` (ignored).
+
+---
+
+## Tier 2 — costs correctness or agent time, daily
+
+### `[ ]` H4. The API has no stable error contract
+
+The Worker throws free-text English messages — `'not allowed'`, `'tree not
+found'`, `'other device'`, `'invitation required'` — and the browser
+distinguishes them by **HTTP status alone**:
+
+```ts
+// src/app/hooks/useInvites.ts:25
+toast(t(lang, err instanceof ApiError && err.status === 403 ? 'signinOtherDevice' : 'signinExpired'));
+```
+
+But the sign-in path throws at least three different 403s (`'other device'`,
+`'invitation required'`, `'cross-site request'`), so two of the three produce
+a message that is simply wrong. Worse, one site matches the English prose
+directly:
+
+```ts
+// src/app/hooks/useDrafts.ts:56
+err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message
+```
+
+— which also means raw English error text can reach a French user's screen.
+
+Adopt `ccig-app`'s convention: every expected error carries a stable
+`code`, the browser translates by `code` and never by prose or bare status.
+`HttpError` already has an `extra` bag to carry it, and `ApiError` already
+keeps the parsed body, so this is additive — no route needs restructuring, and
+the two can coexist during migration.
+
+### `[ ]` H5. `src/app/` is half-organised
+
+The directory is committed to an organisation it never finished. `stage/`,
+`ui/`, `fields/`, `hooks/` and `session/` exist — but 24 files remain at the
+root mixing four different kinds of thing:
+
+| Kind | Files at `src/app/` root |
+|---|---|
+| Top-level screens | `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Leads`, `MapView`, `Timeline`, `PrintPage` |
+| Reusable widgets | `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `PersonPicker`, `PersonRow` |
+| Domain panels | `PersonPanel`, `PersonEditor` |
+| Pure logic, no React | `format`, `history`, `report`, `router`, `editorState`, `mapPopup`, `useAuth` |
+
+`session/` holds exactly one file. An agent asked to "change the settings
+screen" has no way to guess whether it is at the root, in `stage/`, or in
+`session/` without listing the directory — and `SettingsHost` in `stage/`
+versus `Settings` at the root is a genuine coin-flip.
+
+Proposed shape, moves only, no logic changes:
+
+```
+src/app/
+  screens/     Home Login Admin Settings Documents Resources Leads MapView Timeline PrintPage
+  person/      PersonPanel PersonEditor PersonPicker PersonRow  (+ fields/ moves under here)
+  stage/       unchanged — what sits over the canvas
+  ui/          + Modal Lightbox SplitPanes Menus   (cross-cutting primitives)
+  hooks/       unchanged
+  state/       history editorState router useAuth  (was session/ + loose root files)
+  lib/         format report mapPopup               (pure helpers)
+```
+
+### `[ ]` H6. Two test files do not sit beside their subject
+
+The repo's rule is `foo.ts` → `foo.test.ts`, honoured everywhere except:
+
+- `src/app/DateField.test.tsx` tests `src/app/fields/DateField.tsx` — one
+  directory away.
+- `src/app/links.test.ts` tests `normalizeUrl` and `safeHref` from
+  **`Leads.tsx`**, while an unrelated `src/research/links.ts` has its own
+  `src/research/links.test.ts`. Two files named `links.test.ts` testing
+  different things, one of them named after neither its subject nor its
+  location.
+
+Rename to `Leads.test.ts` and move `DateField.test.tsx` into `fields/`.
+
+### `[ ]` H7. Configured dev port and actual dev port disagree
+
+[vite.config.ts](../vite.config.ts) asks for `port: 5173`. Docker holds 5173
+on Yoann's machine, so Vite falls through to 5175 — which is what `.dev.vars`
+hard-codes as `APP_ORIGIN`. It works by luck: anything else claiming 5174
+first shifts Vite again and sign-in redirects land on the wrong origin, with
+no error that names the cause.
+
+Pin it: `port: 5175, strictPort: true`. A loud failure beats a silent
+misconfiguration.
+
+### `[ ]` H8. No `.dev.vars.example`
+
+`.dev.vars` is correctly git-ignored, and correctly never contains a real key
+— but nothing in the repository records what it must contain. A fresh clone
+(or a fresh agent) cannot start the API without being told. `ccig-app` tracks
+`.env.example` and `.env.production.example` for exactly this reason.
+
+Two lines, no secrets: `APP_ORIGIN=http://localhost:5175` and
+`DEV_ECHO_LINKS=1`, with a comment saying `RESEND_API_KEY` is deliberately
+absent because echo mode replaces it locally.
+
+### `[ ]` H9. The two main design documents are HTML artifacts
+
+[docs/design-brief.html](design-brief.html) (46 KB) and
+[docs/gap-analysis.html](gap-analysis.html) (30 KB) are published-artifact
+HTML. They are excluded from both Prettier and ESLint, they do not diff
+usefully, and an agent grepping for a decision reads markup instead of prose —
+at roughly four times the token cost of the same text.
+
+Convert both to Markdown in the repo as the source of truth. The published
+artifacts stay where they are for reading; the repo copy is what agents and
+`git blame` work on.
+
+---
+
+## Tier 3 — misleads the reader, changes nothing
+
+### `[ ]` H10. The `@/*` alias is configured and never used
+
+Declared in [tsconfig.json](../tsconfig.json) *and*
+[vite.config.ts](../vite.config.ts), used **zero** times. Meanwhile 105 imports
+climb with `../../`. Either adopt it in `src/app/` (where the nesting is
+deepest and the restructure in H5 will deepen it further) or delete both
+declarations. A configured-but-unused alias invites an agent to use it in one
+file and produce an inconsistent codebase.
+
+Recommendation: adopt it, as part of H5 — the moves rewrite those import paths
+anyway.
+
+### `[ ]` H11. `src/styles.css` is 3252 lines in one file
+
+Sectioned by comment banners, which is better than nothing, but one section is
+named `/* ---------- Phase 2: editing ---------- */` — organised by *when it
+was written* rather than what it styles. Finding the rule for a component
+means scrolling or grepping a guessed class name.
+
+Split by concern into `src/styles/` (`base`, `canvas`, `panel`, `forms`,
+`menus`, `screens`, `print`) with one `styles.css` importing them. Purely
+mechanical; no cascade order changes if the import order matches today's file
+order.
+
+### `[ ]` H12. `src/db.ts` sits outside the abstraction that owns it
+
+`src/store/` exists precisely so that nothing reaches past it to raw storage —
+and `src/db.ts`, the IndexedDB layer it wraps, sits at the `src/` root beside
+`i18n.ts` and `main.tsx`, as though it were a top-level concern. It is
+imported only by `src/store/local.ts`. Move it to `src/store/idb.ts`.
+
+### `[ ]` H13. No LICENSE
+
+The README calls Ramure "a free family-tree builder". With no licence file the
+repository is, legally, all rights reserved — the opposite of what it says.
+Pick one deliberately (MIT if "free" means free to reuse; none, stated
+explicitly, if it means free of charge only).
+
+### `[ ]` H14. `.claude/launch.json` points at the wrong port
+
+It launches `npm run dev` expecting port 5173; see H7. Fold into that fix.
+
+---
+
+## Execution plan
+
+Five branches, in this order. Each is one PR, each ends with the full
+preflight suite green, each is independently revertible. The order matters:
+the safety nets land before the invasive moves, so a mistake in pass 4 is
+caught by something.
+
+| Pass | Branch | Findings | Risk | Why here |
+|---|---|---|---|---|
+| 1 | `hygiene-1-safety-nets` | H1, H2, H3, H8, H13 | Low | Nothing structural. Config validation and secret scanning must exist *before* the passes that move files around. |
+| 2 | `hygiene-2-error-codes` | H4 | Medium | Touches every route and several call sites, but purely additive. Needs its own PR to be reviewable. |
+| 3 | `hygiene-3-docs` | H9, plus wiring the new docs into the README | Low | Prose only. Lands before the restructure so the architecture map is available while reviewing it. |
+| 4 | `hygiene-4-structure` | H5, H6, H10, H12 | **High** | Pure file moves and import rewrites. Verified by the test suite passing unchanged — if a test needed editing beyond its import path, something moved that should not have. |
+| 5 | `hygiene-5-styles` | H11, H7, H14 | Low | Mechanical CSS split plus the port pin. Last because it is the easiest to eyeball and the easiest to defer. |
+
+### Rules for the passes
+
+- **Pass 4 changes no logic.** Not one line inside a function body. Moves and
+  import paths only. If a diff shows anything else, split it out.
+- **No pass touches behaviour** except pass 2, which changes what an error
+  response *carries* — never its status code.
+- Run `/preflight` before each merge and say in the PR that it passed.
+- After each pass, tick its findings above and update the memory note on pass
+  status.
+
+### Deliberately not in scope
+
+- **Rewriting the sync engine, layout or GEDCOM parser.** They are the most
+  tested code in the repository and they work.
+- **Adding a component library or CSS framework.** The hand-written CSS is
+  coherent and small; replacing it is a redesign, not hygiene.
+- **Turning CI back on.** Actions minutes are exhausted and will not be paid
+  for. The Gitleaks workflow in pass 1 is the single exception, and it costs
+  seconds.
+- **Splitting `worker/` further.** Nine route files averaging 200 lines is
+  already the right size.

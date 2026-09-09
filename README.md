@@ -60,5 +60,21 @@ src/store/     storage interfaces: local IndexedDB, cloud media cache
 worker/        Cloudflare Worker: auth, trees, ops, invites, media
 migrations/    D1 schema
 fixtures/      the phase 0 round-trip files, used by the tests
-docs/          design brief and findings
+docs/          design brief, architecture, rules in force, plans
+```
+
+## Contributing
+
+[`CLAUDE.md`](CLAUDE.md) is the working agreement — read it before changing
+anything. [`docs/`](docs/README.md) holds the map:
+[architecture](docs/ARCHITECTURE.md) for where things live,
+[rules in force](docs/RULES_IN_FORCE.md) for the invariants you must not break.
+
+GitHub Actions runs on demand only, so the full suite runs locally before every
+merge:
+
+```bash
+npm run lint && npm run typecheck && npm run format:check
+npm test && npm run build && npm run test:worker
+npx playwright test        # against the built app on wrangler dev
 ```
