@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { t, type Lang } from '../i18n';
 import { localeOf } from './format';
 import { formatBytes } from '../media/documents';
-import { api, ApiError, type AdminOverview } from '../sync/api';
+import { api, ApiError, type AdminOverview, type ClientErrorRow } from '../sync/api';
 import type { AskSpec } from './Modal';
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
 export function Admin({ lang, onBack, toast, ask }: Props) {
   const [data, setData] = useState<AdminOverview | null>(null);
   const [copies, setCopies] = useState<{ treeId: string; list: Array<{ day: string; size: number }> } | null>(null);
+  const [errors, setErrors] = useState<ClientErrorRow[] | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -210,6 +212,66 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
                   {a.members} {t(lang, a.members === 1 ? 'memberOne' : 'memberMany')} · {a.trees}{' '}
                   {t(lang, a.trees === 1 ? 'treeOne' : 'treeMany')} · {formatBytes(a.bytes, lang)}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="home-card" id="admin-errors">
+        <h2>{t(lang, 'reportedErrors')}</h2>
+        <p className="muted small">{t(lang, 'reportedErrorsHint')}</p>
+        <div className="row">
+          <button
+            className="btn small"
+            onClick={() =>
+              api
+                .adminErrors()
+                .then((r) => setErrors(r.errors))
+                .catch(() => toast(t(lang, 'syncError')))
+            }
+          >
+            {errors ? t(lang, 'refresh') : t(lang, 'showErrors')}
+          </button>
+          {errors && errors.length > 0 && (
+            <button
+              className="btn small subtle"
+              onClick={() =>
+                api
+                  .adminClearErrors()
+                  .then(() => setErrors([]))
+                  .catch(() => toast(t(lang, 'syncError')))
+              }
+            >
+              {t(lang, 'clearErrors')}
+            </button>
+          )}
+        </div>
+        {errors && errors.length === 0 && <p className="muted small">{t(lang, 'noErrors')}</p>}
+        {errors && errors.length > 0 && (
+          <ul className="member-list error-list">
+            {errors.map((e) => (
+              <li key={e.id}>
+                <span className="grow">
+                  <span className="muted small">
+                    {new Date(e.at).toLocaleString(locale)} · {e.kind} · {e.version ?? '?'}
+                    {e.email ? ` · ${e.email}` : ''}
+                  </span>
+                  <br />
+                  <strong>{e.message}</strong>
+                  {openError === e.id && (
+                    <pre className="error-stack">
+                      {e.url ?? ''}
+                      {'\n'}
+                      {e.agent ?? ''}
+                      {'\n\n'}
+                      {e.stack ?? '—'}
+                    </pre>
+                  )}
+                </span>
+                <button className="btn small subtle" onClick={() => setOpenError(openError === e.id ? null : e.id)}>
+                  {openError === e.id ? t(lang, 'close') : t(lang, 'details')}
+                </button>
               </li>
             ))}
           </ul>

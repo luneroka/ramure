@@ -12,6 +12,7 @@ import { accounts, invites } from './accounts';
 import { trees } from './trees';
 import { admin } from './admin';
 import { backup } from './backup';
+import { errors } from './errors';
 import { reap } from './maintenance';
 import { HttpError } from './util';
 
@@ -34,6 +35,7 @@ app.route('/api/accounts', accounts);
 app.route('/api/trees', trees);
 app.route('/api/invites', invites);
 app.route('/api/admin', admin);
+app.route('/api/errors', errors);
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));
 app.onError((err, c) => {

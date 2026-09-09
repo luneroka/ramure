@@ -6,6 +6,7 @@
 import { parseGedcom } from '../src/gedcom/parse';
 import { RAMURE_MEDIA_SCHEME } from '../src/tree/edit';
 import { SESSION_IDLE_MS } from './auth';
+import { KEEP_ERRORS_MS } from './errors';
 import type { Env } from './env';
 import { now } from './util';
 
@@ -92,5 +93,9 @@ export async function reap(env: Env, at = now()): Promise<ReapReport> {
     .bind(at - SESSION_IDLE_MS)
     .run();
   report.rowsPurged += idle.meta.changes ?? 0;
+  const errs = await env.DB.prepare(`DELETE FROM client_errors WHERE at < ?`)
+    .bind(at - KEEP_ERRORS_MS)
+    .run();
+  report.rowsPurged += errs.meta.changes ?? 0;
   return report;
 }

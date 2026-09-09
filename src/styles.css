@@ -3237,3 +3237,16 @@ textarea:focus {
   flex-wrap: wrap;
   gap: 4px 14px;
 }
+
+.error-stack {
+  font: 11px/1.5 var(--mono);
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface-2);
+  padding: 8px;
+  border-radius: 6px;
+  margin: 6px 0 0;
+  max-height: 240px;
+  overflow: auto;
+}
