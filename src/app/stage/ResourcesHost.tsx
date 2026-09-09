@@ -1,12 +1,12 @@
 /** Wires the resources page (links and documents of the whole tree) to the workspace. */
 
-import { t } from '../../i18n';
-import { mediaStore } from '../../store';
-import { ops } from '../../tree/ops';
-import { ResourcesPage } from '../Resources';
-import type { Route } from '../router';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { t } from '@/i18n';
+import { mediaStore } from '@/store';
+import { ops } from '@/tree/ops';
+import { ResourcesPage } from '@/app/screens/Resources';
+import type { Route } from '@/app/state/router';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function ResourcesHost({ navigate }: { navigate(r: Route): void }) {
   const { lang, toast } = useUi();

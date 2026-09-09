@@ -1,9 +1,9 @@
 /** Find a person by name; accent- and case-insensitive. Enter picks the first match. */
 
 import { useMemo, useState } from 'react';
-import { displayName, type Tree } from '../../gedcom/model';
-import { t, type Lang } from '../../i18n';
-import { fold } from '../../util/text';
+import { displayName, type Tree } from '@/gedcom/model';
+import { t, type Lang } from '@/i18n';
+import { fold } from '@/util/text';
 
 interface Props {
   tree: Tree;

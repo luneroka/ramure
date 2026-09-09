@@ -10,7 +10,7 @@
  * what is already in the tree.
  */
 
-import type { Place } from '../gedcom/model';
+import type { Place } from '@/gedcom/model';
 
 export interface PlaceSuggestion extends Place {
   /** Where the suggestion came from, for the small tag in the list. */

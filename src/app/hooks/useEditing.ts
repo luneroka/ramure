@@ -1,13 +1,13 @@
 /** The single path for changes: build an op, apply it, record it, hand it to sync. Undo and redo are ops too. */
 
 import { useCallback, useEffect, type Dispatch, type RefObject } from 'react';
-import type { Tree } from '../../gedcom/model';
-import { t, type Lang } from '../../i18n';
-import type { SyncEngine } from '../../sync/engine';
-import { diffTrees } from '../../tree/diff';
-import { applyOp, envelope, opSubject, type Op } from '../../tree/ops';
-import type { HistoryAction, HistoryState } from '../history';
-import { errorText } from '../errorText';
+import type { Tree } from '@/gedcom/model';
+import { t, type Lang } from '@/i18n';
+import type { SyncEngine } from '@/sync/engine';
+import { diffTrees } from '@/tree/diff';
+import { applyOp, envelope, opSubject, type Op } from '@/tree/ops';
+import type { HistoryAction, HistoryState } from '@/app/state/history';
+import { errorText } from '@/app/lib/errorText';
 
 interface Args {
   tree: Tree | null;

@@ -1,13 +1,13 @@
 /** The bar: tree menu and status on the left, search and tools on the right. */
 
-import { t, tn, type Lang, type StringKey } from '../../i18n';
-import type { Me, TreeSummary } from '../../sync/api';
-import type { SyncStatus } from '../../sync/engine';
-import { TreeMenu, UserMenu } from '../Menus';
-import type { Route } from '../router';
-import type { Workspace } from '../session/Workspace';
-import { RedoIcon, ResourcesIcon, ThemeIcon, UndoIcon } from '../ui/icons';
-import { useUi } from '../ui/UiContext';
+import { t, tn, type Lang, type StringKey } from '@/i18n';
+import type { Me, TreeSummary } from '@/sync/api';
+import type { SyncStatus } from '@/sync/engine';
+import { TreeMenu, UserMenu } from '@/app/ui/Menus';
+import type { Route } from '@/app/state/router';
+import type { Workspace } from '@/app/state/Workspace';
+import { RedoIcon, ResourcesIcon, ThemeIcon, UndoIcon } from '@/app/ui/icons';
+import { useUi } from '@/app/ui/UiContext';
 import { SearchBox } from './SearchBox';
 
 const SYNC_KEYS: Partial<Record<SyncStatus, StringKey>> = {

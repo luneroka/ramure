@@ -4,8 +4,8 @@
  * opportunity if they fail.
  */
 
-import { kvGet, kvSet, mediaGet, mediaPut } from '../db';
-import { api } from '../sync/api';
+import { kvGet, kvSet, mediaGet, mediaPut } from './idb';
+import { api } from '@/sync/api';
 import type { MediaStore } from './types';
 
 interface UploadQueue {

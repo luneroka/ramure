@@ -3,7 +3,7 @@
  * for the canvas, and object URLs for the DOM.
  */
 
-import { mediaStore } from '../store';
+import { mediaStore } from '@/store';
 
 const MAX_SIDE = 640;
 

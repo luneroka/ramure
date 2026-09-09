@@ -1,7 +1,7 @@
 /** The signed-in person's family accounts, the chosen one, and its trees. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, type Account, type TreeSummary } from '../../sync/api';
+import { api, type Account, type TreeSummary } from '@/sync/api';
 
 const LAST_ACCOUNT_KEY = 'ramure.lastAccount';
 

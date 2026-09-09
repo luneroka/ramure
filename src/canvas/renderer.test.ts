@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseGedcom } from '../gedcom/parse';
-import { layoutHourglass } from '../tree/layout';
+import { parseGedcom } from '@/gedcom/parse';
+import { layoutHourglass } from '@/tree/layout';
 import { computeHandles, detailBand, hitHandle, hitTest, type Camera } from './renderer';
 
 const tree = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));

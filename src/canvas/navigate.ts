@@ -1,6 +1,6 @@
 /** Keyboard moves on the canvas: the nearest card in a direction. */
 
-import type { LayoutNode } from '../tree/layout';
+import type { LayoutNode } from '@/tree/layout';
 
 export type Dir = 'left' | 'right' | 'up' | 'down';
 

@@ -5,8 +5,8 @@
 
 import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { t } from '../../i18n';
-import { pendingEdits } from '../../sync/pendingEdits';
+import { t } from '@/i18n';
+import { pendingEdits } from '@/sync/pendingEdits';
 import { useUi } from './UiContext';
 
 const CHECK_EVERY = 60 * 60 * 1000;

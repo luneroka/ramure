@@ -1,9 +1,9 @@
 /** The small status line under the canvas: zoom, how many people are shown, the detail band, warnings. */
 
-import type { DetailBand } from '../../canvas/renderer';
-import { t, tf, tn } from '../../i18n';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import type { DetailBand } from '@/canvas/renderer';
+import { t, tf, tn } from '@/i18n';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function Hud({ band, zoom }: { band: DetailBand; zoom: number }) {
   const { lang } = useUi();

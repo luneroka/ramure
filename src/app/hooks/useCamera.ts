@@ -1,11 +1,11 @@
 /** When the canvas moves by itself: a new tree, a view or focus change, a draft to show, a relationship to frame. */
 
 import { useEffect, useRef, type RefObject } from 'react';
-import type { TreeCanvasHandle } from '../../canvas/TreeCanvas';
-import type { Tree } from '../../gedcom/model';
-import type { Layout } from '../../tree/layout';
-import { opSubject } from '../../tree/ops';
-import type { Draft, ViewMode } from '../editorState';
+import type { TreeCanvasHandle } from '@/canvas/TreeCanvas';
+import type { Tree } from '@/gedcom/model';
+import type { Layout } from '@/tree/layout';
+import { opSubject } from '@/tree/ops';
+import type { Draft, ViewMode } from '@/app/state/editorState';
 
 interface Args {
   canvas: RefObject<TreeCanvasHandle | null>;

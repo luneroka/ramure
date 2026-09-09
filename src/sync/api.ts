@@ -1,6 +1,6 @@
 /** Thin client for the Worker API. Same origin, cookie session. */
 
-import type { OpEnvelope } from '../tree/ops';
+import type { OpEnvelope } from '@/tree/ops';
 import type { Incoming } from './rebase';
 
 export class ApiError extends Error {

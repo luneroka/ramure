@@ -1,11 +1,11 @@
 /** Wires the person panel to the workspace: every action becomes an op through `commit`. */
 
-import { t } from '../../i18n';
-import { mediaStore } from '../../store';
-import { ops } from '../../tree/ops';
-import { PersonPanel } from '../PersonPanel';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { t } from '@/i18n';
+import { mediaStore } from '@/store';
+import { ops } from '@/tree/ops';
+import { PersonPanel } from '@/app/person/PersonPanel';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function PersonPanelHost() {
   const { lang, toast } = useUi();

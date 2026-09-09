@@ -5,8 +5,8 @@
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { detectLang, t } from '../../i18n';
-import { reportError } from '../report';
+import { detectLang, t } from '@/i18n';
+import { reportError } from '@/app/lib/report';
 
 interface State {
   error: Error | null;

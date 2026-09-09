@@ -3,7 +3,7 @@
  * French communes first (geo.api.gouv.fr), then Photon for the rest.
  */
 
-import { fold } from '../util/text';
+import { fold } from '@/util/text';
 
 export interface Coords {
   lat: number;

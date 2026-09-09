@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../store', () => ({ mediaStore: { get: async () => null } }));
+vi.mock('@/store', () => ({ mediaStore: { get: async () => null } }));
 
 import { PortraitCache } from './portraits';
 

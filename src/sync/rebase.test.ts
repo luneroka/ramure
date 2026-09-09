@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseGedcom } from '../gedcom/parse';
-import { envelope, ops } from '../tree/ops';
+import { parseGedcom } from '@/gedcom/parse';
+import { envelope, ops } from '@/tree/ops';
 import { absorb, acknowledge, enqueue, working, type SyncState } from './rebase';
 
 const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
@@ -74,8 +74,8 @@ describe('sync rebase', () => {
 describe('absorb, pass 2', () => {
   it('reports the person whose remote save our pending save is about to replace', async () => {
     const { readFileSync } = await import('node:fs');
-    const { parseGedcom } = await import('../gedcom/parse');
-    const { ops, envelope } = await import('../tree/ops');
+    const { parseGedcom } = await import('@/gedcom/parse');
+    const { ops, envelope } = await import('@/tree/ops');
     const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
     const ours = envelope(ops.updatePerson('I1', { names: [{ given: 'Marguerite', surname: 'LENOIR', nick: 'Margot' }] }));
     const theirs = envelope(ops.updatePerson('I1', { names: [{ given: 'Marguerite', surname: 'LENOIR', nick: 'Gogo' }] }));
@@ -89,7 +89,7 @@ describe('absorb, pass 2', () => {
 
   it('asks for a reload when the server is behind us or answers nonsense', async () => {
     const { readFileSync } = await import('node:fs');
-    const { parseGedcom } = await import('../gedcom/parse');
+    const { parseGedcom } = await import('@/gedcom/parse');
     const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
     const state = { version: 12, base, outbox: [] };
     expect(absorb(state, [], 3).needsReload).toBe(true);

@@ -1,6 +1,6 @@
 /** IndexedDB implementations of the store interfaces. */
 
-import { kvDelete, kvGet, kvSet, listSnapshots, loadSnapshot, mediaDelete, mediaGet, mediaPut, saveSnapshot, TREE_KEY } from '../db';
+import { kvDelete, kvGet, kvSet, listSnapshots, loadSnapshot, mediaDelete, mediaGet, mediaPut, saveSnapshot, TREE_KEY } from './idb';
 import type { MediaStore, SavedTree, Snapshot, SnapshotMeta, TreeStore } from './types';
 
 export class LocalTreeStore implements TreeStore {

@@ -1,10 +1,10 @@
 /** The checks report: import notes still relevant and live audits, each pointing at the people concerned. */
 
-import { displayName } from '../../gedcom/model';
-import { t } from '../../i18n';
-import { noteKey } from '../../tree/audit';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { displayName } from '@/gedcom/model';
+import { t } from '@/i18n';
+import { noteKey } from '@/tree/audit';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function ReportPanel() {
   const { lang } = useUi();

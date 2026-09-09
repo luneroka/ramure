@@ -6,13 +6,13 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { type Lang } from '../../i18n';
-import { api, type Account, type Role, type TreeSummary } from '../../sync/api';
-import type { Auth } from '../useAuth';
-import { parseRoute, type Route } from '../router';
+import { type Lang } from '@/i18n';
+import { api, type Account, type Role, type TreeSummary } from '@/sync/api';
+import type { Auth } from '@/app/state/useAuth';
+import { parseRoute, type Route } from '@/app/state/router';
 import { INVITE_KEY } from './useInvites';
 import { readLastTree, type Source } from './useTreeSession';
-import { errorText } from '../errorText';
+import { errorText } from '@/app/lib/errorText';
 
 interface Args {
   auth: Auth;

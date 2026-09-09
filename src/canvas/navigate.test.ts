@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { LayoutNode } from '../tree/layout';
+import type { LayoutNode } from '@/tree/layout';
 import { neighbour } from './navigate';
 
 const node = (id: string, x: number, y: number): LayoutNode => ({ id, x, y, w: 100, h: 40, gen: 0, dup: 0, role: 'focus' });

@@ -5,11 +5,11 @@
  * node in tests; the defaults are the real API, storage and timers.
  */
 
-import { kvDelete, kvGet, kvSet } from '../db';
-import { parseGedcom } from '../gedcom/parse';
-import { serializeGedcom } from '../gedcom/serialize';
-import type { Tree } from '../gedcom/model';
-import type { OpEnvelope } from '../tree/ops';
+import { kvDelete, kvGet, kvSet } from '@/store/idb';
+import { parseGedcom } from '@/gedcom/parse';
+import { serializeGedcom } from '@/gedcom/serialize';
+import type { Tree } from '@/gedcom/model';
+import type { OpEnvelope } from '@/tree/ops';
 import { api as realApi, ApiError } from './api';
 import { absorb, acknowledge, enqueue, working, type RebaseResult, type SyncState } from './rebase';
 

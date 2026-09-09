@@ -4,8 +4,8 @@
  * URLs are testable; opening the tabs is the panel's business.
  */
 
-import { approximateYear } from '../gedcom/dates';
-import { findEvent, type Individual } from '../gedcom/model';
+import { approximateYear } from '@/gedcom/dates';
+import { findEvent, type Individual } from '@/gedcom/model';
 
 export interface SearchLink {
   id: 'geneanet' | 'familysearch' | 'filae' | 'francearchives';

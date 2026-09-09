@@ -7,9 +7,9 @@
  * anything that no longer applies is dropped and reported.
  */
 
-import type { Tree } from '../gedcom/model';
-import type { Op, OpEnvelope } from '../tree/ops';
-import { replayOps } from '../tree/replay';
+import type { Tree } from '@/gedcom/model';
+import type { Op, OpEnvelope } from '@/tree/ops';
+import { replayOps } from '@/tree/replay';
 
 export interface SyncState {
   version: number;

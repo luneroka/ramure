@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api';
 import { SyncEngine, type EngineDeps } from './engine';
-import { envelope, ops, type OpEnvelope } from '../tree/ops';
-import { serializeGedcom } from '../gedcom/serialize';
-import { parseGedcom } from '../gedcom/parse';
+import { envelope, ops, type OpEnvelope } from '@/tree/ops';
+import { serializeGedcom } from '@/gedcom/serialize';
+import { parseGedcom } from '@/gedcom/parse';
 
 const doc = readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8');
 
