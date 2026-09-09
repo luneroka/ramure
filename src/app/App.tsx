@@ -289,6 +289,7 @@ function Shell() {
             defaultView={defaultView}
             onDefaultView={setDefaultView}
             navigate={navigate}
+            onSignedOutEverywhere={() => void signOut()}
           />
         ) : (
           <Home

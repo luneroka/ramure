@@ -47,6 +47,9 @@ describe('nightly maintenance', () => {
     // Storage is shared across test files: other unreferenced uploads may go too; ours are what we check.
     const later = await reap(env, Date.now() + MEDIA_GRACE_MS + 1000);
     expect(later.filesDeleted).toBeGreaterThanOrEqual(1);
+    // A month of silence also closed every session: both people sign in again.
+    expect(await c.signIn('reap1@example.org')).toBe(200);
+    expect(await other.c.signIn('reap2@example.org')).toBe(200);
     expect(
       (await app.request(`http://localhost/api/trees/${other.treeId}/media/Mgone`, { headers: { Cookie: other.c.cookie } }, env)).status,
     ).toBe(404);

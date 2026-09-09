@@ -14,9 +14,10 @@ interface Props {
   defaultView: DefaultView;
   onDefaultView(v: DefaultView): void;
   navigate(r: Route): void;
+  onSignedOutEverywhere(): void;
 }
 
-export function SettingsHost({ auth, accounts, section, defaultView, onDefaultView, navigate }: Props) {
+export function SettingsHost({ auth, accounts, section, defaultView, onDefaultView, navigate, onSignedOutEverywhere }: Props) {
   const ui = useUi();
   const { lang, toast, ask } = ui;
   const account = accounts.account;
@@ -45,6 +46,7 @@ export function SettingsHost({ auth, accounts, section, defaultView, onDefaultVi
         toast(t(lang, 'saved'));
       }}
       onDeletionChanged={() => void auth.refresh()}
+      onSignedOutEverywhere={onSignedOutEverywhere}
       onLang={ui.setLang}
       onTheme={ui.setTheme}
       onDefaultView={onDefaultView}

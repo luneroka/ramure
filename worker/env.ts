@@ -8,6 +8,8 @@ export interface Env {
   RESEND_API_KEY?: string;
   /** The operator's address: that user is the application administrator. */
   ADMIN_EMAIL?: string;
+  /** Secret mixed into the sign-in code hashes, so a database copy alone cannot be brute-forced offline. */
+  CODE_PEPPER?: string;
 }
 
 export interface User {

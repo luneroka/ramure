@@ -5,6 +5,7 @@
 
 import { parseGedcom } from '../src/gedcom/parse';
 import { RAMURE_MEDIA_SCHEME } from '../src/tree/edit';
+import { SESSION_IDLE_MS } from './auth';
 import type { Env } from './env';
 import { now } from './util';
 
@@ -86,5 +87,10 @@ export async function reap(env: Env, at = now()): Promise<ReapReport> {
       .run();
     report.rowsPurged += r.meta.changes ?? 0;
   }
+  // Sessions nobody used for a month are over even before their absolute expiry.
+  const idle = await env.DB.prepare(`DELETE FROM sessions WHERE COALESCE(last_seen_at, created_at) < ?`)
+    .bind(at - SESSION_IDLE_MS)
+    .run();
+  report.rowsPurged += idle.meta.changes ?? 0;
   return report;
 }

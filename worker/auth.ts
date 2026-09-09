@@ -9,7 +9,7 @@
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
-import { HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { hmac, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { echoMode, sendMail } from './mail';
 import { clientIp, hit } from './ratelimit';
 import { consumeInvite, isAdmin, mayEnter } from './admin';
@@ -21,17 +21,31 @@ const WINDOW_MS = 15 * 60 * 1000;
 const MAX_FAILED_CODES = 10;
 const LINK_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+/** A session unused for this long is over, whatever its absolute expiry. */
+export const SESSION_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
+const TOUCH_EVERY_MS = 60 * 60 * 1000;
 
 export async function userFromRequest(env: Env, cookie: string | undefined): Promise<User | null> {
   if (!cookie) return null;
   const hash = await sha256(cookie);
+  const t = now();
   const row = await env.DB.prepare(
-    `SELECT u.id, u.email, u.name FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id_hash = ? AND s.expires_at > ?`,
+    `SELECT u.id, u.email, u.name, COALESCE(s.last_seen_at, s.created_at) AS seen
+       FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id_hash = ? AND s.expires_at > ?`,
   )
-    .bind(hash, now())
-    .first<User>();
-  return row ?? null;
+    .bind(hash, t)
+    .first<User & { seen: number }>();
+  if (!row) return null;
+  if (row.seen < t - SESSION_IDLE_MS) {
+    await env.DB.prepare(`DELETE FROM sessions WHERE id_hash = ?`).bind(hash).run();
+    return null;
+  }
+  if (row.seen < t - TOUCH_EVERY_MS) await env.DB.prepare(`UPDATE sessions SET last_seen_at = ? WHERE id_hash = ?`).bind(t, hash).run();
+  return { id: row.id, email: row.email, name: row.name };
 }
+
+/** The stored form of a sign-in code: keyed by the pepper when the deployment has one. */
+export const codeHash = (env: Env, email: string, code: string): Promise<string> => hmac(env.CODE_PEPPER, `${email}:${code}`);
 
 /** Six digits, shown as « 483 921 » in the mail and typed on the sign-in page when a link cannot be opened. */
 function randomCode(): string {
@@ -78,8 +92,8 @@ async function openSession(c: Context<{ Bindings: Env; Variables: Vars }>, email
     await c.env.DB.prepare(`UPDATE users SET is_admin = 1 WHERE id = ?`).bind(user.id).run();
   }
   const session = randomToken();
-  await c.env.DB.prepare(`INSERT INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`)
-    .bind(await sha256(session), user.id, now(), now() + SESSION_TTL_MS)
+  await c.env.DB.prepare(`INSERT INTO sessions (id_hash, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`)
+    .bind(await sha256(session), user.id, now(), now() + SESSION_TTL_MS, now())
     .run();
   const secure = c.env.APP_ORIGIN.startsWith('https://');
   setCookie(c, SESSION_COOKIE, session, { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: SESSION_TTL_MS / 1000 });
@@ -120,7 +134,7 @@ auth.post('/request', async (c) => {
     maxAge: LINK_TTL_MS / 1000,
   });
   await c.env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at, code_hash, browser_hash) VALUES (?, ?, ?, ?, ?)`)
-    .bind(await sha256(token), email, now() + LINK_TTL_MS, await sha256(`${email}:${code}`), await sha256(nonce))
+    .bind(await sha256(token), email, now() + LINK_TTL_MS, await codeHash(c.env, email, code), await sha256(nonce))
     .run();
   // The token travels in the fragment: it never reaches a server or a log, and opening the page has no effect by itself.
   const link = `${c.env.APP_ORIGIN}/#signin=${encodeURIComponent(token)}`;
@@ -150,7 +164,7 @@ auth.post('/code', async (c) => {
     .all<{ token_hash: string; code_hash: string; browser_hash: string | null }>();
   const mine = rows.results.filter((r) => r.browser_hash === browserHash);
   if (!mine.length) throw new HttpError(rows.results.length ? 403 : 400, rows.results.length ? 'other device' : 'code expired');
-  const expected = await sha256(`${email}:${code}`);
+  const expected = await codeHash(c.env, email, code);
   const match = mine.find((r) => r.code_hash === expected);
   if (!match) {
     await c.env.DB.prepare(`UPDATE magic_links SET attempts = attempts + 1 WHERE token_hash = ?`).bind(mine[0]!.token_hash).run();
@@ -195,6 +209,15 @@ auth.post('/logout', async (c) => {
       .run();
   deleteCookie(c, SESSION_COOKIE, { path: '/' });
   return c.json({ ok: true });
+});
+
+/** Close every session of the signed-in person, this one included. */
+auth.post('/logout-all', async (c) => {
+  const user = c.get('user');
+  if (!user) throw new HttpError(401, 'sign in required');
+  const r = await c.env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
+  deleteCookie(c, SESSION_COOKIE, { path: '/' });
+  return c.json({ ok: true, closed: r.meta.changes ?? 0 });
 });
 
 auth.patch('/me', async (c) => {

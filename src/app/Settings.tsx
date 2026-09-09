@@ -24,6 +24,8 @@ interface Props {
   onProfileRenamed(name: string): void;
   /** The deletion request was sent or cancelled: reload the user. */
   onDeletionChanged(): void;
+  /** Every session was closed server-side: the app must forget the person too. */
+  onSignedOutEverywhere(): void;
   onLang(lang: Lang): void;
   onTheme(theme: ThemeChoice): void;
   onDefaultView(v: DefaultView): void;
@@ -350,6 +352,30 @@ export function Settings(p: Props) {
             {t(lang, 'save')}
           </button>
         </form>
+        <h3>{t(lang, 'signOutEverywhere')}</h3>
+        <p className="muted small">{t(lang, 'signOutEverywhereHint')}</p>
+        <button
+          className="btn"
+          onClick={() =>
+            void p
+              .ask({
+                title: t(lang, 'signOutEverywhere'),
+                message: t(lang, 'signOutEverywhereMessage'),
+                confirmLabel: t(lang, 'signOutEverywhere'),
+              })
+              .then(async (answer) => {
+                if (answer === null) return;
+                try {
+                  await api.logoutAll();
+                } catch {
+                  /* the sessions may already be gone; the app forgets the person either way */
+                }
+                p.onSignedOutEverywhere();
+              })
+          }
+        >
+          {t(lang, 'signOutEverywhere')}
+        </button>
       </section>
 
       <section className="home-card" id="settings-preferences">

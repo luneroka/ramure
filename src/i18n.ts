@@ -276,6 +276,15 @@ const strings = {
     en: 'This link has expired or was already used. Ask for a new one.',
   },
   signOut: { fr: 'Se déconnecter', en: 'Sign out' },
+  signOutEverywhere: { fr: 'Se déconnecter partout', en: 'Sign out everywhere' },
+  signOutEverywhereHint: {
+    fr: 'Ferme votre session sur tous vos appareils, celui-ci compris. Une session inutilisée pendant trente jours se ferme d’elle-même.',
+    en: 'Closes your session on every device, this one included. A session unused for thirty days closes by itself.',
+  },
+  signOutEverywhereMessage: {
+    fr: 'Vous devrez demander un nouveau code sur chaque appareil.',
+    en: 'You will need a new code on each device.',
+  },
   share: { fr: 'Partager', en: 'Share' },
   members: { fr: 'Membres', en: 'Members' },
   you: { fr: 'vous', en: 'you' },
