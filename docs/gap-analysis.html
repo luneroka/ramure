@@ -152,7 +152,7 @@
     <div class="done">Done when: an SVG upload is refused and existing media serve as attachments; the security headers show on the live site; a 150-edit offline session syncs; a scanner-fetched link no longer consumes the sign-in; 20 wrong codes lock for 15 minutes.</div>
   </div>
 
-  <div class="phase"><h3>Pass 2, make sync honest</h3><div class="when">3 days</div>
+  <div class="phase"><h3>Pass 2, make sync honest</h3><div class="when">Deployed to production on 9 September 2026 (migration 0008). Field-level person patches were replaced by the agreed rule, later save wins with a notice to the saver; restore by snapshot id was not needed once documents are capped at 1.5 MB.</div>
     <ul>
       <li>Paginated pulls with a cursor; automatic reload from the server when versions disagree; a manual "recharger depuis le serveur".</li>
       <li>A concurrent push returns 409 with the missing ops instead of 500; 409 always carries a version.</li>

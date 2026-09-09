@@ -10,7 +10,7 @@ import { serializeGedcom } from './serialize';
 
 const fixture = (name: string): string => readFileSync(new URL(`../../fixtures/geneanet/${name}`, import.meta.url), 'utf8');
 const input = parseGedcom(fixture('input-fixture.ged'));
-const exported = parseGedcom(fixture('export-2026-09-06.ged'));
+const exported = parseGedcom(fixture('export-2026-09-06.ged'), { repairGeneWeb: true });
 
 const byName = (tree: Tree, name: string) => {
   const hit = Object.values(tree.individuals).find((i) => displayName(i) === name);

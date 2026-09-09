@@ -7,8 +7,8 @@ export class LocalTreeStore implements TreeStore {
   loadCurrent(): Promise<SavedTree | undefined> {
     return kvGet<SavedTree>(TREE_KEY);
   }
-  saveCurrent(saved: SavedTree): Promise<void> {
-    return kvSet(TREE_KEY, saved);
+  async saveCurrent(saved: SavedTree): Promise<void> {
+    await kvSet(TREE_KEY, saved);
   }
   clearCurrent(): Promise<void> {
     return kvDelete(TREE_KEY);

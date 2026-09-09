@@ -66,7 +66,7 @@ admin.get('/overview', async (c) => {
     `SELECT a.id, a.name, a.created_at,
             (SELECT COUNT(*) FROM account_members m WHERE m.account_id = a.id) AS members,
             (SELECT COUNT(*) FROM trees t WHERE t.account_id = a.id) AS trees,
-            (SELECT COALESCE(SUM(md.size), 0) FROM media md JOIN trees t ON t.id = md.tree_id WHERE t.account_id = a.id) AS bytes
+            (SELECT COALESCE(SUM(md.size), 0) FROM media md JOIN trees t ON t.id = md.tree_id WHERE t.account_id = a.id AND md.deleted_at IS NULL) AS bytes
        FROM accounts a ORDER BY a.created_at`,
   ).all<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>();
   const requests = await c.env.DB.prepare(`SELECT id, email, message, requested_at FROM access_requests ORDER BY requested_at DESC`).all<{

@@ -23,6 +23,8 @@ export const MAX_DOC_BYTES = 1_500_000;
 export const MAX_OPS_PER_PUSH = 50;
 const docBytes = (doc: string): number => new TextEncoder().encode(doc).byteLength;
 /** Undo-style record patches past these sizes are destructive: a snapshot first, and only administrators above the larger one. */
+/** Ops served per pull; a longer backlog comes in pages. */
+const PAGE = 500;
 const PATCH_SNAPSHOT_REMOVALS = 3;
 const PATCH_SNAPSHOT_TOUCHED = 20;
 const PATCH_OWNER_REMOVALS = 20;
@@ -89,7 +91,7 @@ trees.post('/', async (c) => {
   const gedcom = String(body.gedcom ?? '');
   if (docBytes(gedcom) > MAX_DOC_BYTES) throw new HttpError(413, 'tree too large', { maxBytes: MAX_DOC_BYTES });
   // Normalise through the parser so the stored document is always Ramure's own serialisation.
-  const tree = parseGedcom(gedcom);
+  const tree = parseGedcom(gedcom, { repairGeneWeb: true });
   const doc = serializeGedcom(tree);
   const id = randomId('T');
   const ts = now();
@@ -143,16 +145,20 @@ trees.get('/:id/ops', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
-  const since = Number(c.req.query('since') ?? 0);
+  const rawSince = Number(c.req.query('since') ?? 0);
+  const since = Number.isSafeInteger(rawSince) && rawSince > 0 ? rawSince : 0;
   const rows = await c.env.DB.prepare(
-    `SELECT seq, op_id, actor_id, ts, op FROM tree_ops WHERE tree_id = ? AND seq > ? ORDER BY seq LIMIT 1000`,
+    `SELECT seq, op_id, actor_id, ts, op FROM tree_ops WHERE tree_id = ? AND seq > ? ORDER BY seq LIMIT ${PAGE + 1}`,
   )
     .bind(id, since)
     .all<{ seq: number; op_id: string; actor_id: string; ts: number; op: string }>();
   const version = await c.env.DB.prepare(`SELECT version FROM trees WHERE id = ?`).bind(id).first<{ version: number }>();
+  if (!version) throw new HttpError(404, 'tree not found');
+  const page = rows.results.slice(0, PAGE);
   return c.json({
-    version: version?.version ?? 0,
-    ops: rows.results.map((r) => ({ seq: r.seq, envelope: { id: r.op_id, ts: r.ts, actor: r.actor_id, op: JSON.parse(r.op) } })),
+    version: version.version,
+    hasMore: rows.results.length > PAGE,
+    ops: page.map((r) => ({ seq: r.seq, envelope: { id: r.op_id, ts: r.ts, actor: r.actor_id, op: JSON.parse(r.op) } })),
   });
 });
 
@@ -178,15 +184,17 @@ trees.post('/:id/ops', async (c) => {
   /** Stale base: hand back what the client is missing so it can rebase. */
   const staleResponse = async (version: number) => {
     const missing = await c.env.DB.prepare(
-      `SELECT seq, op_id, actor_id, ts, op FROM tree_ops WHERE tree_id = ? AND seq > ? ORDER BY seq LIMIT 1000`,
+      `SELECT seq, op_id, actor_id, ts, op FROM tree_ops WHERE tree_id = ? AND seq > ? ORDER BY seq LIMIT ${PAGE + 1}`,
     )
       .bind(id, Math.max(0, baseVersion))
       .all<{ seq: number; op_id: string; actor_id: string; ts: number; op: string }>();
+    const page = missing.results.slice(0, PAGE);
     return c.json(
       {
         error: 'stale base',
         version,
-        ops: missing.results.map((r) => ({ seq: r.seq, envelope: { id: r.op_id, ts: r.ts, actor: r.actor_id, op: JSON.parse(r.op) } })),
+        hasMore: missing.results.length > PAGE,
+        ops: page.map((r) => ({ seq: r.seq, envelope: { id: r.op_id, ts: r.ts, actor: r.actor_id, op: JSON.parse(r.op) } })),
       },
       409,
     );
@@ -397,7 +405,9 @@ trees.delete('/:id/media/:mediaId', async (c) => {
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner', 'editor']);
   const mediaId = requireId(c.req.param('mediaId'), 'media id');
-  await c.env.MEDIA.delete(`trees/${id}/media/${mediaId}`);
-  await c.env.DB.prepare(`DELETE FROM media WHERE id = ? AND tree_id = ?`).bind(mediaId, id).run();
+  // Marked, not removed: an undo can still show the file; the nightly reaper takes it once nothing references it.
+  await c.env.DB.prepare(`UPDATE media SET deleted_at = ? WHERE id = ? AND tree_id = ? AND deleted_at IS NULL`)
+    .bind(now(), mediaId, id)
+    .run();
   return c.json({ ok: true });
 });

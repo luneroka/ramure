@@ -92,7 +92,7 @@ accounts.get('/:id/storage', async (c) => {
   await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
   const rows = await c.env.DB.prepare(
     `SELECT t.id, t.name, COUNT(m.id) AS files, COALESCE(SUM(m.size), 0) AS bytes
-       FROM trees t LEFT JOIN media m ON m.tree_id = t.id
+       FROM trees t LEFT JOIN media m ON m.tree_id = t.id AND m.deleted_at IS NULL
       WHERE t.account_id = ? GROUP BY t.id ORDER BY bytes DESC`,
   )
     .bind(id)

@@ -10,7 +10,7 @@ import { api, ApiError, type Account, type Role, type TreeSummary } from '../syn
 import { SyncEngine, type SyncStatus } from '../sync/engine';
 import { diffTrees } from '../tree/diff';
 import { newTree, type EditResult, type FamilyPatch, type PersonPatch } from '../tree/edit';
-import { applyOp, envelope, ops, opSubject, type Op } from '../tree/ops';
+import { applyOp, describeOp, envelope, ops, opSubject, type Op } from '../tree/ops';
 import { DEFAULT_LAYOUT, layoutHourglass } from '../tree/layout';
 import { layoutEverything } from '../tree/layoutAll';
 import { auditTree, noteKey, type CheckNote } from '../tree/audit';
@@ -196,7 +196,7 @@ export function App() {
     window.setTimeout(() => setNotice((m) => (m === msg ? null : m)), 3200);
   }, []);
 
-  const readOnly = source?.role === 'viewer';
+  const readOnly = source?.role === 'viewer' || sync.status === 'locked';
 
   // ---------- Accounts ----------
 
@@ -241,6 +241,16 @@ export function App() {
 
   // ---------- Opening and closing trees ----------
 
+  // Leaving with unsynced edits deserves a warning; they are stored, but the person may not know.
+  useEffect(() => {
+    if (!sync.pending) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [sync.pending]);
+
   const goHome = useCallback(() => {
     engine.current?.dispose();
     engine.current = null;
@@ -262,14 +272,33 @@ export function App() {
       engine.current = eng;
       setActiveMediaStore(new CloudMediaStore(id));
       eng.subscribe((e) => {
-        setSync({ status: e.status, pending: e.pending });
+        setSync((prev) => {
+          if (e.status === 'gone' && prev.status !== 'gone') {
+            window.setTimeout(() => {
+              toast(t(lang, 'treeGone'));
+              void eng.forget();
+              goHome();
+            }, 0);
+          }
+          if (e.status === 'signedout' && prev.status !== 'signedout') window.setTimeout(() => void auth.refresh(), 0);
+          return { status: e.status, pending: e.pending };
+        });
         if (committing.current) return;
         if (e.notice?.remote || e.notice?.dropped?.length) {
           dispatch({ type: 'replace', tree: e.tree, keepHistory: false });
-          if (e.notice.dropped?.length) toast(`${e.notice.dropped.length} ${t(lang, 'droppedChanges')}`);
-          else toast(t(lang, 'remoteChanges'));
+          if (e.notice.dropped?.length) {
+            const what = e.notice.dropped
+              .slice(0, 2)
+              .map((d) => describeOp(d.envelope.op, lang))
+              .join(', ');
+            toast(`${e.notice.dropped.length} ${t(lang, 'droppedChanges')} : ${what}`);
+          } else toast(t(lang, 'remoteChanges'));
         } else {
           dispatch({ type: 'replace', tree: e.tree, keepHistory: true });
+        }
+        if (e.notice?.overwrote?.length) {
+          const names = e.notice.overwrote.map((id) => (e.tree.individuals[id] ? displayName(e.tree.individuals[id]!) : id)).join(', ');
+          window.setTimeout(() => toast(`${t(lang, 'overwroteChanges')} ${names}`), 0);
         }
       });
       try {
@@ -292,7 +321,7 @@ export function App() {
         localStorage.removeItem(LAST_TREE_KEY);
       }
     },
-    [lang, toast, navigate, defaultView],
+    [lang, toast, navigate, defaultView, auth, goHome],
   );
 
   // Boot: URL parameters (sign-in result, invite).
@@ -860,7 +889,17 @@ export function App() {
             ? t(lang, 'syncOffline')
             : sync.status === 'readonly'
               ? t(lang, 'syncReadonly')
-              : t(lang, 'syncError');
+              : sync.status === 'signedout'
+                ? t(lang, 'syncSignedOut')
+                : sync.status === 'forbidden'
+                  ? t(lang, 'syncForbidden')
+                  : sync.status === 'gone'
+                    ? t(lang, 'syncGone')
+                    : sync.status === 'storage'
+                      ? t(lang, 'syncStorage')
+                      : sync.status === 'locked'
+                        ? t(lang, 'syncLocked')
+                        : t(lang, 'syncError');
 
   // ---------- Gate: everything behind sign-in ----------
   if (!auth.user) {
@@ -905,6 +944,7 @@ export function App() {
                 readOnly={readOnly}
                 onReport={() => setShowReport(true)}
                 onResources={() => navigate({ name: 'resources', id: source.id })}
+                onReload={() => void engine.current?.reloadFromServer().then(() => toast(t(lang, 'reloaded')))}
                 onDelete={() =>
                   void deleteTree({ id: source.id, name: source.name, version: 0, people: count, updated_at: 0, role: source.role })
                 }

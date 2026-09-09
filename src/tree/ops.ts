@@ -26,6 +26,7 @@ import {
   type TreePatch,
   updateFamily,
   updatePerson,
+  EditError,
   type EditResult,
   type FamilyPatch,
   type NewPerson,
@@ -153,6 +154,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       return geocodePlaces(tree, op.fixes);
     case 'replaceTree':
       return { tree: parseGedcom(op.gedcom) };
+    default:
+      throw new EditError(`unknown op ${String((op as { t?: string }).t)}`);
     case 'patchRecords':
       return { tree: applyRecordPatch(tree, op) };
     case 'batch': {

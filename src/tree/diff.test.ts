@@ -49,3 +49,70 @@ describe('diffTrees', () => {
     expect(stable(applyOp(restored, JSON.parse(JSON.stringify(diffTrees(base, after)))).tree)).toBe(stable(after));
   });
 });
+
+describe('record patches, pass 2', () => {
+  it('refuses to undo over a record someone else changed since', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { parseGedcom } = await import('../gedcom/parse');
+    const { applyOp, ops } = await import('./ops');
+    const { EditError } = await import('./edit');
+    const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
+    const after = applyOp(base, ops.updatePerson('I1', { names: [{ given: 'M', surname: 'LENOIR' }] })).tree;
+    const undo = diffTrees(after, base);
+    expect(undo.expect && Object.keys(undo.expect)).toEqual(['I:I1']);
+    // Fine on the tree the undo was computed for.
+    expect(applyRecordPatch(after, undo).individuals.I1!.names[0]!.given).toBe('Marguerite');
+    // Refused once someone else touched the same person.
+    const moved = applyOp(after, ops.updatePerson('I1', { sex: 'U' })).tree;
+    expect(() => applyRecordPatch(moved, undo)).toThrow(EditError);
+  });
+
+  it('never leaves a family pointing at a person the patch removed', () => {
+    const tree = {
+      ...emptyTreeWith(),
+    };
+    const patched = applyRecordPatch(tree, { t: 'patchRecords', individuals: { C: null }, families: {}, media: {} });
+    expect(patched.families.F!.childIds).toEqual([]);
+    expect(patched.individuals.P!.partnerIn).toEqual(['F']);
+  });
+});
+
+function emptyTreeWith() {
+  const P = {
+    id: 'P',
+    names: [{ given: 'P', surname: 'X' }],
+    sex: 'M' as const,
+    events: [],
+    notes: [],
+    citations: [],
+    mediaIds: [],
+    childOf: [],
+    partnerIn: ['F'],
+    leads: [],
+    extra: [],
+  };
+  const C = { ...P, id: 'C', partnerIn: [], childOf: [{ familyId: 'F', pedigree: 'birth' as const }] };
+  const F = {
+    id: 'F',
+    husbandId: 'P',
+    childIds: ['C'],
+    unionType: 'married' as const,
+    events: [],
+    notes: [],
+    citations: [],
+    mediaIds: [],
+    extra: [],
+  };
+  return {
+    header: { notes: [], language: 'French' },
+    individuals: { P, C },
+    families: { F },
+    sources: {},
+    repositories: {},
+    media: {},
+    extra: [],
+    importNotes: [],
+    resources: [],
+    documentIds: [],
+  };
+}

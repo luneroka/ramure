@@ -13,6 +13,10 @@ export class ApiError extends Error {
   }
 }
 
+/** A stalled request must fail, not hang the engine: 20 s for JSON, a minute for a file. */
+const timeoutFor = (raw?: BodyInit) =>
+  typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(raw ? 60_000 : 20_000) : undefined;
+
 async function call<T>(method: string, path: string, body?: unknown, raw?: BodyInit, contentType?: string): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -22,6 +26,7 @@ async function call<T>(method: string, path: string, body?: unknown, raw?: BodyI
     headers,
     body: raw ?? (body !== undefined ? JSON.stringify(body) : undefined),
     credentials: 'same-origin',
+    signal: timeoutFor(raw),
   });
   const text = await res.text();
   let data: Record<string, unknown> = {};
@@ -140,7 +145,8 @@ export const api = {
   renameTree: (id: string, name: string) => call<{ ok: true }>('PATCH', `/api/trees/${id}`, { name }),
   deleteTree: (id: string) => call<{ ok: true }>('DELETE', `/api/trees/${id}`),
 
-  pull: (id: string, since: number) => call<{ version: number; ops: Incoming[] }>('GET', `/api/trees/${id}/ops?since=${since}`),
+  pull: (id: string, since: number) =>
+    call<{ version: number; ops: Incoming[]; hasMore?: boolean }>('GET', `/api/trees/${id}/ops?since=${since}`),
   push: (id: string, baseVersion: number, ops: OpEnvelope[]) =>
     call<{ version: number; applied: string[]; rejected: Array<{ id: string; reason: string }> }>('POST', `/api/trees/${id}/ops`, {
       baseVersion,

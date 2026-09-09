@@ -75,7 +75,7 @@ function withoutFamily(tree: Tree, id: string): Tree {
 
 function must(tree: Tree, id: string): Individual {
   const ind = tree.individuals[id];
-  if (!ind) throw new Error(`Unknown person ${id}`);
+  if (!ind) throw new EditError(`Unknown person ${id}`);
   return ind;
 }
 
@@ -88,7 +88,7 @@ export interface NewPerson {
 }
 
 export function createPerson(tree: Tree, data: NewPerson = {}, id: string = newId('I')): EditResult {
-  if (tree.individuals[id]) throw new Error(`Duplicate id ${id}`);
+  if (tree.individuals[id]) throw new EditError(`Duplicate id ${id}`);
   const ind = newIndividual(id);
   ind.sex = data.sex ?? 'U';
   ind.names = [{ given: data.given ?? '', surname: data.surname ?? '' }];
@@ -111,6 +111,14 @@ export interface PersonPatch {
   media?: MediaObject[];
   /** Attached media, in order; index 0 is the portrait. */
   mediaIds?: string[];
+}
+
+/** A precondition of an edit no longer holds (the person is gone, the slot is taken): the op is dropped, not a bug. */
+export class EditError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EditError';
+  }
 }
 
 /** Media stored by Ramure itself use this scheme in FILE; the blob lives in IndexedDB under the media id. */
@@ -211,8 +219,8 @@ function birthFamily(tree: Tree, childId: string, familyId: string = newId('F'))
  */
 export function addParent(tree: Tree, childId: string, slot: 'father' | 'mother', data: NewPerson = {}, ids: NewIds = {}): EditResult {
   const { tree: t0, fam } = birthFamily(tree, childId, ids.family);
-  if (slot === 'father' && fam.husbandId) throw new Error('already has a father');
-  if (slot === 'mother' && fam.wifeId) throw new Error('already has a mother');
+  if (slot === 'father' && fam.husbandId) throw new EditError('already has a father');
+  if (slot === 'mother' && fam.wifeId) throw new EditError('already has a mother');
   const child = must(t0, childId);
   const surname = data.surname ?? (slot === 'father' ? (child.names[0]?.surname ?? '') : '');
   const created = createPerson(t0, { ...data, surname, sex: data.sex ?? (slot === 'father' ? 'M' : 'F') }, ids.person);
@@ -255,7 +263,7 @@ export function addChild(tree: Tree, personId: string, data: NewPerson = {}, fam
       ? t.families[person.partnerIn[0]!]
       : undefined;
   if (!fam) {
-    if (person.partnerIn.length > 1 && !familyId) throw new Error('choose a family');
+    if (person.partnerIn.length > 1 && !familyId) throw new EditError('choose a family');
     fam = newFamily(ids.family ?? newId('F'));
     if (person.sex === 'F') fam.wifeId = personId;
     else fam.husbandId = personId;
@@ -274,7 +282,7 @@ export function addChild(tree: Tree, personId: string, data: NewPerson = {}, fam
 
 function must_family(tree: Tree, id: string): Family {
   const f = tree.families[id];
-  if (!f) throw new Error(`Unknown family ${id}`);
+  if (!f) throw new EditError(`Unknown family ${id}`);
   return f;
 }
 
@@ -302,7 +310,7 @@ export function linkChild(tree: Tree, familyId: string, childId: string): EditRe
   const fam = must_family(tree, familyId);
   const child = must(tree, childId);
   if (fam.childIds.includes(childId)) return { tree, focusId: childId };
-  if (childId === fam.husbandId || childId === fam.wifeId) throw new Error('cannot be own child');
+  if (childId === fam.husbandId || childId === fam.wifeId) throw new EditError('cannot be own child');
   let t = withFamily(tree, { ...fam, childIds: [...fam.childIds, childId] });
   t = withIndividual(t, { ...child, childOf: [...child.childOf, { familyId, pedigree: 'birth' }] });
   return { tree: t, focusId: childId };
@@ -321,7 +329,7 @@ export function unlinkChild(tree: Tree, familyId: string, childId: string): Edit
 
 /** Link an existing person as the partner in a family with a free slot, or in a new family. */
 export function linkPartner(tree: Tree, personId: string, partnerId: string, ids: NewIds = {}): EditResult {
-  if (personId === partnerId) throw new Error('same person');
+  if (personId === partnerId) throw new EditError('same person');
   const person = must(tree, personId),
     partner = must(tree, partnerId);
   const already = person.partnerIn.map((f) => tree.families[f]).find((f) => f && (f.husbandId === partnerId || f.wifeId === partnerId));
@@ -384,7 +392,7 @@ export function updateFamily(tree: Tree, id: string, patch: FamilyPatch): EditRe
  * couple are merged too.
  */
 export function mergePeople(tree: Tree, keepId: string, dropId: string): EditResult {
-  if (keepId === dropId) throw new Error('same person');
+  if (keepId === dropId) throw new EditError('same person');
   const keep = must(tree, keepId),
     drop = must(tree, dropId);
   const dedupeNames = (a: Name[], b: Name[]) => {

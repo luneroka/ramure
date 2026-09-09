@@ -5,6 +5,7 @@
  */
 
 import type { Tree } from '../gedcom/model';
+import { EditError } from './edit';
 import { applyOp, type OpEnvelope } from './ops';
 
 export interface ReplayResult {
@@ -22,7 +23,9 @@ export function replayOps(tree: Tree, envelopes: OpEnvelope[]): ReplayResult {
       current = applyOp(current, env.op).tree;
       applied.push(env);
     } catch (err) {
-      rejected.push({ envelope: env, reason: err instanceof Error ? err.message : String(err) });
+      // Only a failed precondition is a conflict to skip; anything else is a bug that must surface.
+      if (!(err instanceof EditError)) throw err;
+      rejected.push({ envelope: env, reason: err.message });
     }
   }
   return { tree: current, applied, rejected };
