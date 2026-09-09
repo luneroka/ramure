@@ -107,14 +107,14 @@ cross-cutting primitives.
 
 One Hono app, one file per surface, all mounted in `index.ts`:
 
-| Route | File | Who may reach it |
-|---|---|---|
-| `/api/auth/*` | `auth.ts` | anyone (rate-limited) |
-| `/api/accounts/*` | `accounts.ts` | account members, by role |
-| `/api/trees/*` | `trees.ts` | tree members, by role |
-| `/api/invites/*` | `accounts.ts` | invited addresses |
-| `/api/admin/*` | `admin.ts` | `is_admin` only |
-| `/api/errors` | `errors.ts` | signed-in browsers reporting crashes |
+| Route             | File          | Who may reach it                     |
+| ----------------- | ------------- | ------------------------------------ |
+| `/api/auth/*`     | `auth.ts`     | anyone (rate-limited)                |
+| `/api/accounts/*` | `accounts.ts` | account members, by role             |
+| `/api/trees/*`    | `trees.ts`    | tree members, by role                |
+| `/api/invites/*`  | `accounts.ts` | invited addresses                    |
+| `/api/admin/*`    | `admin.ts`    | `is_admin` only                      |
+| `/api/errors`     | `errors.ts`   | signed-in browsers reporting crashes |
 
 Shared: `util.ts` (ids, hashing, `HttpError`, input validation), `env.ts`
 (bindings and per-request vars), `ratelimit.ts` (fixed windows in D1),
@@ -132,15 +132,15 @@ sniffing), `backup.ts` and `maintenance.ts` (the nightly cron).
 
 ## Where to add a thing
 
-| You are adding… | It goes… |
-|---|---|
-| A new kind of edit | `src/tree/ops.ts` (the op + `applyOp` + its inverse in `diff.ts`), then the UI that builds it |
-| A GEDCOM tag or dialect quirk | `src/gedcom/parse.ts` or `geneweb.ts`, with a fixture test |
-| A new screen | `src/app/`, a route in `router.ts`, strings in `i18n.ts` |
-| A derived view of a tree | `src/tree/`, pure, with tests — never inside a component |
-| A new API surface | a file in `worker/`, mounted in `index.ts`, with a role check and tests |
-| A schema change | a new `migrations/00NN_*.sql`, applied locally and remotely |
-| Anything drawn on the canvas | `src/canvas/renderer.ts`, fed by a `Layout` field you add in `src/tree/layout.ts` |
+| You are adding…               | It goes…                                                                                      |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
+| A new kind of edit            | `src/tree/ops.ts` (the op + `applyOp` + its inverse in `diff.ts`), then the UI that builds it |
+| A GEDCOM tag or dialect quirk | `src/gedcom/parse.ts` or `geneweb.ts`, with a fixture test                                    |
+| A new screen                  | `src/app/`, a route in `router.ts`, strings in `i18n.ts`                                      |
+| A derived view of a tree      | `src/tree/`, pure, with tests — never inside a component                                      |
+| A new API surface             | a file in `worker/`, mounted in `index.ts`, with a role check and tests                       |
+| A schema change               | a new `migrations/00NN_*.sql`, applied locally and remotely                                   |
+| Anything drawn on the canvas  | `src/canvas/renderer.ts`, fed by a `Layout` field you add in `src/tree/layout.ts`             |
 
 ## Local development
 
