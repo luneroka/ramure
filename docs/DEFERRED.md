@@ -49,6 +49,54 @@ certain threshold is reached".
 
 ---
 
+## `dev-dependency-advisories`
+
+**The work.** Lift the hold on `@cloudflare/vitest-pool-workers` in
+[.github/dependabot.yml](../.github/dependabot.yml) and clear the development
+advisories that come with it.
+
+**Why it was deferred.** `npm audit` reports ten, six of them high — `sharp`
+(libvips and libheif), `undici`, `ws`, `esbuild` — and every one lives under
+wrangler / miniflare / `@cloudflare/vitest-pool-workers`. **None of it ships.**
+The Worker bundle contains none of those packages and `npm audit --omit=dev` is
+clean. The realistic exposure is a developer's own machine: the `esbuild`
+advisory lets a page the developer visits read from the local dev server while
+it is running, and `sharp` needs a hostile image reaching miniflare's image
+emulation, which Ramure never invokes.
+
+And it cannot be fixed today. `npm audit fix --force` wants
+`@cloudflare/vitest-pool-workers@0.22.0`, which needs vitest 4, which
+`dependabot.yml` holds at 3 on purpose — that hold was added on 2026-09-09 after
+a Dependabot pull request that could not install at all, because the package is
+`0.x` and npm treats 0.12 → 0.22 as a minor bump carrying a peer dependency on
+the next vitest major.
+
+**What makes it worth doing.**
+
+| Measure                                                 | Limit | Why that number                                                                                               |
+| ------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------- |
+| High or critical dev advisories fixable without a major | **0** | Any at all means the held major is no longer what is blocking the fix, so the reason for waiting has expired. |
+
+`scripts/check-thresholds.mjs` reads `fixAvailable` from `npm audit --json`:
+`true`, or an object with `isSemVerMajor: false`, is npm saying the fix needs no
+breaking change. When the audit cannot run at all it says so in the label rather
+than reporting a clean result.
+
+The other trigger has no cheap measure and counts for more: **any of this
+becoming reachable from the deployed Worker.** That would mean one of these
+packages entered `dependencies` rather than `devDependencies`, which should
+never happen silently — `npm audit --omit=dev` in CI is what would say so.
+
+**What it would look like.** One deliberate migration, not a routine bump:
+vitest 3 → 4 and `@cloudflare/vitest-pool-workers` together, since the peer
+range ties them. Both test configurations run against it before the hold comes
+off dependabot.
+
+**Recorded** 2026-09-09, from finding S9 of
+[SECURITY_AUDIT_2026-09.md](SECURITY_AUDIT_2026-09.md).
+
+---
+
 ## Adding an entry
 
 Keep the shape: the work, why it was deferred, the measurable condition, and a
