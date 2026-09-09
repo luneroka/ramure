@@ -87,11 +87,10 @@ because a missing mail key breaks new sign-ins but must not break a working
 app. Problems carry setting names and reasons, never values — there is a test
 asserting that.
 
-### `[x]` H2. No secret scanning, and the CI gate is unreachable
+### `[~]` H2. No secret scanning, and the CI gate is unreachable
 
-_Done 2026-09-09, pass 1: [.github/workflows/secret-scan.yml](../.github/workflows/secret-scan.yml),
-on push and pull request, with `fetch-depth: 0` so it scans history and not
-just the tip._
+_Pass 1, 2026-09-09. The first attempt was **wrong** and is recorded here
+because the mistake is the useful part; see "What H2 turned out to be"._
 
 
 `ccig-app` runs Gitleaks on every push and pull request. Ramure runs nothing:
@@ -103,6 +102,50 @@ cannot catch a secret that has already been committed.
 Gitleaks is free on public repositories and runs in seconds. This is the one
 check worth having automated even with no Actions budget — it should be its
 own tiny workflow, not a job inside the disabled one.
+
+#### What H2 turned out to be
+
+The workflow was written, pushed, and **failed on every run** — not on a
+finding, but because the job never started: *"recent account payments have
+failed or your spending limit needs to be increased."*
+
+The premise was wrong. Gitleaks is free on public repositories, and
+`luneroka/ramure` is **private** — so its Actions minutes are metered like
+every other workflow's, and the account's are spent. A check that cannot run
+is worse than no check: a permanently red mark teaches you to ignore red
+marks. The workflow was removed the same hour.
+
+Two things replaced it.
+
+**A local scan.** [scripts/scan-secrets.sh](../scripts/scan-secrets.sh) runs
+gitleaks over the whole history and is part of `/preflight`. It exits 127 with
+install instructions when gitleaks is absent, so "did not run" can never be
+mistaken for "found nothing". First run over 111 commits: **clean**.
+
+**The real fix — make the repository public.** Yoann chose this on
+2026-09-09. Public repositories get *unlimited* Actions minutes, so this does
+not merely restore the secret scan: it restores the **entire CI gate** that had
+to be disabled, and removes the standing risk that the local suite is skipped
+because a human or an agent forgot. That is the largest hygiene win available
+here, and it costs nothing.
+
+Checked before recommending it: gitleaks clean over all 111 commits; the only
+`.ged` files in history are the two fixtures, whose own header states *« Arbre
+entièrement fictif… Toute ressemblance avec des personnes réelles serait
+fortuite »* (the real 124-person file from a friend was never committed); and
+the auth design leans on hashed tokens, a peppered code, browser binding and
+rate limits rather than on obscurity.
+
+One prerequisite, done in this pass: `ADMIN_EMAIL` held Yoann's personal
+address in `wrangler.toml`. Not a credential — sign-in is invite-only and the
+flag also lives in the database — but a personal address in readable source is
+harvested, and it names the one account worth targeting. It is a secret now.
+Public does **not** mean reusable: [COPYRIGHT.md](../COPYRIGHT.md) keeps all
+rights reserved, which makes this source-available.
+
+**Still open:** restoring `ci.yml` to run on push and pull request. It waits
+until the repository is actually public, so the checks do not go red again in
+the meantime.
 
 ### `[x]` H3. `coverage/` is committed to git
 

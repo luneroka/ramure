@@ -51,6 +51,7 @@ npm test
 npm run build
 npm run test:worker
 npx playwright test        # after: npm run build && restart npm run dev:api
+./scripts/scan-secrets.sh   # gitleaks over the whole history
 ```
 
 `/preflight` runs this for you.

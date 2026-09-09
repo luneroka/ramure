@@ -22,7 +22,12 @@ npm run format:check
 npm test
 npm run build
 npm run test:worker
+./scripts/scan-secrets.sh
 ```
+
+`scan-secrets.sh` runs gitleaks over the whole history. It exits 127 with
+install instructions if gitleaks is missing (`brew install gitleaks`) rather
+than passing quietly — "did not run" must never look like "found nothing".
 
 `npm run typecheck` checks both projects — the app and the Worker, which have
 separate tsconfigs. `npm run format:check` fails on unformatted files; fix with

@@ -8,6 +8,11 @@ APP_ORIGIN=http://localhost:5175
 # Only works together with the two conditions below, so it cannot leak in production.
 DEV_ECHO_LINKS=1
 
+# Your own address, if you want to reach the administration page locally.
+# In production this is a secret, not a var — a personal address does not
+# belong in `wrangler.toml`, which anyone who can read the repository can read.
+# ADMIN_EMAIL=you@example.org
+
 # RESEND_API_KEY is deliberately absent.
 #
 # Echo mode above requires that there is no key, that this flag is `1`, and

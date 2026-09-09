@@ -27,11 +27,17 @@ binding = "MEDIA"
 bucket_name = "ramure-media"
 
 # Production values. Local development overrides them in .dev.vars (git-ignored):
-#   APP_ORIGIN=http://localhost:5173
+#   APP_ORIGIN=http://localhost:5175
 #   DEV_ECHO_LINKS=1
 [vars]
 APP_ORIGIN = "https://ramure.ramure.workers.dev"
 MAIL_FROM = "Ramure <contact@contact.luneroka.com>"
-ADMIN_EMAIL = "luneroka@gmail.com"
 
-# Secrets, set with `wrangler secret put`: RESEND_API_KEY
+# Secrets, set with `wrangler secret put`: RESEND_API_KEY, CODE_PEPPER, ADMIN_EMAIL
+#
+# ADMIN_EMAIL is the operator's own address — it decides who is administrator and
+# receives access requests. It is a secret rather than a var because this file is
+# readable by anyone who can read the repository, and a personal address in source
+# is harvested. It is not a credential: sign-in is invite-only and the flag also
+# lives in the database, so an unset ADMIN_EMAIL costs the notification mails, not
+# the account. The administration page says so when it is missing.
