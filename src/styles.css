@@ -1,3 +1,41 @@
+/**
+ * Ramure’s stylesheet. One file, on purpose — the reason is at the foot of this comment.
+ *
+ * It is navigated by searching for a banner, not by scrolling. The sections, in
+ * source order (which is also cascade order, so it matters):
+ *
+ *   Tokens and reset ............ :root variables, dark theme, base elements
+ *   Top bar ..................... the bar above the canvas
+ *   Stage ....................... the canvas area and what clips it
+ *   Empty state ................. before a tree is loaded
+ *   Person panel ................ the panel's frame and lists
+ *   Editing ..................... buttons, dialogs, editors, add-relative, HUD
+ *   Guided date and place fields  the assisted inputs
+ *   Portraits ................... the medallion and its picker
+ *   Library, sign-in, sync, ..... the account surfaces
+ *   Login and account home
+ *   Person panel: hero, bands, timeline
+ *   Navigation .................. menus, tree switcher, avatar, home cards
+ *   Form controls ............... alignment of labelled fields and buttons
+ *   Split person panel
+ *   Documents, leads, resources
+ *   Controls .................... one quiet scale everywhere, accent focus
+ *   Edit dialog ................. sectioned body, fixed head and foot
+ *   Relationship banner
+ *   Timeline (« Frise »)
+ *   Map (« Carte »)
+ *   Crash surface, update banner, keyboard, printable charts
+ *
+ * Why one file. Splitting it was considered in the September 2026 hygiene pass
+ * and rejected. The rules for one component are not contiguous — the person
+ * panel alone lives in five clusters between lines 390 and 2167 — so slicing at
+ * line boundaries would produce files whose names lie about their contents.
+ * Grouping them properly means reordering, and 27 selectors here are declared
+ * more than once (`.panel` three times, `.topbar` twice), so order decides which
+ * declaration wins. A reorder would change that silently. See
+ * docs/HYGIENE_2026-09.md, finding H11.
+ */
+
 :root {
   --ground: #f5f6f3;
   --surface: #ffffff;
@@ -620,7 +658,7 @@ textarea:focus {
   }
 }
 
-/* ---------- Phase 2: editing ---------- */
+/* ---------- Editing: buttons, dialogs, the editors, the add-relative menu, the HUD ---------- */
 .btn.icon {
   min-width: 38px;
   padding: 6px 8px;
