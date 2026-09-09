@@ -19,6 +19,7 @@ interface Props {
 
 export function Admin({ lang, onBack, toast, ask }: Props) {
   const [data, setData] = useState<AdminOverview | null>(null);
+  const [copies, setCopies] = useState<{ treeId: string; list: Array<{ day: string; size: number }> } | null>(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
@@ -209,6 +210,52 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
                   {a.members} {t(lang, a.members === 1 ? 'memberOne' : 'memberMany')} · {a.trees}{' '}
                   {t(lang, a.trees === 1 ? 'treeOne' : 'treeMany')} · {formatBytes(a.bytes, lang)}
                 </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="home-card" id="admin-backups">
+        <h2>{t(lang, 'backups')}</h2>
+        <p className="muted small">{t(lang, 'backupsHint')}</p>
+        {data && (
+          <ul className="member-list">
+            {data.trees.map((tr) => (
+              <li key={tr.id}>
+                <span className="grow">
+                  <strong>{tr.name}</strong>
+                  <span className="muted small">
+                    {' '}
+                    · {tr.account_name ?? '—'} · {tr.people} · {new Date(tr.updated_at).toLocaleDateString(locale)}
+                  </span>
+                  {copies?.treeId === tr.id && (
+                    <ul className="backup-list">
+                      {copies.list.length === 0 && <li className="muted small">{t(lang, 'noCopies')}</li>}
+                      {copies.list.map((b) => (
+                        <li key={b.day}>
+                          <a href={`/api/admin/backups/${encodeURIComponent(tr.id)}/${b.day}`} download={`${tr.name}-${b.day}.ged`}>
+                            {b.day}
+                          </a>{' '}
+                          <span className="muted small">{formatBytes(b.size, lang)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </span>
+                <button
+                  className="btn small"
+                  onClick={() =>
+                    copies?.treeId === tr.id
+                      ? setCopies(null)
+                      : api
+                          .adminBackups(tr.id)
+                          .then((r) => setCopies({ treeId: tr.id, list: r.backups }))
+                          .catch(() => toast(t(lang, 'syncError')))
+                  }
+                >
+                  {t(lang, 'showCopies')}
+                </button>
               </li>
             ))}
           </ul>

@@ -69,6 +69,7 @@ export interface AdminOverview {
   invites: Array<{ id: string; email: string; created_at: number; expires_at: number }>;
   accounts: Array<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>;
   requests: Array<{ id: string; email: string; message: string | null; requested_at: number }>;
+  trees: Array<{ id: string; name: string; version: number; people: number; updated_at: number; account_name: string | null }>;
 }
 
 export interface TreeSummary {
@@ -106,6 +107,8 @@ export const api = {
   requestDeletion: (note: string) => call<{ ok: true; requestedAt: number }>('POST', '/api/auth/deletion-request', { note }),
   cancelDeletion: () => call<{ ok: true }>('DELETE', '/api/auth/deletion-request'),
   adminOverview: () => call<AdminOverview>('GET', '/api/admin/overview'),
+  adminBackups: (treeId: string) =>
+    call<{ backups: Array<{ day: string; size: number }> }>('GET', `/api/admin/backups/${encodeURIComponent(treeId)}`),
   adminInvite: (email: string) => call<{ id: string; email: string; expiresAt: number }>('POST', '/api/admin/invites', { email }),
   requestAccess: (email: string, message: string) => call<{ ok: true }>('POST', '/api/auth/access-request', { email, message }),
   adminInviteRequest: (id: string) =>

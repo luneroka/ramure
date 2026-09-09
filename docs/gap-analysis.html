@@ -201,7 +201,7 @@
   <div class="phase"><h3>Operations, in parallel</h3><div class="when">half a day of setup, then ongoing</div>
     <ul>
       <li>Workers Paid plan for CPU headroom and 30-day point-in-time restore, and a Durable Object per tree.</li>
-      <li>Nightly per-tree exports to R2, R2 object versioning, a repair endpoint.</li>
+      <li>Nightly per-tree exports to R2 — done 9 September 2026: each changed tree is copied as GEDCOM to <code>backups/&lt;tree&gt;/&lt;day&gt;.ged</code> after the reaper, kept thirty days (the newest always, a deleted tree's copies for the same season), listed and downloadable from the administration page. R2 object versioning and a repair endpoint remain.</li>
       <li>Your own domain for the app and the mail links; a DMARC record on the sending domain, which is the missing piece behind the Outlook warning (DKIM and SPF are already in place).</li>
       <li>A staging Worker with its own database, migrations run from CI with an export first, error reporting from the browser, dependency updates on a schedule.</li>
     </ul>

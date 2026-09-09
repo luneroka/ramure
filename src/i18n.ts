@@ -190,6 +190,13 @@ const strings = {
   },
   noPrintPerson: { fr: 'Sélectionnez d’abord une personne dans l’arbre.', en: 'Select a person in the tree first.' },
   stageMode: { fr: 'Vue', en: 'View' },
+  backups: { fr: 'Sauvegardes', en: 'Backups' },
+  backupsHint: {
+    fr: 'Chaque nuit, une copie GEDCOM de chaque arbre modifié est déposée dans le stockage ; les copies sont gardées trente jours, la plus récente toujours.',
+    en: 'Every night a GEDCOM copy of each changed tree is stored; copies are kept thirty days, the newest always.',
+  },
+  showCopies: { fr: 'Voir les copies', en: 'Show copies' },
+  noCopies: { fr: 'Aucune copie encore (la première est faite la nuit prochaine).', en: 'No copy yet (the first one is made tonight).' },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',

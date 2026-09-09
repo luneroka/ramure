@@ -11,6 +11,7 @@ import type { Env, Vars } from './env';
 import { accounts, invites } from './accounts';
 import { trees } from './trees';
 import { admin } from './admin';
+import { backup } from './backup';
 import { reap } from './maintenance';
 import { HttpError } from './util';
 
@@ -45,6 +46,6 @@ export default {
   fetch: app.fetch,
   /** The nightly cron from wrangler.toml. */
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(reap(env));
+    ctx.waitUntil(backup(env).then(() => reap(env)));
   },
 };
