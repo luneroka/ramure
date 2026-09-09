@@ -204,14 +204,27 @@
     </ul>
   </div>
 
-  <h2>Decisions that are yours</h2>
+  <h2>Decisions taken on 9 September</h2>
   <div class="ask">
     <ul>
-      <li><strong>Paid plan.</strong> Workers Paid is about five dollars a month and removes the CPU ceiling that will otherwise stop trees at a few hundred people. Without it, pass 2 has to work around the limit with much more code.</li>
-      <li><strong>Domain.</strong> A domain you own fixes the mail reputation problem and the link blocking; it is also where the media origin and the staging site go.</li>
-      <li><strong>Conflict policy.</strong> When two people change the same fact of the same person, should the later save win with a notice, or should the second person be asked to choose? The plan assumes the notice, which is simpler and matches how Geneanet behaves.</li>
-      <li><strong>Data rights.</strong> Whether account and user deletion, and a full data export per person, ship in pass 2 or later. For a product that holds other families' data, I recommend pass 2.</li>
+      <li><strong>Paid plan.</strong> Treated as available: the code assumes Workers Paid and does not work around the free-plan CPU ceiling. Yoann upgrades from the dashboard the day the limit is hit.</li>
+      <li><strong>Domain.</strong> Wanted, on hold until a name is chosen. Everything that depends on it (media origin, staging, mail links) is written so that switching is a configuration change.</li>
+      <li><strong>Conflict policy.</strong> Later save wins with a notice to the person whose edit was overwritten.</li>
+      <li><strong>Data rights.</strong> In pass 2. Users do not delete their own account: they request it from Paramètres and Yoann approves.</li>
+      <li><strong>Closed registration.</strong> Nobody can sign up on their own. Yoann sends an invitation, the person signs in from it, and they are in. This is pass 0 below.</li>
     </ul>
+  </div>
+
+  <div class="phase"><h3>Pass 0, closed door</h3><div class="when">1.5 days · first, because it decides who can get in at all</div>
+    <ul>
+      <li>An <em>administrateur de l'application</em> flag on users; Yoann's user carries it. An « Administration » page reachable from the avatar menu for that user only.</li>
+      <li>Application invitations: the admin enters an address, the app mails « Yoann vous invite sur Ramure » with a link and a code, valid seven days, single use. The address is allowed to sign in from that moment; the first sign-in creates the user.</li>
+      <li>Sign-in refuses any address that is neither an existing user nor invited, with a neutral message that does not reveal which.</li>
+      <li>Family-account invitations keep working, but only for addresses already allowed into the application. Owners see that rule when they create one.</li>
+      <li>Deletion requests: a user asks from Paramètres, the request lands on the admin page, Yoann approves or declines; approval removes the user, their memberships, and any account and trees they were the sole owner of, plus the R2 files.</li>
+      <li>Admin page lists users, pending invitations, deletion requests, and the storage each account uses.</li>
+    </ul>
+    <div class="done">Done when: an unknown address cannot obtain a sign-in mail; an invited address can; an account invite link does nothing for an unknown address; a deletion runs end to end from request to approval.</div>
   </div>
 
   <h2>Until then</h2>
