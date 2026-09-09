@@ -7,11 +7,23 @@
 import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
 import { echoMode, sendMail } from './mail';
-import { HttpError, maskEmail, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { emailFor, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { hit } from './ratelimit';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Inviting sends mail to an address the caller chooses, from the domain that
+ * also carries everyone's sign-in codes — and any signed-in person can create
+ * an account and become its owner. Far past what a family needs, so a runaway
+ * script is stopped long before the sending reputation is.
+ */
+const INVITES_PER_ACCOUNT_PER_DAY = 10;
+const INVITES_PER_USER_PER_DAY = 20;
+/** An invitation id is the first 12 characters of its token hash: lower-case hex, nothing else. */
+const INVITE_ID_RE = /^[0-9a-f]{12}$/;
 
 export function requireUser(user: User | null): User {
   if (!user) throw new HttpError(401, 'sign_in_required');
@@ -84,7 +96,7 @@ accounts.get('/:id/members', async (c) => {
     .bind(id)
     .all<{ id: string; email: string; name: string | null; role: AccountRole; added_at: number }>();
   // Owners manage the roster and see addresses; everyone else sees names and masked addresses.
-  const members = rows.results.map((m) => (mine === 'owner' || m.id === user.id ? m : { ...m, email: maskEmail(m.email) }));
+  const members = rows.results.map((m) => ({ ...m, email: emailFor(m.email, { isOwner: mine === 'owner', isSelf: m.id === user.id }) }));
   return c.json({ members });
 });
 
@@ -147,6 +159,8 @@ accounts.post('/:id/invites', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
+  await hit(c.env, `invite:acct:${id}`, INVITES_PER_ACCOUNT_PER_DAY, DAY_MS);
+  await hit(c.env, `invite:user:${user.id}`, INVITES_PER_USER_PER_DAY, DAY_MS);
   const body = await readJson<{ email?: string; role?: string }>(c.req.raw, 4096);
   const email = normaliseEmail(body.email);
   const role: AccountRole = body.role === 'viewer' ? 'viewer' : 'member';
@@ -222,8 +236,12 @@ accounts.delete('/:id/invites/:inviteId', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
+  // A prefix match, so the value reaches a LIKE pattern: `%` here would revoke every invitation
+  // of the account at once. Bound to the shape the list hands out and nothing else.
+  const inviteId = c.req.param('inviteId');
+  if (!INVITE_ID_RE.test(inviteId)) throw new HttpError(400, 'bad_id', { field: 'invite id' });
   await c.env.DB.prepare(`UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND token_hash LIKE ?`)
-    .bind(now(), id, c.req.param('inviteId') + '%')
+    .bind(now(), id, inviteId + '%')
     .run();
   return c.json({ ok: true });
 });

@@ -14,7 +14,7 @@ import type { Op, OpEnvelope } from '../src/tree/ops';
 import { displayName } from '../src/gedcom/model';
 import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
-import { HttpError, now, randomId, readJson, requireId } from './util';
+import { emailFor, HttpError, now, randomId, readJson, requireId } from './util';
 import type { ErrorCode } from './errorCodes';
 import { extensionOf, sniffMediaType } from './media';
 
@@ -307,19 +307,29 @@ trees.post('/:id/ops', async (c) => {
 trees.get('/:id/snapshots', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
-  await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
+  const role = await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
   const rows = await c.env.DB.prepare(
-    `SELECT s.id, s.version, s.created_at, s.label, u.name AS by_name, u.email AS by_email FROM tree_snapshots s LEFT JOIN users u ON u.id = s.created_by WHERE s.tree_id = ? ORDER BY s.created_at DESC LIMIT 100`,
+    `SELECT s.id, s.version, s.created_at, s.label, s.created_by, u.name AS by_name, u.email AS by_email FROM tree_snapshots s LEFT JOIN users u ON u.id = s.created_by WHERE s.tree_id = ? ORDER BY s.created_at DESC LIMIT 100`,
   )
     .bind(id)
-    .all<{ id: string; version: number; created_at: number; label: string | null; by_name: string | null; by_email: string | null }>();
+    .all<{
+      id: string;
+      version: number;
+      created_at: number;
+      label: string | null;
+      created_by: string | null;
+      by_name: string | null;
+      by_email: string | null;
+    }>();
+  // Nobody has a display name at first sign-in, so the address is the usual case here, not the
+  // rare one: without `emailFor` this list handed a read-only relative everyone's real address.
   return c.json({
     snapshots: rows.results.map((r) => ({
       id: r.id,
       version: r.version,
       created_at: r.created_at,
       label: r.label,
-      by: r.by_name || r.by_email || null,
+      by: r.by_name || (r.by_email ? emailFor(r.by_email, { isOwner: role === 'owner', isSelf: r.created_by === user.id }) : null),
     })),
   });
 });

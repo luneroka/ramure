@@ -48,4 +48,29 @@ describe('invitations by an account owner', () => {
     const late = new Client();
     expect(await late.signIn('late@example.org')).toBe(403);
   });
+
+  it('refuses an invitation id that is not one, so a wildcard cannot revoke the whole list', async () => {
+    // The id is matched as a LIKE prefix. Unbounded, `%` here revoked every live invitation at once.
+    const { c, accountId } = await owner('owner-like@example.org');
+    for (const email of ['a1@example.org', 'a2@example.org', 'a3@example.org'])
+      expect((await c.call('POST', `/api/accounts/${accountId}/invites`, { email })).status).toBe(201);
+    for (const bad of ['%', '_', 'a%', '../etc', 'ABCDEF012345', 'short']) {
+      const r = await c.call<{ code: string }>('DELETE', `/api/accounts/${accountId}/invites/${encodeURIComponent(bad)}`);
+      expect(r.status).toBe(400);
+      expect(r.body.code).toBe('bad_id');
+    }
+    const live = await c.call<{ invites: unknown[] }>('GET', `/api/accounts/${accountId}/invites`);
+    expect(live.body.invites).toHaveLength(3);
+  });
+
+  it('caps how many invitations an account can send in a day', async () => {
+    // Any signed-in person can create an account and own it, and inviting mails an address of
+    // their choosing from the domain that also carries everyone's sign-in codes.
+    const { c, accountId } = await owner('owner-flood@example.org');
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i++)
+      codes.push((await c.call('POST', `/api/accounts/${accountId}/invites`, { email: `guest${i}@example.org` })).status);
+    expect(codes.filter((s) => s === 201)).toHaveLength(10);
+    expect(codes.slice(10)).toEqual([429, 429]);
+  });
 });

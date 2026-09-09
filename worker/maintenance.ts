@@ -17,6 +17,14 @@ export const MEDIA_GRACE_MS = 30 * DAY;
 export const KEEP_AUTO_SNAPSHOTS = 20;
 /** Guard snapshots (« Avant suppression… ») are kept this long; named versions are kept for good. */
 export const KEEP_GUARD_MS = 90 * DAY;
+/**
+ * An access request is deleted when it becomes an invitation or is declined, so
+ * the ones that would otherwise stay for ever belong to people who were refused
+ * or never answered — an address and 600 characters of free text about someone
+ * with no relationship to the service at all. Ninety days is generous for
+ * « somebody asked and we have not decided ».
+ */
+export const KEEP_ACCESS_REQUESTS_MS = 90 * DAY;
 
 export interface ReapReport {
   filesDeleted: number;
@@ -97,5 +105,9 @@ export async function reap(env: Env, at = now()): Promise<ReapReport> {
     .bind(at - KEEP_ERRORS_MS)
     .run();
   report.rowsPurged += errs.meta.changes ?? 0;
+  const asked = await env.DB.prepare(`DELETE FROM access_requests WHERE requested_at < ?`)
+    .bind(at - KEEP_ACCESS_REQUESTS_MS)
+    .run();
+  report.rowsPurged += asked.meta.changes ?? 0;
   return report;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
 import { app } from './index';
-import { KEEP_AUTO_SNAPSHOTS, MEDIA_GRACE_MS, reap } from './maintenance';
+import { KEEP_ACCESS_REQUESTS_MS, KEEP_AUTO_SNAPSHOTS, MEDIA_GRACE_MS, reap } from './maintenance';
 import { Client, invite } from './test/helpers';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1]);
@@ -75,5 +75,20 @@ describe('nightly maintenance', () => {
     expect(r.snapshotsDeleted).toBe(5);
     const left = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tree_snapshots WHERE tree_id = ?`).bind(treeId).first<{ n: number }>();
     expect(left?.n).toBe(KEEP_AUTO_SNAPSHOTS + 1);
+  });
+
+  it('lets go of access requests nobody ever answered, and keeps the recent ones', async () => {
+    // A request is deleted when it becomes an invitation or is declined, so what lingers belongs
+    // to people who were refused or ignored — the ones with no relationship to the service at all.
+    const old = Date.now() - KEEP_ACCESS_REQUESTS_MS - 1000;
+    await env.DB.prepare(`INSERT INTO access_requests (id, email, message, requested_at) VALUES (?, ?, ?, ?)`)
+      .bind('Qold', 'forgotten@example.org', 'je suis un cousin', old)
+      .run();
+    await env.DB.prepare(`INSERT INTO access_requests (id, email, message, requested_at) VALUES (?, ?, ?, ?)`)
+      .bind('Qnew', 'recent@example.org', 'moi aussi', Date.now())
+      .run();
+    await reap(env);
+    expect(await env.DB.prepare(`SELECT id FROM access_requests WHERE id = 'Qold'`).first()).toBeNull();
+    expect(await env.DB.prepare(`SELECT id FROM access_requests WHERE id = 'Qnew'`).first()).not.toBeNull();
   });
 });

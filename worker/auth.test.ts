@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { env } from 'cloudflare:test';
 import { adminClient, Client, invite } from './test/helpers';
 
 describe('closed door', () => {
@@ -113,5 +114,18 @@ describe('access requests', () => {
     expect(await new Client().signIn('hopeful@example.org')).toBe(200);
     const after = await a.call<{ requests: Array<{ email: string }> }>('GET', '/api/admin/overview');
     expect(after.body.requests.some((r) => r.email === 'hopeful@example.org')).toBe(false);
+  });
+
+  it('stops one caller flooding the operator with mail by varying the address', async () => {
+    // The per-address freshness check does nothing here: every request names a new address, and
+    // each one both writes a row and mails the operator. Only the per-client limit stops it.
+    const c = new Client();
+    const codes: number[] = [];
+    for (let i = 0; i < 7; i++)
+      codes.push((await c.call('POST', '/api/auth/access-request', { email: `flood${i}@example.org`, message: 'x' })).status);
+    expect(codes.slice(0, 5)).toEqual([200, 200, 200, 200, 200]);
+    expect(codes.slice(5)).toEqual([429, 429]);
+    const rows = await env.DB.prepare(`SELECT COUNT(*) AS n FROM access_requests WHERE email LIKE 'flood%'`).first<{ n: number }>();
+    expect(rows?.n).toBe(5);
   });
 });

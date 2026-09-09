@@ -19,6 +19,16 @@ export const SESSION_COOKIE = 'ramure_session';
 /** Set when a sign-in is requested; the link or code only works from the browser that holds it. */
 export const SIGNIN_COOKIE = 'ramure_signin';
 const WINDOW_MS = 15 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+/**
+ * Asking for access is the only unauthenticated route that makes the app send
+ * mail to a fixed address — the operator's. The per-address freshness check
+ * below does nothing against a caller varying the address, so the limit is per
+ * client and, because a distributed flood would outrun that, overall as well.
+ * Nobody legitimately asks for access twice in an hour.
+ */
+const ACCESS_REQUESTS_PER_IP = 5;
+const ACCESS_REQUESTS_OVERALL_PER_HOUR = 50;
 const MAX_FAILED_CODES = 10;
 const LINK_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -244,6 +254,8 @@ auth.patch('/me', async (c) => {
 
 /** Anyone may ask for an invitation; the administrator hears about it by mail and decides. Same answer whatever the address. */
 auth.post('/access-request', async (c) => {
+  await hit(c.env, `access:ip:${clientIp(c.req.raw)}`, ACCESS_REQUESTS_PER_IP, WINDOW_MS);
+  await hit(c.env, 'access:all', ACCESS_REQUESTS_OVERALL_PER_HOUR, HOUR_MS);
   const body = await readJson<{ email: string; message: string }>(c.req.raw, 4096);
   const email = normaliseEmail(body.email);
   const message = String(body.message ?? '')
