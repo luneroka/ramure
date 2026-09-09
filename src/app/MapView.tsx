@@ -109,21 +109,34 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
     return () => ro.disconnect();
   }, []);
 
-  const locate = async () => {
-    if (progress || !missing.length) return;
+  // Places are located as soon as the map opens; each place is tried once per visit, so what the service
+  // could not find does not start the pass again.
+  const attempted = useRef(new Set<string>());
+  const running = useRef(false);
+  useEffect(() => {
+    if (readOnly || running.current) return;
+    const todo = missing.filter((p) => !attempted.current.has(p.text));
+    if (!todo.length) return;
+    for (const p of todo) attempted.current.add(p.text);
+    running.current = true;
     const ctrl = new AbortController();
     abort.current = ctrl;
-    setProgress({ done: 0, total: missing.length, found: 0 });
-    const fixes = await geocodeAll(
-      missing.map((p) => ({ text: p.text, parts: p.place.parts.filter((x) => x.trim()) })),
+    setProgress({ done: 0, total: todo.length, found: 0 });
+    void geocodeAll(
+      todo.map((p) => ({ text: p.text, parts: p.place.parts.filter((x) => x.trim()) })),
       ctrl.signal,
-      (done, found) => setProgress({ done, total: missing.length, found }),
-    );
-    setProgress(null);
-    abort.current = null;
-    if (fixes.length) onGeocoded(fixes);
-    else onNotice(t(lang, 'geocodeNone'));
-  };
+      (done, found) => setProgress({ done, total: todo.length, found }),
+    ).then((fixes) => {
+      running.current = false;
+      abort.current = null;
+      setProgress(null);
+      if (ctrl.signal.aborted) return;
+      if (fixes.length) onGeocoded(fixes);
+      else onNotice(t(lang, 'geocodeNone'));
+    });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [missing, readOnly]);
 
   return (
     <div className={`map-view ${dark ? 'map-dark' : ''}`}>
@@ -140,16 +153,9 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
               </button>
             </>
           ) : (
-            <>
-              <span>
-                {missing.length} {t(lang, missing.length === 1 ? 'placeMissing' : 'placesMissing')}
-              </span>
-              {!readOnly && (
-                <button className="btn small primary" onClick={() => void locate()}>
-                  {t(lang, 'locatePlaces')}
-                </button>
-              )}
-            </>
+            <span>
+              {missing.length} {t(lang, missing.length === 1 ? 'placeMissing' : 'placesMissing')}
+            </span>
           )}
         </div>
       )}

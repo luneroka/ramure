@@ -78,6 +78,7 @@ export function TopBar(p: Props) {
               readOnly={w.readOnly}
               onReport={() => w.dispatch({ type: 'showReport', show: true })}
               onResources={() => p.navigate({ name: 'resources', id: w.source.id })}
+              onPrint={() => p.navigate({ name: 'print', id: w.source.id })}
               onReload={p.onReload}
               onDelete={p.onDeleteTree}
             />

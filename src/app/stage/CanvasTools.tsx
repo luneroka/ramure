@@ -14,20 +14,30 @@ const VIEWS: Array<{ id: ViewMode; key: 'viewAll' | 'viewHourglass' | 'viewAnces
   { id: 'descendants', key: 'viewDescendants' },
 ];
 
-const NEXT: Record<StageMode, StageMode> = { tree: 'timeline', timeline: 'map', map: 'tree' };
+const MODES: StageMode[] = ['tree', 'timeline', 'map'];
 const MODE_KEY = { tree: 'modeTree', timeline: 'modeTimeline', map: 'modeMap' } as const;
 
 export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onPxPerYear(v: number): void }) {
   const { lang } = useUi();
   const w = useWorkspace();
   const { mode, view } = w.editor;
-  const next = NEXT[mode];
   return (
     <div className="canvas-tools">
-      <button className="btn mode-btn" onClick={() => w.dispatch({ type: 'setMode', mode: next })} title={t(lang, MODE_KEY[next])}>
-        <ModeIcon mode={next} />
-        {t(lang, MODE_KEY[next])}
-      </button>
+      <label className="btn mode-btn" title={t(lang, 'stageMode')}>
+        <ModeIcon mode={mode} />
+        <select
+          className="mode-select"
+          aria-label={t(lang, 'stageMode')}
+          value={mode}
+          onChange={(e) => w.dispatch({ type: 'setMode', mode: e.target.value as StageMode })}
+        >
+          {MODES.map((m) => (
+            <option key={m} value={m}>
+              {t(lang, MODE_KEY[m])}
+            </option>
+          ))}
+        </select>
+      </label>
       {mode === 'map' ? null : mode === 'timeline' ? (
         <>
           <button className="btn" onClick={() => onPxPerYear(Math.max(MIN_PPY, pxPerYear / 1.3))} aria-label={t(lang, 'zoomOut')}>

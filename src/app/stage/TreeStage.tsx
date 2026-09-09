@@ -28,6 +28,13 @@ export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string,
     setBand((prev) => (prev.band === b && Math.abs(prev.zoom - zoom) < 0.005 ? prev : { band: b, zoom }));
   }, []);
   const [pxPerYear, setPxPerYear] = useState(6);
+  // Fetch the map's code while the canvas is idle, so the first switch to « Carte » is immediate.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const id = idle(() => void import('../MapView'));
+    return () => cancel(id);
+  }, []);
   // The canvas handle reaches the workspace (camera moves, zoom buttons) through a plain ref registered after mount.
   const canvasRef = useRef<TreeCanvasHandle>(null);
   const { setCanvas } = w;

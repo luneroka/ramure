@@ -7,6 +7,7 @@ describe('routes', () => {
       { name: 'home' as const },
       { name: 'tree' as const, id: 'Tabc' },
       { name: 'resources' as const, id: 'T/x y' },
+      { name: 'print' as const, id: 'Tp' },
       { name: 'settings' as const },
       { name: 'admin' as const },
     ];
