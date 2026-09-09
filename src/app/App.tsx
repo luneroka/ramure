@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { t } from '../i18n';
-import { api, ApiError, type Role, type TreeSummary } from '../sync/api';
+import { api, type Role, type TreeSummary } from '../sync/api';
 import { SyncEngine } from '../sync/engine';
 import { Admin } from './Admin';
 import { Home } from './Home';
@@ -36,6 +36,7 @@ import { UiProvider, useUi } from './ui/UiContext';
 import { UpdateBanner } from './ui/UpdateBanner';
 import { reportError } from './report';
 import { useAuth } from './useAuth';
+import { errorText } from './errorText';
 
 const DEFAULT_VIEW_KEY = 'ramure.defaultView';
 
@@ -139,7 +140,7 @@ function Shell() {
           dispatch({ type: 'setEditing', editing: true });
         }
       } catch (err) {
-        toast(err instanceof ApiError && err.status === 404 ? t(lang, 'inviteInvalid') : t(lang, 'syncError'));
+        toast(errorText(lang, err));
       }
     },
     [session, events, dispatch, defaultView, navigate, toast, lang],

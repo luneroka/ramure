@@ -15,6 +15,7 @@ import { displayName } from '../src/gedcom/model';
 import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
 import { HttpError, now, randomId, readJson, requireId } from './util';
+import type { ErrorCode } from './errorCodes';
 import { extensionOf, sniffMediaType } from './media';
 
 /** D1 stores a row in at most 2 MB; the document is measured in bytes with room for the row's other columns. */
@@ -57,8 +58,8 @@ async function roleOf(env: Env, treeId: string, userId: string): Promise<Role | 
 
 async function requireRole(env: Env, treeId: string, user: User, allowed: Role[]): Promise<Role> {
   const role = await roleOf(env, treeId, user.id);
-  if (!role) throw new HttpError(404, 'tree not found');
-  if (!allowed.includes(role)) throw new HttpError(403, 'not allowed');
+  if (!role) throw new HttpError(404, 'tree_not_found');
+  if (!allowed.includes(role)) throw new HttpError(403, 'not_allowed');
   return role;
 }
 
@@ -69,7 +70,7 @@ export const trees = new Hono<{ Bindings: Env; Variables: Vars }>();
 trees.get('/', async (c) => {
   const user = requireUser(c.get('user'));
   const accountId = c.req.query('account');
-  if (!accountId) throw new HttpError(400, 'account required');
+  if (!accountId) throw new HttpError(400, 'account_required');
   const role = await requireAccountRole(c.env, accountId, user, ['owner', 'member']);
   const rows = await c.env.DB.prepare(
     `SELECT id, name, version, people, updated_at FROM trees WHERE account_id = ? ORDER BY updated_at DESC`,
@@ -89,7 +90,7 @@ trees.post('/', async (c) => {
       .trim()
       .slice(0, 120) || 'Arbre';
   const gedcom = String(body.gedcom ?? '');
-  if (docBytes(gedcom) > MAX_DOC_BYTES) throw new HttpError(413, 'tree too large', { maxBytes: MAX_DOC_BYTES });
+  if (docBytes(gedcom) > MAX_DOC_BYTES) throw new HttpError(413, 'tree_too_large', { maxBytes: MAX_DOC_BYTES });
   // Normalise through the parser so the stored document is always Ramure's own serialisation.
   const tree = parseGedcom(gedcom, { repairGeneWeb: true });
   const doc = serializeGedcom(tree);
@@ -112,7 +113,7 @@ trees.get('/:id', async (c) => {
   const row = await c.env.DB.prepare(`SELECT id, name, owner_id, version, doc, people, created_at, updated_at FROM trees WHERE id = ?`)
     .bind(id)
     .first<TreeRow>();
-  if (!row) throw new HttpError(404, 'tree not found');
+  if (!row) throw new HttpError(404, 'tree_not_found');
   return c.json({ id: row.id, name: row.name, version: row.version, doc: row.doc, people: row.people, role, updatedAt: row.updated_at });
 });
 
@@ -124,7 +125,7 @@ trees.patch('/:id', async (c) => {
   const name = String(body.name ?? '')
     .trim()
     .slice(0, 120);
-  if (!name) throw new HttpError(400, 'name required');
+  if (!name) throw new HttpError(400, 'name_required');
   await c.env.DB.prepare(`UPDATE trees SET name = ?, updated_at = ? WHERE id = ?`).bind(name, now(), id).run();
   return c.json({ ok: true });
 });
@@ -153,7 +154,7 @@ trees.get('/:id/ops', async (c) => {
     .bind(id, since)
     .all<{ seq: number; op_id: string; actor_id: string; ts: number; op: string }>();
   const version = await c.env.DB.prepare(`SELECT version FROM trees WHERE id = ?`).bind(id).first<{ version: number }>();
-  if (!version) throw new HttpError(404, 'tree not found');
+  if (!version) throw new HttpError(404, 'tree_not_found');
   const page = rows.results.slice(0, PAGE);
   return c.json({
     version: version.version,
@@ -168,19 +169,19 @@ trees.post('/:id/ops', async (c) => {
   const role = await requireRole(c.env, id, user, ['owner', 'editor']);
   const body = await readJson<{ baseVersion: number; ops: OpEnvelope[] }>(c.req.raw, 4 * 1024 * 1024);
   const baseVersion = Number(body.baseVersion ?? -1);
-  if (!Number.isSafeInteger(baseVersion) || baseVersion < 0) throw new HttpError(400, 'bad base version');
+  if (!Number.isSafeInteger(baseVersion) || baseVersion < 0) throw new HttpError(400, 'bad_base_version');
   const envelopes = Array.isArray(body.ops) ? body.ops : [];
-  if (envelopes.length === 0) throw new HttpError(400, 'no ops');
-  if (envelopes.length > MAX_OPS_PER_PUSH) throw new HttpError(413, 'too many ops', { max: MAX_OPS_PER_PUSH });
+  if (envelopes.length === 0) throw new HttpError(400, 'no_ops');
+  if (envelopes.length > MAX_OPS_PER_PUSH) throw new HttpError(413, 'too_many_ops', { max: MAX_OPS_PER_PUSH });
   for (const e of envelopes) {
-    if (!e || typeof e !== 'object' || !/^[A-Za-z0-9_-]{1,40}$/.test(String(e.id ?? ''))) throw new HttpError(400, 'bad op id');
-    if (!e.op || typeof e.op !== 'object' || typeof e.op.t !== 'string') throw new HttpError(400, 'bad op');
+    if (!e || typeof e !== 'object' || !/^[A-Za-z0-9_-]{1,40}$/.test(String(e.id ?? ''))) throw new HttpError(400, 'bad_op_id');
+    if (!e.op || typeof e.op !== 'object' || typeof e.op.t !== 'string') throw new HttpError(400, 'bad_op');
   }
 
   const row = await c.env.DB.prepare(`SELECT id, version, doc FROM trees WHERE id = ?`)
     .bind(id)
     .first<Pick<TreeRow, 'id' | 'version' | 'doc'>>();
-  if (!row) throw new HttpError(404, 'tree not found');
+  if (!row) throw new HttpError(404, 'tree_not_found');
   /** Stale base: hand back what the client is missing so it can rebase. */
   const staleResponse = async (version: number) => {
     const missing = await c.env.DB.prepare(
@@ -191,6 +192,7 @@ trees.post('/:id/ops', async (c) => {
     const page = missing.results.slice(0, PAGE);
     return c.json(
       {
+        code: 'stale_base' satisfies ErrorCode,
         error: 'stale base',
         version,
         hasMore: missing.results.length > PAGE,
@@ -211,7 +213,7 @@ trees.post('/:id/ops', async (c) => {
   // Restoring a version rewrites the whole tree: administrators only.
   const flat = (op: Op): Op[] => (op.t === 'batch' ? op.ops.flatMap(flat) : [op]);
   const all = fresh.flatMap((e) => flat(e.op));
-  if (role !== 'owner' && all.some((o) => o.t === 'replaceTree')) throw new HttpError(403, 'restoring a version is for administrators');
+  if (role !== 'owner' && all.some((o) => o.t === 'replaceTree')) throw new HttpError(403, 'restore_is_for_owners');
 
   const tree = parseGedcom(row.doc);
   // Record patches (undo, redo) can rewrite or remove many records at once: past a few, they count as destructive too.
@@ -226,8 +228,7 @@ trees.post('/:id/ops', async (c) => {
       }
     }
   }
-  if (role !== 'owner' && patchRemovals >= PATCH_OWNER_REMOVALS)
-    throw new HttpError(403, 'removing that many records at once is for administrators');
+  if (role !== 'owner' && patchRemovals >= PATCH_OWNER_REMOVALS) throw new HttpError(403, 'bulk_removal_is_for_owners');
   // Deleting or merging people is destructive: keep a version of the tree as it was just before, automatically.
   const destructive = all.filter((o) => o.t === 'deletePerson' || o.t === 'mergePeople');
   const labels = destructive
@@ -241,7 +242,7 @@ trees.post('/:id/ops', async (c) => {
   const guardLabel = labels.length ? labels.slice(0, 2).join(' · ') : null;
   const result = replayOps(tree, fresh);
   const doc = serializeGedcom(result.tree);
-  if (docBytes(doc) > MAX_DOC_BYTES) throw new HttpError(413, 'tree too large', { maxBytes: MAX_DOC_BYTES });
+  if (docBytes(doc) > MAX_DOC_BYTES) throw new HttpError(413, 'tree_too_large', { maxBytes: MAX_DOC_BYTES });
   const newVersion = row.version + result.applied.length;
   const ts = now();
   const statements = [
@@ -334,7 +335,7 @@ trees.post('/:id/snapshots', async (c) => {
       .trim()
       .slice(0, 120) || null;
   const row = await c.env.DB.prepare(`SELECT version, doc FROM trees WHERE id = ?`).bind(id).first<{ version: number; doc: string }>();
-  if (!row) throw new HttpError(404, 'tree not found');
+  if (!row) throw new HttpError(404, 'tree_not_found');
   const sid = randomId('S');
   const ts = now();
   await c.env.DB.prepare(
@@ -352,7 +353,7 @@ trees.get('/:id/snapshots/:sid', async (c) => {
   const row = await c.env.DB.prepare(`SELECT doc, version, created_at FROM tree_snapshots WHERE id = ? AND tree_id = ?`)
     .bind(c.req.param('sid'), id)
     .first<{ doc: string; version: number; created_at: number }>();
-  if (!row) throw new HttpError(404, 'snapshot not found');
+  if (!row) throw new HttpError(404, 'snapshot_not_found');
   return c.json(row);
 });
 
@@ -365,14 +366,14 @@ trees.put('/:id/media/:mediaId', async (c) => {
   const mediaId = requireId(c.req.param('mediaId'), 'media id');
   // Size first, from the header, so an oversized body is never read; then the bytes decide the type.
   const declared = Number(c.req.header('content-length') ?? 0);
-  if (declared > MAX_MEDIA_BYTES) throw new HttpError(413, 'file too large');
+  if (declared > MAX_MEDIA_BYTES) throw new HttpError(413, 'file_too_large');
   const bytes = await c.req.arrayBuffer();
-  if (bytes.byteLength > MAX_MEDIA_BYTES) throw new HttpError(413, 'file too large');
+  if (bytes.byteLength > MAX_MEDIA_BYTES) throw new HttpError(413, 'file_too_large');
   const type = sniffMediaType(bytes);
-  if (!type) throw new HttpError(415, 'images (JPEG, PNG, WebP, GIF, HEIC) and PDFs only');
+  if (!type) throw new HttpError(415, 'unsupported_media_type');
   // A media id is written once: the row and the object never change under an id others may have cached.
   const existing = await c.env.DB.prepare(`SELECT tree_id FROM media WHERE id = ?`).bind(mediaId).first<{ tree_id: string }>();
-  if (existing) throw new HttpError(409, existing.tree_id === id ? 'media already stored' : 'media id in use');
+  if (existing) throw new HttpError(409, existing.tree_id === id ? 'media_already_stored' : 'media_id_in_use');
   await c.env.MEDIA.put(`trees/${id}/media/${mediaId}`, bytes, { httpMetadata: { contentType: type } });
   await c.env.DB.prepare(`INSERT INTO media (id, tree_id, uploaded_by, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(mediaId, id, user.id, type, bytes.byteLength, now())
@@ -386,7 +387,7 @@ trees.get('/:id/media/:mediaId', async (c) => {
   await requireRole(c.env, id, user, ['owner', 'editor', 'viewer']);
   const mediaId = requireId(c.req.param('mediaId'), 'media id');
   const obj = await c.env.MEDIA.get(`trees/${id}/media/${mediaId}`);
-  if (!obj) throw new HttpError(404, 'media not found');
+  if (!obj) throw new HttpError(404, 'media_not_found');
   const type = obj.httpMetadata?.contentType ?? 'application/octet-stream';
   // Never rendered as a page: the app reads it as a blob. A browser landing here downloads a sandboxed file.
   return new Response(obj.body, {

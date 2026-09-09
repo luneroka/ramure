@@ -85,7 +85,7 @@ export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
     for (const [key, fp] of Object.entries(p.expect)) {
       const [kind, id] = [key.slice(0, 1), key.slice(2)];
       const current = kind === 'I' ? tree.individuals[id] : kind === 'F' ? tree.families[id] : tree.media[id];
-      if (fingerprint(current ?? null) !== fp) throw new EditError(`record ${id} changed since`);
+      if (fingerprint(current ?? null) !== fp) throw new EditError('record_changed', id);
     }
   }
   return repairLinks({

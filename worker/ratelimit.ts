@@ -16,7 +16,7 @@ export async function hit(env: Env, key: string, limit: number, windowMs: number
     await env.DB.prepare(`INSERT OR REPLACE INTO rate_limits (key, window_start, count) VALUES (?, ?, 1)`).bind(key, t).run();
     return;
   }
-  if (row.count >= limit) throw new HttpError(429, 'too many requests, try again later');
+  if (row.count >= limit) throw new HttpError(429, 'too_many_requests');
   await env.DB.prepare(`UPDATE rate_limits SET count = count + 1 WHERE key = ?`).bind(key).run();
 }
 

@@ -7,8 +7,9 @@ import { useEffect, useState } from 'react';
 import { t, type Lang } from '../i18n';
 import { localeOf } from './format';
 import { formatBytes } from '../media/documents';
-import { api, ApiError, type AdminOverview, type ClientErrorRow } from '../sync/api';
+import { api, type AdminOverview, type ClientErrorRow } from '../sync/api';
 import type { AskSpec } from './Modal';
+import { errorText } from './errorText';
 
 interface Props {
   lang: Lang;
@@ -48,7 +49,7 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
       setEmail('');
       setRefresh((n) => n + 1);
     } catch (err) {
-      toast(t(lang, err instanceof ApiError && err.status === 409 ? 'alreadyUser' : 'syncError'));
+      toast(errorText(lang, err));
     } finally {
       setBusy(false);
     }

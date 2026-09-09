@@ -12,12 +12,12 @@ export function echoMode(env: Env, requestUrl: string): boolean {
 export async function sendMail(env: Env, requestUrl: string, to: string, subject: string, text: string): Promise<void> {
   if (!env.RESEND_API_KEY) {
     if (echoMode(env, requestUrl)) return;
-    throw new HttpError(500, 'mail not configured');
+    throw new HttpError(500, 'mail_not_configured');
   }
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: env.MAIL_FROM, to: [to], subject, text }),
   });
-  if (!res.ok) throw new HttpError(502, 'mail delivery failed');
+  if (!res.ok) throw new HttpError(502, 'mail_delivery_failed');
 }

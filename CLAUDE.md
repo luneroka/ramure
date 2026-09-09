@@ -82,6 +82,10 @@ regression.
   parity test fails if a key is missing a language.
 - **Prose in comments and docs is British-English, plain, and explains the
   why.** No decoration, no changelog entries in code.
+- **Errors carry stable codes, never prose.** `HttpError(status, code, extra?)`
+  with the code registered in [worker/errorCodes.ts](worker/errorCodes.ts); the
+  browser translates through `errorText()` and never branches on status or
+  message. See [docs/API_ERRORS.md](docs/API_ERRORS.md).
 - **The worker validates every input**: `readJson` with a byte cap,
   `requireId`, `normaliseEmail`, explicit `slice()` on every free-text field.
   Nothing reaches D1 unvalidated, and every query is parameter-bound.

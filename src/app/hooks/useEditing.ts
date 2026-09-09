@@ -7,6 +7,7 @@ import type { SyncEngine } from '../../sync/engine';
 import { diffTrees } from '../../tree/diff';
 import { applyOp, envelope, opSubject, type Op } from '../../tree/ops';
 import type { HistoryAction, HistoryState } from '../history';
+import { errorText } from '../errorText';
 
 interface Args {
   tree: Tree | null;
@@ -51,7 +52,7 @@ export function useEditing(a: Args) {
         a.onCommitted(opSubject(op, r), opts);
         return true;
       } catch (err) {
-        toast(err instanceof Error ? (err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message) : String(err));
+        toast(errorText(lang, err));
         return false;
       }
     },

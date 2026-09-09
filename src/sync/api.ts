@@ -11,6 +11,15 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+
+  /**
+   * The stable error code from the API, when it sent one. This is what the UI
+   * translates by: the status alone is ambiguous (the sign-in path answers 403
+   * for three different reasons) and the message is English.
+   */
+  get code(): string | undefined {
+    return typeof this.body.code === 'string' ? this.body.code : undefined;
+  }
 }
 
 /** A stalled request must fail, not hang the engine: 20 s for JSON, a minute for a file. */

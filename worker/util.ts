@@ -1,5 +1,7 @@
 /** Small helpers shared by the Worker routes. */
 
+import { ERROR_MESSAGES, type ErrorCode } from './errorCodes';
+
 const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 
 /** Random id: a prefix and 11 base-36 characters, the same shape as the client's ids. */
@@ -41,39 +43,47 @@ export function maskEmail(email: string): string {
 
 export const now = (): number => Date.now();
 
+/**
+ * An expected error, answered as a status and a stable code.
+ *
+ * The message is derived from the code rather than passed in, so a route
+ * cannot invent prose the browser has no way to translate. Anything genuinely
+ * unexpected should be a plain `Error`: those become a 500 and are logged.
+ */
 export class HttpError extends Error {
   constructor(
     public status: number,
-    message: string,
+    public code: ErrorCode,
     public extra?: Record<string, unknown>,
   ) {
-    super(message);
+    super(ERROR_MESSAGES[code]);
   }
 }
 
 /** Parse a JSON body, refusing oversized or malformed ones with a 4xx instead of a crash. */
 export async function readJson<T extends object>(req: Request, maxBytes: number): Promise<Partial<T>> {
   const declared = Number(req.headers.get('content-length') ?? 0);
-  if (declared > maxBytes) throw new HttpError(413, 'body too large');
+  if (declared > maxBytes) throw new HttpError(413, 'body_too_large');
   const text = await req.text();
-  if (text.length > maxBytes) throw new HttpError(413, 'body too large');
+  if (text.length > maxBytes) throw new HttpError(413, 'body_too_large');
   if (!text.trim()) return {};
   try {
     const v: unknown = JSON.parse(text);
-    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'expected a JSON object');
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'expected_json_object');
     return v as Partial<T>;
   } catch (e) {
     if (e instanceof HttpError) throw e;
-    throw new HttpError(400, 'malformed JSON');
+    throw new HttpError(400, 'malformed_json');
   }
 }
 
 /** Record and media ids: the client's shape or an imported xref, nothing that could break a GEDCOM line. */
 export const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 
+/** `what` names the field for the operator's benefit; the code stays the same either way. */
 export function requireId(value: unknown, what = 'id'): string {
   const s = String(value ?? '');
-  if (!ID_RE.test(s)) throw new HttpError(400, `bad ${what}`);
+  if (!ID_RE.test(s)) throw new HttpError(400, 'bad_id', { field: what });
   return s;
 }
 
@@ -81,6 +91,6 @@ export function normaliseEmail(raw: unknown): string {
   const s = String(raw ?? '')
     .trim()
     .toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) || s.length > 254) throw new HttpError(400, 'invalid email');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) || s.length > 254) throw new HttpError(400, 'invalid_email');
   return s;
 }

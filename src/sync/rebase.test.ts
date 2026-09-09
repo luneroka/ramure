@@ -34,7 +34,7 @@ describe('sync rebase', () => {
     const r = absorb(enqueue(start, mine), [{ seq: 1, envelope: theirs }], 1);
     expect(r.state.outbox).toEqual([]);
     expect(r.dropped).toHaveLength(1);
-    expect(r.dropped[0]!.reason).toContain('Unknown person');
+    expect(r.dropped[0]!.reason).toContain('unknown person');
     expect(r.working.individuals['I33']).toBeUndefined();
   });
 
