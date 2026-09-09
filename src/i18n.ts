@@ -311,6 +311,36 @@ const strings = {
     fr: 'Supprimer autant d’enregistrements d’un coup est réservé à l’administrateur.',
     en: 'Removing that many records at once is for owners.',
   },
+  privacy: { fr: 'Données personnelles', en: 'Personal data' },
+  privacyIntro: {
+    fr: "Un arbre décrit surtout des personnes qui n'ont pas de compte ici et qui, souvent, ignorent que ce dossier existe. Voici ce que Ramure conserve, où, et pendant combien de temps.",
+    en: 'A tree mostly describes people who have no account here and who often do not know the record exists. Here is what Ramure keeps, where, and for how long.',
+  },
+  privacyWhatTitle: { fr: 'Ce qui est conservé', en: 'What is kept' },
+  privacyWhat: {
+    fr: "Sur vous : votre adresse électronique, un nom d'affichage si vous en donnez un, et les dates de création et de dernière visite. Aucun mot de passe — il n'y en a pas. Sur l'arbre : ce que la famille y a saisi, plus les fichiers ajoutés. Aucune mesure d'audience, aucun traceur, aucun script tiers.",
+    en: 'About you: your email address, a display name if you give one, and when the account was made and last used. No password — there are none. About the tree: whatever the family entered, plus the files added to it. No analytics, no tracker, no third-party script.',
+  },
+  privacyWhereTitle: { fr: 'Où', en: 'Where' },
+  privacyWhere: {
+    fr: 'Chez Cloudflare, dans une base située en Europe de l’Ouest et des espaces de fichiers privés. Les courriels de connexion et d’invitation passent par Resend : ils ne contiennent qu’un code ou un lien, jamais le contenu d’un arbre.',
+    en: 'With Cloudflare, in a database located in Western Europe and in private file storage. Sign-in and invitation mail goes through Resend, and carries only a code or a link — never anything from a tree.',
+  },
+  privacyKeptTitle: { fr: 'Combien de temps', en: 'For how long' },
+  privacyKept: {
+    fr: 'Une session : 90 jours, ou 30 jours sans usage. Un code de connexion : 15 minutes. Une invitation : 7 jours. Un rapport d’erreur : 30 jours. Un fichier supprimé : 30 jours, le temps qu’une annulation puisse le rendre. Les copies de sauvegarde d’un arbre : 30 jours, y compris après sa suppression. L’arbre lui-même reste tant que la famille le garde.',
+    en: 'A session: 90 days, or 30 days without use. A sign-in code: 15 minutes. An invitation: 7 days. A crash report: 30 days. A deleted file: 30 days, so an undo can bring it back. A tree’s nightly copies: 30 days, including after the tree is deleted. The tree itself stays as long as the family keeps it.',
+  },
+  privacyWhoTitle: { fr: 'Qui peut voir quoi', en: 'Who can see what' },
+  privacyWho: {
+    fr: 'Les membres du compte voient tous ses arbres ; leur rôle décide s’ils peuvent aussi les modifier. Personne d’autre n’y accède, ni ne peut même savoir qu’un arbre existe. Les adresses sont masquées pour qui n’est pas administrateur du compte. L’exploitant de ce serveur, lui, a accès à tout : cela découle du fait qu’il héberge le service, et vaut mieux dit que supposé.',
+    en: 'Members of the account see all of its trees; their role decides whether they can change them too. Nobody else can reach them, or even learn that a tree exists. Addresses are masked from anyone who is not an account owner. The person running this server can see everything: that follows from hosting it, and is better said than assumed.',
+  },
+  privacyRightsTitle: { fr: 'Récupérer ou effacer', en: 'Getting it out, or removed' },
+  privacyRights: {
+    fr: 'Vous pouvez exporter un arbre en GEDCOM depuis son menu : ce fichier est la donnée elle-même, lisible dans n’importe quel logiciel de généalogie. Pour effacer votre compte, demandez-le ci-dessous ; l’exploitant approuve. Une personne seulement inscrite dans un arbre, sans compte, ne peut s’adresser qu’au parent qui l’y a saisie.',
+    en: 'You can export a tree as GEDCOM from its menu: that file is the data itself, readable in any genealogy program. To erase your account, ask below and the operator approves. Someone merely recorded in a tree, with no account, can only ask the relative who entered them.',
+  },
   errFileTooLarge: { fr: 'Ce fichier dépasse 10 Mo.', en: 'That file is over 10 MB.' },
   errAccountStorageFull: {
     fr: 'Ce compte n’a plus de place pour des fichiers. Supprimez-en quelques-uns avant d’en ajouter.',

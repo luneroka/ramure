@@ -838,7 +838,15 @@ code, never tree content. D1 runs in `WEUR` (**verified**).
 
 **What is missing.**
 
-1. **`[ ]` P1 — There is no privacy notice anywhere.** Not in the app, not in
+1. **`[x]` P1 — There is no privacy notice anywhere.**
+   _Done 2026-09-09, pass 6. [PRIVACY.md](PRIVACY.md) carries the full position —
+   what is held, where, for how long, who can see it, how to get it out or have
+   it removed, and the household-exemption argument written as a likelihood
+   rather than a conclusion, with the two reasons it is hedged. A shorter
+   version a person would actually read is in the app, in Paramètres, in both
+   languages; `Settings.test.tsx` asserts it renders in each rather than showing
+   a translation key. Every retention figure in it is one the nightly job
+   enforces, which is why this pass came last._ Not in the app, not in
    `docs/`, not in the README. Nothing states what is held, for how long, on
    whose infrastructure, or who to ask. Articles 13 and 14 require it, and
    Article 14 is the one that bites here because most data subjects are the
@@ -867,8 +875,11 @@ code, never tree content. D1 runs in `WEUR` (**verified**).
    family tree is not a user and has no route to erasure at all, which is
    inherent to genealogy and should be stated in P1 rather than pretended away.
 
-3. **`[ ]` P3 — Jurisdiction was decided by default, and cannot be changed
-   later.** **Verified**: `ramure` reports `jurisdiction: null` and happens to
+3. **`[x]` P3 — Jurisdiction was decided by default, and cannot be changed
+   later.**
+   _Done 2026-09-09, pass 6: recorded in [PRIVACY.md](PRIVACY.md) § Where it is,
+   including that `WEUR` is Cloudflare's placement rather than a binding
+   jurisdiction and that neither product can be re-pinned after creation._ **Verified**: `ramure` reports `jurisdiction: null` and happens to
    run in `WEUR`; both R2 buckets were created without a jurisdiction. D1 and R2
    both support pinning to the EU, and **neither can be changed after creation**
    — moving would mean a new database and bucket and a data migration. Nothing
@@ -876,7 +887,11 @@ code, never tree content. D1 runs in `WEUR` (**verified**).
    data sits and that the placement is Cloudflare's default rather than a
    guarantee, so the choice is on the record rather than rediscovered later.
 
-4. **`[ ]` P4 — The operator can read every family's tree.**
+4. **`[x]` P4 — The operator can read every family's tree.**
+   _Done 2026-09-09, pass 6. Not a change — a fact now published, in
+   [PRIVACY.md](PRIVACY.md) and in the app: "The person running this server can
+   see everything: that follows from hosting it, and is better said than
+   assumed."_
    `GET /api/admin/backups/:treeId/:day` serves any tree's document to an
    administrator with no membership check
    ([worker/admin.ts:171](../worker/admin.ts#L171)), and `/api/admin/overview`
@@ -954,7 +969,44 @@ his machine and could not set a secret or approve a sign-out.
 
 ---
 
-_Audit performed with Claude Code. Re-run `npm audit`, the two `wrangler r2
-bucket` privacy checks and the isolation tests at each dependency bump and each
-new exposed endpoint, and re-check this document's assumptions when either
-changes._
+**Audit status: closed 2026-09-09.** All six passes shipped, each behind its own
+pull request with `/preflight` green locally and CI green as the second opinion:
+[#28](https://github.com/luneroka/ramure/pull/28),
+[#29](https://github.com/luneroka/ramure/pull/29),
+[#30](https://github.com/luneroka/ramure/pull/30),
+[#31](https://github.com/luneroka/ramure/pull/31),
+[#32](https://github.com/luneroka/ramure/pull/32) and
+[#33](https://github.com/luneroka/ramure/pull/33). Fifteen findings and four
+privacy items closed; **two marked won't fix with the reasoning on the page** —
+S6, encrypting the backups, and S8, tightening `style-src`. Neither was skipped
+quietly, and both name what would change the decision.
+
+Three things are worth carrying forward more than the fixes themselves.
+
+**The worst finding was not a leak.** S1 destroyed data, and it did so through
+the button provided for the opposite purpose. Nothing about it looks like a
+security bug from the outside — no attacker, no boundary crossed — and a review
+that had gone looking only for ways in would have walked past it.
+
+**Two of the fixes were nearly worse than the problem.** The migration this
+audit originally proposed for S1 would have cascaded through `tree_ops` and
+`tree_snapshots`; tightening the CSP for S8 would have silently broken printing.
+Both were caught by checking what the change would touch before making it, which
+is the habit worth keeping.
+
+**A test that cannot fail is worse than no test.** The first `__proto__` test
+passed with the guard removed, because `__proto__` in an object literal is not
+what it looks like. Every fix here was confirmed by watching its test fail
+first — four of the seven erasure tests against the old `deleteUser`, and the
+patch guard against its own removal.
+
+What to re-run when things change: `npm audit` and `./scripts/check-buckets.sh`
+at each dependency bump; the isolation probes in `worker/erasure.test.ts` and
+`worker/addresses.test.ts` whenever a route gains a role check; and this
+document's assumptions whenever a new endpoint is exposed or the deployment
+moves. If Ramure is ever used outside one family, re-read
+[PRIVACY.md](PRIVACY.md) § "The legal basis" before anything else.
+
+---
+
+_Audit performed with Claude Code._
