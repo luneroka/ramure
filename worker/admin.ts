@@ -6,6 +6,7 @@
 import { Hono, type Context } from 'hono';
 import type { Env, User, Vars } from './env';
 import { BACKUP_PREFIX, listBackups } from './backup';
+import { configProblems } from './config';
 import { sendMail } from './mail';
 import { HttpError, normaliseEmail, now, randomId, readJson } from './util';
 
@@ -92,6 +93,8 @@ admin.get('/overview', async (c) => {
     accounts: accounts.results,
     requests: requests.results,
     trees: trees.results,
+    // Named here and nowhere else: the operator is the one who can fix them.
+    config: configProblems(c.env),
   });
 });
 

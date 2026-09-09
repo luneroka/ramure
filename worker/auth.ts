@@ -11,6 +11,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
 import { hmac, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { echoMode, sendMail } from './mail';
+import { requireCodePepper } from './config';
 import { clientIp, hit } from './ratelimit';
 import { consumeInvite, isAdmin, mayEnter } from './admin';
 
@@ -44,8 +45,15 @@ export async function userFromRequest(env: Env, cookie: string | undefined): Pro
   return { id: row.id, email: row.email, name: row.name };
 }
 
-/** The stored form of a sign-in code: keyed by the pepper when the deployment has one. */
-export const codeHash = (env: Env, email: string, code: string): Promise<string> => hmac(env.CODE_PEPPER, `${email}:${code}`);
+/**
+ * The stored form of a sign-in code: keyed by the pepper when the deployment
+ * has one. In production it must have one — see `requireCodePepper`, which
+ * turns a silently weaker hash into a loud refusal.
+ */
+export const codeHash = (env: Env, email: string, code: string): Promise<string> => {
+  requireCodePepper(env);
+  return hmac(env.CODE_PEPPER, `${email}:${code}`);
+};
 
 /** Six digits, shown as « 483 921 » in the mail and typed on the sign-in page when a link cannot be opened. */
 function randomCode(): string {

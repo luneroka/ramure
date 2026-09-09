@@ -60,5 +60,22 @@ src/store/     storage interfaces: local IndexedDB, cloud media cache
 worker/        Cloudflare Worker: auth, trees, ops, invites, media
 migrations/    D1 schema
 fixtures/      the phase 0 round-trip files, used by the tests
-docs/          design brief and findings
+docs/          design brief, architecture, rules in force, plans
+```
+
+## Contributing
+
+[`CLAUDE.md`](CLAUDE.md) is the working agreement — read it before changing
+anything. [`docs/`](docs/README.md) holds the map:
+[architecture](docs/ARCHITECTURE.md) for where things live,
+[rules in force](docs/RULES_IN_FORCE.md) for the invariants you must not break.
+
+CI runs on every push to main and every pull request. Run the same suite
+locally before a merge anyway — it is faster than waiting, and it is what
+catches a mistake before it is pushed:
+
+```bash
+npm run lint && npm run typecheck && npm run format:check
+npm test && npm run build && npm run test:worker
+npx playwright test        # against the built app on wrangler dev
 ```

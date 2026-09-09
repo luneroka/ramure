@@ -1,8 +1,17 @@
 name: CI
-# Runs only when started by hand (Actions → CI → Run workflow): the account's free minutes are not spent on
-# every push. The same checks run locally before each merge: npm run lint, typecheck, format:check, test,
-# build, test:worker, then npx playwright test against wrangler dev.
+# Runs on every push and pull request again. This was `workflow_dispatch` only while the repository was
+# private and the account's 2 000 free Actions minutes were spent; public repositories do not consume that
+# quota at all, which is why the repository was opened on 9 September 2026.
+#
+# The same checks still run locally before a merge (`/preflight`), because a green tick here is not a reason
+# to skip them — but they are no longer the *only* gate, so forgetting one is no longer a silent failure.
+#
+# `push` is limited to main: a pull-request branch is already covered by the `pull_request` trigger, and
+# listing both bare would run every check twice on each push to an open PR.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 jobs:
   check:
@@ -31,6 +40,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # `--with-deps` runs `apt-get update`, which on the GitHub runner image also refreshes
+      # Google's Chrome repository. That index is rotated often enough to be caught mid-write,
+      # and apt then fails the whole install on a hash-sum mismatch — a flake that has nothing
+      # to do with this project and that a re-run only sometimes clears. Playwright downloads
+      # its own Chromium, so the repository is not needed here: dropping it removes the flake
+      # rather than retrying around it.
+      # The runner image names this file differently depending on the release (`.list` on older
+      # images, deb822 `.sources` on noble), so match on content rather than guessing a name.
+      - name: Drop Google's apt repository
+        run: |
+          sudo find /etc/apt/sources.list.d -type f \
+            \( -name '*google*' -o -exec grep -lq 'dl\.google\.com' {} \; \) -print -delete || true
+          sudo sed -i '/dl\.google\.com/d' /etc/apt/sources.list || true
+          echo "--- remaining sources mentioning google ---"
+          grep -rl 'dl\.google\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || echo "none"
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: printf 'APP_ORIGIN=http://localhost:8787\nDEV_ECHO_LINKS=1\n' > .dev.vars

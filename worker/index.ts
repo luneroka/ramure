@@ -14,6 +14,7 @@ import { admin } from './admin';
 import { backup } from './backup';
 import { errors } from './errors';
 import { reap } from './maintenance';
+import { configProblems, logConfigProblems } from './config';
 import { HttpError } from './util';
 
 /** The Hono app itself, for tests that drive it in-process. */
@@ -21,6 +22,9 @@ export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 app.use('/api/*', secureHeaders({ crossOriginResourcePolicy: 'same-origin', referrerPolicy: 'strict-origin-when-cross-origin' }));
 app.use('/api/*', async (c, next) => {
+  // A misconfigured deployment says so in the logs on its first request, rather than
+  // waiting for someone to notice that mail never arrives.
+  logConfigProblems(c.env);
   // Same-origin only, checked before anything costs a query: the app and the API share a host.
   const origin = c.req.header('origin');
   if (origin && c.req.method !== 'GET' && origin !== c.env.APP_ORIGIN && origin !== new URL(c.req.url).origin)
@@ -29,7 +33,16 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
-app.get('/api/health', (c) => c.json({ ok: true, ts: Date.now() }));
+/**
+ * Liveness, plus a one-word verdict on this deployment's configuration so a
+ * deploy can be checked from outside. Only the verdict: the settings at fault
+ * are named on the administration page, never to anonymous callers.
+ */
+app.get('/api/health', (c) => {
+  const problems = configProblems(c.env);
+  const config = problems.some((p) => p.severity === 'fatal') ? 'misconfigured' : problems.length ? 'degraded' : 'ok';
+  return c.json({ ok: true, ts: Date.now(), config });
+});
 app.route('/api/auth', auth);
 app.route('/api/accounts', accounts);
 app.route('/api/trees', trees);
