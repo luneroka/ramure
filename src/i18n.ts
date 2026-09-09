@@ -217,6 +217,8 @@ const strings = {
     fr: 'Cette invitation est destinée à une autre adresse : connectez-vous avec l’adresse qui l’a reçue.',
     en: 'This invitation is for another address: sign in with the address that received it.',
   },
+  exportMenu: { fr: 'Exporter', en: 'Export' },
+  versionsMenu: { fr: 'Versions', en: 'Versions' },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',
@@ -368,8 +370,6 @@ const strings = {
     fr: 'Votre enregistrement a remplacé une modification récente d’un autre membre sur',
     en: 'Your save replaced a recent change by another member on',
   },
-  reloadFromServer: { fr: 'Recharger depuis le serveur', en: 'Reload from the server' },
-  reloaded: { fr: 'Arbre rechargé depuis le serveur', en: 'Tree reloaded from the server' },
   treeGone: { fr: 'Cet arbre a été supprimé par un autre membre.', en: 'This tree was deleted by another member.' },
   syncReadonly: { fr: 'Lecture seule', en: 'Read only' },
   remoteChanges: { fr: 'Modifications reçues d’un autre membre', en: 'Changes received from another member' },

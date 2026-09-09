@@ -140,7 +140,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             <button
               type="button"
               className={`btn ${sent ? '' : 'primary'}`}
-              disabled={busy || !email.includes('@')}
+              disabled={busy || !typed.includes('@')}
               onClick={(e) => void request(e)}
             >
               {t(lang, sent ? 'sendAgain' : 'sendLink')}

@@ -271,7 +271,6 @@ function Shell() {
         onExport={files.exportGedcom}
         onSnapshots={openSnapshots}
         onSaveVersion={() => void snaps.saveVersion()}
-        onReload={() => void engine.current?.reloadFromServer().then(() => toast(t(lang, 'reloaded')))}
         onDeleteTree={() =>
           source && void files.deleteTree({ id: source.id, name: source.name, version: 0, people: 0, updated_at: 0, role: source.role })
         }

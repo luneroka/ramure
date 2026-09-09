@@ -48,6 +48,28 @@ function useDismiss(open: boolean, close: () => void) {
   return ref;
 }
 
+/** A few related actions folded under one line; opens in place so it works with a finger as well as a mouse. */
+function Group({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`dd-group ${open ? 'open' : ''}`}>
+      <button
+        role="menuitem"
+        aria-haspopup="true"
+        aria-expanded={open}
+        className="dd-item dd-group-head"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label}
+        <svg className="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+          <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && <div className="dd-subitems">{children}</div>}
+    </div>
+  );
+}
+
 export function Dropdown({
   open,
   onClose,
@@ -84,7 +106,6 @@ interface TreeMenuProps {
   onReport(): void;
   onResources(): void;
   onPrint(): void;
-  onReload(): void;
   onDelete(): void;
 }
 
@@ -141,11 +162,7 @@ export function TreeMenu(p: TreeMenuProps) {
         {item(`+ ${t(lang, 'newTree')}`, p.onNewTree, 'accent')}
         <div className="dd-sep" />
         <div className="dd-section">{t(lang, 'thisTree')}</div>
-        {p.owner && item(t(lang, 'renameTree'), p.onRename)}
-        {item(t(lang, 'export'), p.onExport)}
-        {item(t(lang, 'print'), p.onPrint)}
-        {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
-        {item(t(lang, 'versionHistory'), p.onSnapshots)}
+        {item(t(lang, 'resources'), p.onResources)}
         <button
           role="menuitem"
           className="dd-item"
@@ -157,9 +174,21 @@ export function TreeMenu(p: TreeMenuProps) {
           {t(lang, 'importReport')}
           {p.checkCount > 0 && <span className="dd-meta">{p.checkCount}</span>}
         </button>
-        {item(t(lang, 'resources'), p.onResources)}
-        {item(t(lang, 'reloadFromServer'), p.onReload)}
-        {p.owner && item(t(lang, 'deleteTree'), p.onDelete, 'danger')}
+        {p.owner && item(t(lang, 'renameTree'), p.onRename)}
+        <Group label={t(lang, 'exportMenu')}>
+          {item(t(lang, 'export'), p.onExport)}
+          {item(t(lang, 'print'), p.onPrint)}
+        </Group>
+        <Group label={t(lang, 'versionsMenu')}>
+          {!p.readOnly && item(t(lang, 'saveVersion'), p.onSaveVersion)}
+          {item(t(lang, 'versionHistory'), p.onSnapshots)}
+        </Group>
+        {p.owner && (
+          <>
+            <div className="dd-sep" />
+            {item(t(lang, 'deleteTree'), p.onDelete, 'danger')}
+          </>
+        )}
       </Dropdown>
     </div>
   );

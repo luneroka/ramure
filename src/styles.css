@@ -123,7 +123,7 @@ textarea:focus {
   padding: 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  z-index: 5;
+  z-index: 10; /* its menus open above the person pane */
 }
 .brand {
   display: flex;
@@ -3249,4 +3249,17 @@ textarea:focus {
   margin: 6px 0 0;
   max-height: 240px;
   overflow: auto;
+}
+
+/* Folded groups in a menu */
+.dd-group-head .chev {
+  margin-left: auto;
+  transition: transform 0.15s;
+}
+.dd-group.open .dd-group-head .chev {
+  transform: rotate(180deg);
+}
+.dd-subitems .dd-item {
+  padding-left: 24px;
+  font-size: 13px;
 }

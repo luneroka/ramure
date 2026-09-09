@@ -42,7 +42,6 @@ interface Props {
   onExport(): void;
   onSnapshots(): void;
   onSaveVersion(): void;
-  onReload(): void;
   onDeleteTree(): void;
   onSettings(section?: 'account'): void;
   onSignOut(): void;
@@ -79,7 +78,6 @@ export function TopBar(p: Props) {
               onReport={() => w.dispatch({ type: 'showReport', show: true })}
               onResources={() => p.navigate({ name: 'resources', id: w.source.id })}
               onPrint={() => p.navigate({ name: 'print', id: w.source.id })}
-              onReload={p.onReload}
               onDelete={p.onDeleteTree}
             />
             <span className="brand-file">{tn(lang, 'peopleCount', w.count)}</span>
