@@ -154,6 +154,16 @@ every check twice on each push to an open PR.
 The local suite stays in `/preflight` and stays expected before a merge: CI is
 now the slower second opinion rather than the only gate.
 
+One thing had to be fixed before the restored gate was trustworthy. The e2e job
+failed twice in 23 seconds without reaching a test: `playwright install
+--with-deps` runs `apt-get update`, which on the runner image also refreshes
+Google's Chrome repository, and that index is rotated often enough to be caught
+mid-write — apt then fails the whole install on a hash sum mismatch. Playwright
+downloads its own Chromium, so that repository is never needed. `ci.yml` now
+deletes the apt source, matched **by content** rather than by filename: the
+first attempt guessed `google-chrome.list` and matched nothing, because noble
+writes a deb822 `.sources` file instead. All four checks green afterwards.
+
 ### `[x]` H3. `coverage/` is committed to git
 
 _Done 2026-09-09, pass 1: untracked with `git rm --cached` and added to
