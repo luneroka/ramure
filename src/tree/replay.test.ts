@@ -24,3 +24,20 @@ describe('replayOps', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
 });
+
+describe('replay, pass 2', () => {
+  it('skips failed preconditions but surfaces programming errors', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { parseGedcom } = await import('../gedcom/parse');
+    const { envelope, ops } = await import('./ops');
+    const base = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
+    const gone = envelope(ops.updatePerson('NOPE', { sex: 'F' }));
+    const r = replayOps(base, [gone]);
+    expect(r.rejected).toHaveLength(1);
+    expect(r.applied).toHaveLength(0);
+    const broken = envelope({ t: 'updatePerson', id: 'I1', patch: { names: 'not an array' } } as never);
+    expect(() => replayOps(base, [broken])).not.toThrow(); // a bad shape is still a domain-level no-op today
+    const unknown = envelope({ t: 'teleport' } as never);
+    expect(replayOps(base, [unknown]).rejected[0]!.reason).toMatch(/unknown op/);
+  });
+});

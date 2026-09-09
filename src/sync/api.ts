@@ -140,7 +140,8 @@ export const api = {
   renameTree: (id: string, name: string) => call<{ ok: true }>('PATCH', `/api/trees/${id}`, { name }),
   deleteTree: (id: string) => call<{ ok: true }>('DELETE', `/api/trees/${id}`),
 
-  pull: (id: string, since: number) => call<{ version: number; ops: Incoming[] }>('GET', `/api/trees/${id}/ops?since=${since}`),
+  pull: (id: string, since: number) =>
+    call<{ version: number; ops: Incoming[]; hasMore?: boolean }>('GET', `/api/trees/${id}/ops?since=${since}`),
   push: (id: string, baseVersion: number, ops: OpEnvelope[]) =>
     call<{ version: number; applied: string[]; rejected: Array<{ id: string; reason: string }> }>('POST', `/api/trees/${id}/ops`, {
       baseVersion,

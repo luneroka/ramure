@@ -9,6 +9,7 @@
  */
 
 import type { Family, Individual, Lead, MediaObject, Tree } from '../gedcom/model';
+import { EditError } from './edit';
 
 export interface RecordPatch {
   t: 'patchRecords';
@@ -19,6 +20,18 @@ export interface RecordPatch {
   /** Tree-wide resources, when they changed. */
   resources?: Lead[];
   documentIds?: string[];
+  /** What each touched record looked like before, as a fingerprint; the patch is refused if any moved since. */
+  expect?: Record<string, string>;
+}
+
+/** A small stable fingerprint of a record: enough to notice that someone else changed it. */
+export function fingerprint(value: unknown): string {
+  const text = JSON.stringify(value, (_k, v) =>
+    v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort()) : v,
+  );
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36) + text.length.toString(36);
 }
 
 function diffTable<T>(from: Record<string, T>, to: Record<string, T>): Record<string, T | null> {
@@ -28,13 +41,21 @@ function diffTable<T>(from: Record<string, T>, to: Record<string, T>): Record<st
   return out;
 }
 
-/** The patch that transforms `from` into `to`. */
+/** The patch that transforms `from` into `to`, expecting the records to still be as in `from`. */
 export function diffTrees(from: Tree, to: Tree): RecordPatch {
+  const individuals = diffTable(from.individuals, to.individuals);
+  const families = diffTable(from.families, to.families);
+  const media = diffTable(from.media, to.media);
+  const expect: Record<string, string> = {};
+  for (const id of Object.keys(individuals)) expect[`I:${id}`] = fingerprint(from.individuals[id] ?? null);
+  for (const id of Object.keys(families)) expect[`F:${id}`] = fingerprint(from.families[id] ?? null);
+  for (const id of Object.keys(media)) expect[`M:${id}`] = fingerprint(from.media[id] ?? null);
   return {
     t: 'patchRecords',
-    individuals: diffTable(from.individuals, to.individuals),
-    families: diffTable(from.families, to.families),
-    media: diffTable(from.media, to.media),
+    individuals,
+    families,
+    media,
+    expect,
     ...(from.resources !== to.resources ? { resources: to.resources } : {}),
     ...(from.documentIds !== to.documentIds ? { documentIds: to.documentIds } : {}),
   };
@@ -60,12 +81,46 @@ function applyTable<T>(table: Record<string, T>, patch: Record<string, T | null>
 }
 
 export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
-  return {
+  if (p.expect) {
+    for (const [key, fp] of Object.entries(p.expect)) {
+      const [kind, id] = [key.slice(0, 1), key.slice(2)];
+      const current = kind === 'I' ? tree.individuals[id] : kind === 'F' ? tree.families[id] : tree.media[id];
+      if (fingerprint(current ?? null) !== fp) throw new EditError(`record ${id} changed since`);
+    }
+  }
+  return repairLinks({
     ...tree,
     individuals: applyTable(tree.individuals, p.individuals),
     families: applyTable(tree.families, p.families),
     media: applyTable(tree.media, p.media),
     ...(p.resources ? { resources: p.resources } : {}),
     ...(p.documentIds ? { documentIds: p.documentIds } : {}),
-  };
+  });
+}
+
+/** Drop links to records that no longer exist, so a patch never leaves a family pointing at nobody. */
+export function repairLinks(tree: Tree): Tree {
+  let individuals = tree.individuals;
+  let families = tree.families;
+  for (const fam of Object.values(tree.families)) {
+    const childIds = fam.childIds.filter((c) => tree.individuals[c]);
+    const husbandId = fam.husbandId && tree.individuals[fam.husbandId] ? fam.husbandId : undefined;
+    const wifeId = fam.wifeId && tree.individuals[fam.wifeId] ? fam.wifeId : undefined;
+    if (childIds.length !== fam.childIds.length || husbandId !== fam.husbandId || wifeId !== fam.wifeId) {
+      const next: Family = { ...fam, childIds };
+      if (husbandId) next.husbandId = husbandId;
+      else delete next.husbandId;
+      if (wifeId) next.wifeId = wifeId;
+      else delete next.wifeId;
+      families = { ...families, [fam.id]: next };
+    }
+  }
+  for (const ind of Object.values(tree.individuals)) {
+    const childOf = ind.childOf.filter((l) => families[l.familyId]);
+    const partnerIn = ind.partnerIn.filter((f) => families[f]);
+    if (childOf.length !== ind.childOf.length || partnerIn.length !== ind.partnerIn.length) {
+      individuals = { ...individuals, [ind.id]: { ...ind, childOf, partnerIn } };
+    }
+  }
+  return individuals === tree.individuals && families === tree.families ? tree : { ...tree, individuals, families };
 }

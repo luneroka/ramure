@@ -139,7 +139,8 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
 
   linkFamilies(tree);
 
-  if (options.repairGeneWeb !== false) repairGeneWeb(tree);
+  // Import-time repairs only: replaying the same text later must give the same tree, byte for byte.
+  if (options.repairGeneWeb === true) repairGeneWeb(tree);
   return tree;
 }
 

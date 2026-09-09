@@ -18,8 +18,8 @@ export interface EngineEvent {
   tree: Tree;
   status: SyncStatus;
   pending: number;
-  /** Set when the change came from someone else, or when pending edits were dropped. */
-  notice?: { remote?: boolean; dropped?: Array<{ envelope: OpEnvelope; reason: string }> };
+  /** Set when the change came from someone else, when pending edits were dropped, or when ours replaced someone else's. */
+  notice?: { remote?: boolean; dropped?: Array<{ envelope: OpEnvelope; reason: string }>; overwrote?: string[] };
 }
 
 interface Persisted {
@@ -160,8 +160,35 @@ export class SyncEngine {
   private take(result: RebaseResult): void {
     this.state = result.state;
     void this.persist();
-    const notice = result.remoteChanges || result.dropped.length ? { remote: result.remoteChanges, dropped: result.dropped } : undefined;
+    const notice =
+      result.remoteChanges || result.dropped.length || result.overwrote.length
+        ? { remote: result.remoteChanges, dropped: result.dropped, overwrote: result.overwrote }
+        : undefined;
     this.emit(notice);
+  }
+
+  /** The server is not where we thought (a restore, a repair): rebuild the base from its document, keep our pending edits. */
+  async reloadFromServer(): Promise<void> {
+    if (!this.state) return;
+    const remote = await api.getTree(this.treeId);
+    const outbox = this.state.outbox;
+    const replay = absorb({ version: remote.version, base: parseGedcom(remote.doc), outbox }, [], remote.version);
+    this.take({ ...replay, remoteChanges: true });
+  }
+
+  /** Pull every page the server has past our version. */
+  private async pullAll(): Promise<void> {
+    if (!this.state) return;
+    for (let page = 0; page < 50; page++) {
+      const res = await api.pull(this.treeId, this.state.version);
+      const result = absorb(this.state, res.ops, res.version);
+      if (result.needsReload) {
+        await this.reloadFromServer();
+        return;
+      }
+      if (res.ops.length || res.version !== this.state.version) this.take(result);
+      if (!res.hasMore) return;
+    }
   }
 
   private async run(): Promise<void> {
@@ -176,16 +203,20 @@ export class SyncEngine {
           this.take(acknowledge(this.state, batch, res.applied, res.rejected, res.version));
         } catch (err) {
           if (err instanceof ApiError && err.status === 409) {
-            const body = err.body as { version: number; ops: Array<{ seq: number; envelope: OpEnvelope }> };
-            this.take(absorb(this.state, body.ops ?? [], body.version));
+            const body = err.body as { version?: number; ops?: Array<{ seq: number; envelope: OpEnvelope }>; hasMore?: boolean };
+            const result = absorb(this.state, body.ops ?? [], Number(body.version));
+            if (result.needsReload) await this.reloadFromServer();
+            else {
+              this.take(result);
+              if (body.hasMore) await this.pullAll();
+            }
             continue;
           }
           throw err;
         }
       }
-      // Pull whatever is new.
-      const res = await api.pull(this.treeId, this.state.version);
-      if (res.ops.length || res.version !== this.state.version) this.take(absorb(this.state, res.ops, res.version));
+      // Pull whatever is new, page by page.
+      await this.pullAll();
       this.status = 'synced';
       this.emit();
     } catch (err) {
