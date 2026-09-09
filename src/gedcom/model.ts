@@ -20,6 +20,9 @@ export interface Name {
   nick?: string;
   /** GEDCOM name type: birth, married, aka, immigrant, maiden... */
   type?: string;
+  /** Notes and sources attached to this particular name (some programs cite the name itself). */
+  notes?: string[];
+  citations?: Citation[];
 }
 
 export interface Place {
@@ -29,6 +32,11 @@ export interface Place {
   parts: string[];
   lat?: number;
   lon?: number;
+  /** PLAC.FORM: what the comma-separated parts mean, when the file says. */
+  form?: string;
+  notes?: string[];
+  /** Substructures we do not model (FONE, ROMN...), preserved for re-export. */
+  extra?: GedcomRecord[];
 }
 
 export interface Citation {
@@ -151,8 +159,10 @@ export interface Source {
   abbreviation?: string;
   publication?: string;
   text?: string;
+  /** The first repository; `repositories` holds them all when a source has several. */
   repositoryId?: string;
   callNumber?: string;
+  repositories?: Array<{ id: string; callNumber?: string }>;
   notes: string[];
   mediaIds: string[];
   extra: GedcomRecord[];
@@ -181,6 +191,8 @@ export interface MediaObject {
   date?: GDate;
   /** The person's main picture (_PRIM Y). */
   primary?: boolean;
+  /** Further FILE lines of the same object: GEDCOM 5.5.1 allows several. */
+  files?: string[];
   notes: string[];
   extra: GedcomRecord[];
 }

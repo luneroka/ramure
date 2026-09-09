@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { serializeGedcom } from '../../gedcom';
+import { decodeGedcom } from '../../gedcom/charset';
 import type { Tree } from '../../gedcom/model';
 import { t, type Lang } from '../../i18n';
 import { api, type Account, type Role, type TreeSummary } from '../../sync/api';
@@ -49,14 +50,7 @@ export function useTreeFiles(a: Args) {
         toast(t(lang, 'treeTooLarge'));
         return;
       }
-      const buf = await file.arrayBuffer();
-      let text: string;
-      try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(buf);
-      } catch {
-        text = new TextDecoder('windows-1252').decode(buf);
-      }
-      await createTreeFrom(file.name.replace(/\.(ged|gedcom)$/i, ''), text);
+      await createTreeFrom(file.name.replace(/\.(ged|gedcom)$/i, ''), decodeGedcom(await file.arrayBuffer()));
     },
     [createTreeFrom, lang, toast],
   );

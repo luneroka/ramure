@@ -5,7 +5,9 @@
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import type { Tree } from '../gedcom/model';
+import { displayName, type Tree } from '../gedcom/model';
+import { t } from '../i18n';
+import { neighbour, type Dir } from './navigate';
 import type { Lang } from '../i18n';
 import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
 import {
@@ -400,6 +402,50 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     zoomAt(p.x, p.y, factor);
   };
 
+  // ---------- Keyboard ----------
+  const KEY_DIRS: Record<string, Dir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+  /** Bring a card on screen when it sits outside the viewport. */
+  const reveal = (n: { id: string; x: number; y: number; w: number; h: number }) => {
+    const c = cam.current,
+      s = size.current;
+    const sx = n.x * c.k + c.x,
+      sy = n.y * c.k + c.y;
+    if (sx < 0 || sy < 0 || sx + n.w * c.k > s.w || sy + n.h * c.k > s.h)
+      centerWorld(n.x + n.w / 2, n.y + n.h / 2, Math.max(c.k, 0.75), !reduced);
+  };
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const nodes = layout.nodes;
+    if (!nodes.length) return;
+    const cur = selectedId ? nodes.find((n) => n.id === selectedId) : undefined;
+    const dir = KEY_DIRS[e.key];
+    if (dir) {
+      e.preventDefault();
+      const next = cur ? neighbour(nodes, cur, dir) : (nodes.find((n) => n.id === layout.focusId) ?? nodes[0]);
+      if (next) {
+        onSelect(next.id);
+        reveal(next);
+      }
+      return;
+    }
+    if (!cur) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onFocus(cur.id);
+      return;
+    }
+    const kind = e.key === 'a' || e.key === '+' ? 'plus' : e.key === 'r' ? 'kin' : undefined;
+    const hd = kind ? handles.find((h) => h.kind === kind) : undefined;
+    if (hd) {
+      e.preventDefault();
+      reveal(cur);
+      onHandle?.(hd.kind, hd.personId, {
+        x: (hd.x + hd.w) * cam.current.k + cam.current.x,
+        y: (hd.y + hd.h / 2) * cam.current.k + cam.current.y,
+      });
+    }
+  };
+  const selectedName = selectedId && tree.individuals[selectedId] ? displayName(tree.individuals[selectedId]!) : '';
+
   // React's onWheel is passive; we need preventDefault to stop page scroll.
   useEffect(() => {
     const el = canvasRef.current!;
@@ -409,16 +455,27 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="tree-canvas"
-      role="img"
-      aria-label="Arbre généalogique"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onWheel={onWheel}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="tree-canvas"
+        role="application"
+        tabIndex={0}
+        aria-label={t(lang, 'canvasLabel')}
+        aria-describedby="tree-canvas-keys"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onWheel={onWheel}
+        onKeyDown={onKeyDown}
+      />
+      <span id="tree-canvas-keys" className="sr-only">
+        {t(lang, 'canvasKeysHint')}
+      </span>
+      <span className="sr-only" aria-live="polite">
+        {selectedName}
+      </span>
+    </>
   );
 });

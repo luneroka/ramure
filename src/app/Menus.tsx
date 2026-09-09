@@ -4,21 +4,45 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { t, tn, type Lang } from '../i18n';
 import type { Me, TreeSummary } from '../sync/api';
 
+const ITEMS = '[role="menuitem"]:not([disabled])';
+
+/** Close on a click outside or Escape; move through the items with the arrow keys; give focus back to the trigger. */
 function useDismiss(open: boolean, close: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
+    const before = document.activeElement as HTMLElement | null;
+    const items = () => Array.from(ref.current?.querySelectorAll<HTMLElement>(ITEMS) ?? []);
+    items()[0]?.focus();
     const onDown = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) close();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') {
+        close();
+        return;
+      }
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+      const list = items();
+      if (!list.length) return;
+      e.preventDefault();
+      const i = list.indexOf(document.activeElement as HTMLElement);
+      const next =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? list.length - 1
+            : e.key === 'ArrowDown'
+              ? (i + 1) % list.length
+              : (i - 1 + list.length) % list.length;
+      list[next]?.focus();
     };
     document.addEventListener('pointerdown', onDown);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('pointerdown', onDown);
       document.removeEventListener('keydown', onKey);
+      before?.focus?.();
     };
   }, [open, close]);
   return ref;

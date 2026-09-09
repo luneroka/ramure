@@ -144,6 +144,8 @@ function writeName(w: Writer, n: Name): void {
   if (n.nick) w.line(2, 'NICK', n.nick);
   if (n.surname) w.line(2, 'SURN', n.surname);
   if (n.suffix) w.line(2, 'NSFX', n.suffix);
+  for (const note of n.notes ?? []) w.line(2, 'NOTE', note);
+  writeCitations(w, 2, n.citations ?? []);
 }
 
 function writePlace(w: Writer, level: number, p: Place): void {
@@ -153,6 +155,9 @@ function writePlace(w: Writer, level: number, p: Place): void {
     if (p.lat !== undefined) w.line(level + 2, 'LATI', (p.lat < 0 ? 'S' : 'N') + Math.abs(p.lat));
     if (p.lon !== undefined) w.line(level + 2, 'LONG', (p.lon < 0 ? 'W' : 'E') + Math.abs(p.lon));
   }
+  if (p.form) w.line(level + 1, 'FORM', p.form);
+  for (const n of p.notes ?? []) w.line(level + 1, 'NOTE', n);
+  for (const x of p.extra ?? []) w.raw(x, level + 1);
 }
 
 function writeCitations(w: Writer, level: number, cs: Citation[]): void {
@@ -241,9 +246,10 @@ function writeSource(w: Writer, s: Source): void {
   if (s.abbreviation) w.line(1, 'ABBR', s.abbreviation);
   if (s.publication) w.line(1, 'PUBL', s.publication);
   if (s.text) w.line(1, 'TEXT', s.text);
-  if (s.repositoryId) {
-    w.line(1, 'REPO', ptr(s.repositoryId));
-    if (s.callNumber) w.line(2, 'CALN', s.callNumber);
+  const repos = s.repositories?.length ? s.repositories : s.repositoryId ? [{ id: s.repositoryId, callNumber: s.callNumber }] : [];
+  for (const r of repos) {
+    w.line(1, 'REPO', ptr(r.id));
+    if (r.callNumber) w.line(2, 'CALN', r.callNumber);
   }
   for (const n of s.notes) w.line(1, 'NOTE', n);
   for (const m of s.mediaIds) w.line(1, 'OBJE', ptr(m));
@@ -264,6 +270,7 @@ function writeMedia(w: Writer, m: MediaObject): void {
   w.line(1, 'FILE', m.file);
   if (m.format) w.line(2, 'FORM', m.format);
   if (m.title) w.line(2, 'TITL', m.title);
+  for (const f of m.files ?? []) w.line(1, 'FILE', f);
   if (m.kind) w.line(1, '_KIND', m.kind);
   if (m.date) w.line(1, '_DATE', formatGedcomDate(m.date));
   if (m.primary) w.line(1, '_PRIM', 'Y');

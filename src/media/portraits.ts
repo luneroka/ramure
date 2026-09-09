@@ -26,19 +26,42 @@ export async function prepareImage(file: File): Promise<Blob> {
 
 type Entry = { state: 'loading' } | { state: 'ready'; bitmap: ImageBitmap } | { state: 'missing' };
 
-/** Bitmaps by media id, loaded lazily from IndexedDB. Calls `onReady` when a new one can be drawn. */
+/** How many decoded portraits stay in memory; the least recently drawn go first. */
+export const PORTRAIT_CACHE_MAX = 300;
+
+/** Bitmaps by media id, loaded lazily from IndexedDB. Calls `onReady` when a new one can be drawn. Bounded: see PORTRAIT_CACHE_MAX. */
 export class PortraitCache {
   private entries = new Map<string, Entry>();
-  constructor(private onReady: () => void) {}
+  constructor(
+    private onReady: () => void,
+    private max = PORTRAIT_CACHE_MAX,
+  ) {}
 
   get(id: string): ImageBitmap | undefined {
     const e = this.entries.get(id);
     if (!e) {
       this.entries.set(id, { state: 'loading' });
+      this.evict();
       void this.load(id);
       return undefined;
     }
+    // Recently drawn moves to the end: insertion order is the eviction order.
+    this.entries.delete(id);
+    this.entries.set(id, e);
     return e.state === 'ready' ? e.bitmap : undefined;
+  }
+
+  get size(): number {
+    return this.entries.size;
+  }
+
+  private evict(): void {
+    for (const [id, e] of this.entries) {
+      if (this.entries.size <= this.max) return;
+      if (e.state === 'loading') continue;
+      if (e.state === 'ready') e.bitmap.close();
+      this.entries.delete(id);
+    }
   }
 
   /** Forget an id so it is reloaded (after a change). */
@@ -56,10 +79,14 @@ export class PortraitCache {
         return;
       }
       const bitmap = await createImageBitmap(blob);
+      if (!this.entries.has(id)) {
+        bitmap.close(); // invalidated or disposed while loading
+        return;
+      }
       this.entries.set(id, { state: 'ready', bitmap });
       this.onReady();
     } catch {
-      this.entries.set(id, { state: 'missing' });
+      if (this.entries.has(id)) this.entries.set(id, { state: 'missing' });
     }
   }
 

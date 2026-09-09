@@ -4,6 +4,7 @@ import { t } from '../../i18n';
 import { localeOf } from '../format';
 import type { SnapshotRow } from '../hooks/useSnapshots';
 import { useUi } from '../ui/UiContext';
+import { useDialog } from '../ui/useDialog';
 
 interface Props {
   snapshots: SnapshotRow[];
@@ -16,9 +17,17 @@ interface Props {
 
 export function SnapshotsDialog({ snapshots, readOnly, owner, onClose, onSaveVersion, onRestore }: Props) {
   const { lang } = useUi();
+  const ref = useDialog<HTMLDivElement>(true, onClose);
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t(lang, 'snapshots')}>
+      <div
+        ref={ref}
+        className="dialog"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t(lang, 'snapshots')}
+      >
         <div className="report-head">
           <strong>{t(lang, 'snapshots')}</strong>
           <span className="muted" />

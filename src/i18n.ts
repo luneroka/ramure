@@ -157,6 +157,14 @@ const strings = {
   retry: { fr: 'Réessayer', en: 'Try again' },
   reloadPage: { fr: 'Recharger la page', en: 'Reload the page' },
   unexpectedError: { fr: 'Erreur inattendue', en: 'Unexpected error' },
+  updateAvailable: { fr: 'Une nouvelle version de Ramure est prête.', en: 'A new version of Ramure is ready.' },
+  updateNow: { fr: 'Mettre à jour', en: 'Update' },
+  later: { fr: 'Plus tard', en: 'Later' },
+  canvasLabel: { fr: 'Arbre généalogique', en: 'Family tree' },
+  canvasKeysHint: {
+    fr: 'Flèches pour passer d’une personne à l’autre, Entrée pour recentrer, A pour ajouter un proche, R pour un lien de parenté.',
+    en: 'Arrow keys move between people, Enter recentres, A adds a relative, R starts a relationship lookup.',
+  },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',

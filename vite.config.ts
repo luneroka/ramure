@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Ramure',
@@ -25,8 +25,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // A new version takes over on the very next load, so a fresh deploy never serves the previous app once.
-        skipWaiting: true,
+        // A new version waits until the person accepts it (the banner), so an edit in progress is never cut short.
+        skipWaiting: false,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],

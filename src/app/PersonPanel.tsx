@@ -19,6 +19,7 @@ import { mediaStore } from '../store';
 import { prepareImage } from '../media/portraits';
 import { FamilyEditor, PersonEditor } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
+import { PersonRow } from './PersonRow';
 import { SplitPanes } from './SplitPanes';
 import { DocumentsTab } from './Documents';
 import { LeadsTab } from './Leads';
@@ -212,40 +213,6 @@ export function PersonPanel(props: Props) {
   const unions = person.partnerIn.map((fid) => tree.families[fid]).filter((f): f is Family => !!f);
   const familyCount = parents.length + siblings.length + unions.reduce((n, f) => n + 1 + f.childIds.length, 0);
 
-  const Person = ({ id, tag, onRemove }: { id: string; tag?: string; onRemove?: () => void }) => {
-    const p = tree.individuals[id]!;
-    const b = findEvent(p.events, 'birth'),
-      d = findEvent(p.events, 'death');
-    const by = approximateYear(b?.date),
-      dy = approximateYear(d?.date);
-    const years = d ? `${by ?? '?'} – ${dy ?? '?'}` : by ? `${tg(lang, 'born', p.sex)} ${by}` : '';
-    const place = placeText(b?.place) || placeText(d?.place);
-    return (
-      <li className="person-row">
-        <button className="link-person" onClick={() => onSelect(id)} onDoubleClick={() => onFocus(id)}>
-          <Medallion mediaId={portraitId(p, tree)} size={40} className={`row-medallion ${p.sex}`} />
-          <span className="link-body">
-            <span className="link-name">
-              {displayName(p)}
-              {tag && <span className="tag">{tag}</span>}
-            </span>
-            {(years || place) && (
-              <span className="link-years">
-                {years}
-                {place ? ` · ${place}` : ''}
-              </span>
-            )}
-          </span>
-        </button>
-        {onRemove && (
-          <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>
-            ⨯
-          </button>
-        )}
-      </li>
-    );
-  };
-
   const rows = eventRows(tree, person, lang);
   const sources = sourceRows(tree, person, lang);
 
@@ -345,7 +312,15 @@ export function PersonPanel(props: Props) {
           <h3 className="band">{t(lang, 'parents')}</h3>
           <ul className="people">
             {parents.map((p) => (
-              <Person key={p.id} id={p.id} tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined} />
+              <PersonRow
+                tree={tree}
+                lang={lang}
+                onSelect={onSelect}
+                onFocus={onFocus}
+                key={p.id}
+                id={p.id}
+                tag={p.pedigree === 'adopted' ? tg(lang, 'adopted', person.sex) : undefined}
+              />
             ))}
           </ul>
         </section>
@@ -355,7 +330,7 @@ export function PersonPanel(props: Props) {
           <h3 className="band">{t(lang, 'siblings')}</h3>
           <ul className="people">
             {siblings.map((id) => (
-              <Person key={id} id={id} />
+              <PersonRow tree={tree} lang={lang} onSelect={onSelect} onFocus={onFocus} key={id} id={id} />
             ))}
           </ul>
         </section>
@@ -380,7 +355,7 @@ export function PersonPanel(props: Props) {
             <div key={f.id} className="union">
               <ul className="people">
                 {partnerId && tree.individuals[partnerId] ? (
-                  <Person id={partnerId} />
+                  <PersonRow tree={tree} lang={lang} onSelect={onSelect} onFocus={onFocus} id={partnerId} />
                 ) : (
                   <li className="muted">{tg(lang, 'unknownPerson', person.sex === 'M' ? 'F' : person.sex === 'F' ? 'M' : 'U')}</li>
                 )}
@@ -413,8 +388,12 @@ export function PersonPanel(props: Props) {
                   {f.childIds
                     .filter((c) => tree.individuals[c])
                     .map((c) => (
-                      <Person
+                      <PersonRow
                         key={c}
+                        tree={tree}
+                        lang={lang}
+                        onSelect={onSelect}
+                        onFocus={onFocus}
                         id={c}
                         tag={
                           tree.individuals[c]!.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted'
