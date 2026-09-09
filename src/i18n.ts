@@ -186,6 +186,22 @@ const strings = {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',
   },
+  signinTitle: { fr: 'Connexion', en: 'Sign in' },
+  signinSub: { fr: 'Ramure est réservé aux familles invitées.', en: 'Ramure is for invited families.' },
+  noAccessYet: { fr: 'Pas encore d’accès ?', en: 'No access yet?' },
+  requestAccess: { fr: 'Demander un accès', en: 'Request access' },
+  requestAccessHint: {
+    fr: 'Laissez votre adresse et un mot sur qui vous êtes. Le responsable de Ramure décide et vous recevez une invitation par courriel.',
+    en: 'Leave your address and a word about who you are. The person running Ramure decides and you receive an invitation by email.',
+  },
+  requestMessage: { fr: 'Qui êtes-vous ? (facultatif)', en: 'Who are you? (optional)' },
+  sendRequest: { fr: 'Envoyer la demande', en: 'Send the request' },
+  requestSent: {
+    fr: 'Demande envoyée. Vous recevrez une invitation si elle est acceptée.',
+    en: 'Request sent. You will receive an invitation if it is accepted.',
+  },
+  accessRequests: { fr: 'Demandes d’accès', en: 'Access requests' },
+  inviteThis: { fr: 'Inviter', en: 'Invite' },
   signinHint: {
     fr: 'Pas de mot de passe : un lien de connexion vous est envoyé par courriel.',
     en: 'No password: a sign-in link is emailed to you.',

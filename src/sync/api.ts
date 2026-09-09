@@ -63,6 +63,7 @@ export interface AdminOverview {
   }>;
   invites: Array<{ id: string; email: string; created_at: number; expires_at: number }>;
   accounts: Array<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>;
+  requests: Array<{ id: string; email: string; message: string | null; requested_at: number }>;
 }
 
 export interface TreeSummary {
@@ -100,6 +101,10 @@ export const api = {
   cancelDeletion: () => call<{ ok: true }>('DELETE', '/api/auth/deletion-request'),
   adminOverview: () => call<AdminOverview>('GET', '/api/admin/overview'),
   adminInvite: (email: string) => call<{ id: string; email: string; expiresAt: number }>('POST', '/api/admin/invites', { email }),
+  requestAccess: (email: string, message: string) => call<{ ok: true }>('POST', '/api/auth/access-request', { email, message }),
+  adminInviteRequest: (id: string) =>
+    call<{ id: string; email: string }>('POST', `/api/admin/access-requests/${encodeURIComponent(id)}/invite`, {}),
+  adminDeclineRequest: (id: string) => call<{ ok: true }>('DELETE', `/api/admin/access-requests/${encodeURIComponent(id)}`),
   adminRevokeInvite: (id: string) => call<{ ok: true }>('DELETE', `/api/admin/invites/${encodeURIComponent(id)}`),
   adminApproveDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/approve`, {}),
   adminDeclineDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/decline`, {}),

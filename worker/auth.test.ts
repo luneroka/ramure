@@ -101,3 +101,24 @@ describe('administration', () => {
     expect((await a.call('GET', `/api/trees/${tree.body.id}`)).status).toBe(404);
   });
 });
+
+describe('access requests', () => {
+  it('records a request from anyone, tells nothing back, and the admin can turn it into an invitation', async () => {
+    const c = new Client();
+    expect((await c.call('POST', '/api/auth/access-request', { email: 'Hopeful@Example.org', message: 'cousin de Yoann' })).status).toBe(
+      200,
+    );
+    // Still no way in.
+    expect(await new Client().signIn('hopeful@example.org')).toBe(403);
+    await invite('admin@example.org');
+    const a = new Client();
+    await a.signIn('admin@example.org');
+    const ov = await a.call<{ requests: Array<{ id: string; email: string; message: string | null }> }>('GET', '/api/admin/overview');
+    const req = ov.body.requests.find((r) => r.email === 'hopeful@example.org');
+    expect(req?.message).toBe('cousin de Yoann');
+    expect((await a.call('POST', `/api/admin/access-requests/${req!.id}/invite`, {})).status).toBe(201);
+    expect(await new Client().signIn('hopeful@example.org')).toBe(200);
+    const after = await a.call<{ requests: Array<{ email: string }> }>('GET', '/api/admin/overview');
+    expect(after.body.requests.some((r) => r.email === 'hopeful@example.org')).toBe(false);
+  });
+});

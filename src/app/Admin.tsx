@@ -111,6 +111,43 @@ export function Admin({ lang, onBack, toast, ask }: Props) {
         )}
       </section>
 
+      {data && data.requests.length > 0 && (
+        <section className="home-card" id="admin-requests">
+          <h2>{t(lang, 'accessRequests')}</h2>
+          <ul className="member-list">
+            {data.requests.map((r) => (
+              <li key={r.id}>
+                <span className="grow">
+                  <strong>{r.email}</strong>
+                  <span className="muted small">
+                    {' '}
+                    · {day(r.requested_at)}
+                    {r.message ? ` · « ${r.message} »` : ''}
+                  </span>
+                </span>
+                <button className="btn small subtle" onClick={() => api.adminDeclineRequest(r.id).then(() => setRefresh((n) => n + 1))}>
+                  {t(lang, 'decline')}
+                </button>
+                <button
+                  className="btn small primary"
+                  onClick={() =>
+                    api
+                      .adminInviteRequest(r.id)
+                      .then(() => {
+                        toast(`${t(lang, 'inviteSentTo')} ${r.email}`);
+                        setRefresh((n) => n + 1);
+                      })
+                      .catch(() => toast(t(lang, 'syncError')))
+                  }
+                >
+                  {t(lang, 'inviteThis')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {pending.length > 0 && (
         <section className="home-card" id="admin-deletions">
           <h2>{t(lang, 'deletionRequests')}</h2>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { t, type Lang } from '../i18n';
-import { ApiError } from '../sync/api';
+import { api, ApiError } from '../sync/api';
 import type { Auth } from './useAuth';
 
 interface Props {
@@ -56,6 +56,23 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     }
   };
 
+  const [asking, setAsking] = useState(false);
+  const [reqEmail, setReqEmail] = useState('');
+  const [reqMessage, setReqMessage] = useState('');
+  const sendRequest = async () => {
+    setBusy(true);
+    try {
+      await api.requestAccess(reqEmail.trim(), reqMessage);
+      toast(t(lang, 'requestSent'));
+      setAsking(false);
+      setReqMessage('');
+    } catch {
+      toast(t(lang, 'syncError'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitCode = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!sent) return;
@@ -79,6 +96,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
       <div className="login-card">
         <h1>{t(lang, 'appName')}</h1>
         <p className="tagline">{t(lang, 'tagline')}</p>
+        <h2 className="signin-title">{t(lang, 'signinTitle')}</h2>
+        <p className="muted small signin-sub">{t(lang, 'signinSub')}</p>
         {pendingInvite && (
           <div className="callout">
             {t(lang, 'inviteFor')} <strong>{pendingInvite.accountName}</strong>. {t(lang, 'inviteSignIn')}
@@ -152,6 +171,43 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
               </p>
             )}
           </form>
+        )}
+        {!auth.loading && !auth.unavailable && (
+          <div className="access-request">
+            {asking ? (
+              <form
+                className="signin"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void sendRequest();
+                }}
+              >
+                <h3 className="signin-title small">{t(lang, 'requestAccess')}</h3>
+                <p className="muted small">{t(lang, 'requestAccessHint')}</p>
+                <label>
+                  {t(lang, 'email')}
+                  <input type="email" required autoComplete="email" value={reqEmail} onChange={(e) => setReqEmail(e.target.value)} />
+                </label>
+                <label>
+                  {t(lang, 'requestMessage')}
+                  <textarea rows={2} maxLength={600} value={reqMessage} onChange={(e) => setReqMessage(e.target.value)} />
+                </label>
+                <button className="btn primary" disabled={busy || !reqEmail.includes('@')}>
+                  {t(lang, 'sendRequest')}
+                </button>
+                <button type="button" className="btn subtle" onClick={() => setAsking(false)}>
+                  {t(lang, 'cancel')}
+                </button>
+              </form>
+            ) : (
+              <p className="muted small access-line">
+                {t(lang, 'noAccessYet')}{' '}
+                <button type="button" className="link" onClick={() => setAsking(true)}>
+                  {t(lang, 'requestAccess')}
+                </button>
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>

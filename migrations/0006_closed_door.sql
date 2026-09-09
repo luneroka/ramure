@@ -18,3 +18,11 @@ CREATE TABLE deletion_requests (
   requested_at INTEGER NOT NULL,
   note TEXT
 );
+
+-- People without an invitation can ask for one; the administrator turns a request into an invitation.
+CREATE TABLE access_requests (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  message TEXT,
+  requested_at INTEGER NOT NULL
+);

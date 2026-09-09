@@ -168,6 +168,41 @@ auth.patch('/me', async (c) => {
   return c.json({ user: { ...user, name: name || null } });
 });
 
+/** Anyone may ask for an invitation; the administrator hears about it by mail and decides. Same answer whatever the address. */
+auth.post('/access-request', async (c) => {
+  const body = await c.req.json<{ email?: string; message?: string }>().catch(() => ({}) as { email?: string; message?: string });
+  const email = normaliseEmail(body.email);
+  const message = String(body.message ?? '')
+    .trim()
+    .slice(0, 600);
+  const known = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first();
+  const recent = await c.env.DB.prepare(`SELECT requested_at FROM access_requests WHERE email = ?`)
+    .bind(email)
+    .first<{ requested_at: number }>();
+  const fresh = recent && now() - recent.requested_at < 24 * 60 * 60 * 1000;
+  if (!known && !fresh) {
+    await c.env.DB.prepare(`INSERT OR REPLACE INTO access_requests (id, email, message, requested_at) VALUES (?, ?, ?, ?)`)
+      .bind(randomId('Q'), email, message || null, now())
+      .run();
+    if (c.env.ADMIN_EMAIL) {
+      await sendMail(
+        c.env,
+        c.req.url,
+        c.env.ADMIN_EMAIL,
+        `Demande d’accès à Ramure : ${email}`,
+        [
+          `${email} demande un accès à Ramure.`,
+          '',
+          message ? `Message : ${message}` : '(sans message)',
+          '',
+          `Décidez depuis ${c.env.APP_ORIGIN}/#/administration`,
+        ].join('\n'),
+      ).catch(() => undefined);
+    }
+  }
+  return c.json({ ok: true });
+});
+
 /** Users do not delete their own account: they ask, and the administrator approves. */
 auth.post('/deletion-request', async (c) => {
   const user = c.get('user');

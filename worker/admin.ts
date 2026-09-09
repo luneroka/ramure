@@ -3,7 +3,7 @@
  * Only users flagged is_admin (the operator) reach these routes.
  */
 
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import type { Env, User, Vars } from './env';
 import { sendMail } from './mail';
 import { HttpError, normaliseEmail, now, randomId } from './util';
@@ -69,13 +69,21 @@ admin.get('/overview', async (c) => {
             (SELECT COALESCE(SUM(md.size), 0) FROM media md JOIN trees t ON t.id = md.tree_id WHERE t.account_id = a.id) AS bytes
        FROM accounts a ORDER BY a.created_at`,
   ).all<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>();
-  return c.json({ users: users.results, invites: invites.results, accounts: accounts.results });
+  const requests = await c.env.DB.prepare(`SELECT id, email, message, requested_at FROM access_requests ORDER BY requested_at DESC`).all<{
+    id: string;
+    email: string;
+    message: string | null;
+    requested_at: number;
+  }>();
+  return c.json({ users: users.results, invites: invites.results, accounts: accounts.results, requests: requests.results });
 });
 
-admin.post('/invites', async (c) => {
-  const me = await requireAdmin(c.env, c.get('user'));
-  const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
-  const email = normaliseEmail(body.email);
+/** Create and mail an invitation for an address; any pending access request for it is settled. */
+async function inviteAddress(
+  c: Context<{ Bindings: Env; Variables: Vars }>,
+  me: User,
+  email: string,
+): Promise<{ id: string; expiresAt: number }> {
   const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first<{ id: string }>();
   if (existing) throw new HttpError(409, 'already a user');
   const id = randomId('V');
@@ -102,7 +110,30 @@ admin.post('/invites', async (c) => {
       'Cette invitation est valable sept jours.',
     ].join('\n'),
   );
-  return c.json({ id, email, expiresAt: now() + APP_INVITE_TTL_MS }, 201);
+  await c.env.DB.prepare(`DELETE FROM access_requests WHERE email = ?`).bind(email).run();
+  return { id, expiresAt: now() + APP_INVITE_TTL_MS };
+}
+
+admin.post('/invites', async (c) => {
+  const me = await requireAdmin(c.env, c.get('user'));
+  const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
+  const email = normaliseEmail(body.email);
+  const r = await inviteAddress(c, me, email);
+  return c.json({ id: r.id, email, expiresAt: r.expiresAt }, 201);
+});
+
+admin.post('/access-requests/:id/invite', async (c) => {
+  const me = await requireAdmin(c.env, c.get('user'));
+  const row = await c.env.DB.prepare(`SELECT email FROM access_requests WHERE id = ?`).bind(c.req.param('id')).first<{ email: string }>();
+  if (!row) throw new HttpError(404, 'no request');
+  const r = await inviteAddress(c, me, row.email);
+  return c.json({ id: r.id, email: row.email, expiresAt: r.expiresAt }, 201);
+});
+
+admin.delete('/access-requests/:id', async (c) => {
+  await requireAdmin(c.env, c.get('user'));
+  await c.env.DB.prepare(`DELETE FROM access_requests WHERE id = ?`).bind(c.req.param('id')).run();
+  return c.json({ ok: true });
 });
 
 admin.delete('/invites/:id', async (c) => {

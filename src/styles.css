@@ -3039,3 +3039,40 @@ textarea:focus {
 .signin .btn {
   width: 100%;
 }
+
+.signin-title {
+  margin: 4px 0 0;
+  font: 500 24px/1.2 var(--display);
+  text-align: center;
+}
+.signin-title.small {
+  font-size: 19px;
+  text-align: left;
+  margin: 0;
+}
+.signin-sub {
+  text-align: center;
+  margin: 0 0 6px;
+}
+.access-request {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.access-line {
+  text-align: center;
+  margin: 0;
+}
+.access-request .signin {
+  display: grid;
+  gap: 10px;
+}
+.access-request textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--ground);
+  color: var(--ink);
+  resize: vertical;
+}
