@@ -46,10 +46,12 @@ MAIL_FROM = "Ramure <contact@contact.luneroka.com>"
 # Staging: a second Worker with its own database and bucket, for trying things
 # that must not touch the family's real trees.
 #
-# Nothing is inherited from the top of this file — Wrangler environments start
-# empty, so every binding and var is repeated here on purpose. Deployed by hand
-# with `npm run deploy:staging`; Workers Builds only auto-deploys production
-# from main, so staging never moves unless you move it.
+# Bindings and vars are NOT inherited — Wrangler environments start empty for
+# those, so every one is repeated here on purpose. Triggers ARE inherited, which
+# is why the empty `crons` below is needed: the first staging deploy picked up
+# production's nightly schedule. Deployed by hand with `npm run deploy:staging`;
+# Workers Builds only auto-deploys production from main, so staging never moves
+# unless you move it.
 #
 # database_id is filled in by `npx wrangler d1 create ramure-staging` — see
 # docs/STAGING.md.
@@ -68,7 +70,7 @@ run_worker_first = ["/api/*"]
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "ramure-staging"
-database_id = "PASTE_THE_ID_FROM_D1_CREATE"
+database_id = "e849bcaa-9deb-4416-9be6-13ac478bb385"
 migrations_dir = "migrations"
 
 [[env.staging.r2_buckets]]
@@ -79,6 +81,9 @@ bucket_name = "ramure-media-staging"
 APP_ORIGIN = "https://ramure-staging.ramure.workers.dev"
 MAIL_FROM = "Ramure <contact@contact.luneroka.com>"
 
-# No [triggers] here on purpose: the nightly backup and reaper cron belongs to
-# production. Staging can be run by hand with
+# An empty crons list, not an absent one: triggers are inherited from the top of
+# the file, so leaving this out gives staging production's nightly backup and
+# reaper. Run them here by hand instead, with
 #   curl "https://ramure-staging.ramure.workers.dev/cdn-cgi/handler/scheduled"
+[env.staging.triggers]
+crons = []
