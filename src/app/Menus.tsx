@@ -145,6 +145,7 @@ interface UserMenuProps {
   accountName?: string;
   onAccount(): void;
   onSettings(): void;
+  onAdmin?(): void;
   onSignOut(): void;
 }
 
@@ -185,6 +186,7 @@ export function UserMenu(p: UserMenuProps) {
         <div className="dd-sep" />
         {item(t(lang, 'accountMembers'), p.onAccount)}
         {item(t(lang, 'settings'), p.onSettings)}
+        {p.user.isAdmin && p.onAdmin && item(t(lang, 'administration'), p.onAdmin)}
         <div className="dd-sep" />
         {item(t(lang, 'signOut'), p.onSignOut)}
       </Dropdown>

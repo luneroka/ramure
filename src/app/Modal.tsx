@@ -14,7 +14,7 @@ export interface AskSpec {
   cancelLabel?: string;
   danger?: boolean;
   /** Ask for a text value; resolves with the string. */
-  input?: { label: string; initial?: string; placeholder?: string };
+  input?: { label: string; initial?: string; placeholder?: string; optional?: boolean };
   /** Dangerous action: the user must type this exact text to enable the button. */
   requireText?: string;
 }
@@ -88,7 +88,7 @@ export function Modal({ pending, lang }: { pending: Pending | null; lang: Lang }
             ref={!spec.input && !spec.requireText ? (first as React.RefObject<HTMLButtonElement>) : undefined}
             type="submit"
             className={`btn ${spec.danger ? 'danger' : 'primary'}`}
-            disabled={!guardOk || (!!spec.input && !value.trim())}
+            disabled={!guardOk || (!!spec.input && !spec.input.optional && !value.trim())}
           >
             {spec.confirmLabel ?? t(lang, 'confirm')}
           </button>

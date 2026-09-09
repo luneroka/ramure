@@ -6,6 +6,8 @@ export interface Env {
   DEV_ECHO_LINKS?: string;
   MAIL_FROM: string;
   RESEND_API_KEY?: string;
+  /** The operator's address: that user is the application administrator. */
+  ADMIN_EMAIL?: string;
 }
 
 export interface User {

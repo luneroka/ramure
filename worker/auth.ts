@@ -10,6 +10,8 @@ import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
 import { HttpError, normaliseEmail, now, randomId, randomToken, sha256 } from './util';
+import { echoMode, sendMail } from './mail';
+import { consumeInvite, isAdmin, mayEnter } from './admin';
 
 export const SESSION_COOKIE = 'ramure_session';
 const LINK_TTL_MS = 15 * 60 * 1000;
@@ -35,40 +37,40 @@ function randomCode(): string {
 
 const pretty = (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`;
 
-async function sendMagicLink(env: Env, email: string, link: string, code: string): Promise<void> {
-  if (!env.RESEND_API_KEY) {
-    if (env.DEV_ECHO_LINKS === '1') return; // returned to the caller instead
-    throw new HttpError(500, 'mail not configured');
-  }
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: env.MAIL_FROM,
-      to: [email],
-      subject: `${pretty(code)} est votre code de connexion Ramure`,
-      text: [
-        'Bonjour,',
-        '',
-        `Votre code de connexion Ramure : ${pretty(code)}`,
-        'Saisissez-le sur la page de connexion, il reste valable 15 minutes.',
-        '',
-        'Vous pouvez aussi ouvrir ce lien directement :',
-        link,
-        '',
-        "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.",
-      ].join('\n'),
-    }),
-  });
-  if (!res.ok) throw new HttpError(502, 'mail delivery failed');
+async function sendMagicLink(env: Env, requestUrl: string, email: string, link: string, code: string): Promise<void> {
+  await sendMail(
+    env,
+    requestUrl,
+    email,
+    `${pretty(code)} est votre code de connexion Ramure`,
+    [
+      'Bonjour,',
+      '',
+      `Votre code de connexion Ramure : ${pretty(code)}`,
+      'Saisissez-le sur la page de connexion, il reste valable 15 minutes.',
+      '',
+      'Vous pouvez aussi ouvrir ce lien directement :',
+      link,
+      '',
+      "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.",
+    ].join('\n'),
+  );
 }
 
 /** Find or create the user for this email and open a 90-day session cookie. */
 async function openSession(c: Context<{ Bindings: Env; Variables: Vars }>, email: string): Promise<void> {
   let user = await c.env.DB.prepare(`SELECT id, email, name FROM users WHERE email = ?`).bind(email).first<User>();
   if (!user) {
+    // A first sign-in needs a live invitation (the request step already checked; a stale link is refused here too).
+    if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
     user = { id: randomId('U'), email, name: null };
-    await c.env.DB.prepare(`INSERT INTO users (id, email, name, created_at) VALUES (?, ?, NULL, ?)`).bind(user.id, user.email, now()).run();
+    const adminFlag = c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email ? 1 : 0;
+    await c.env.DB.prepare(`INSERT INTO users (id, email, name, created_at, is_admin) VALUES (?, ?, NULL, ?, ?)`)
+      .bind(user.id, user.email, now(), adminFlag)
+      .run();
+    await consumeInvite(c.env, email);
+  } else if (c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email) {
+    await c.env.DB.prepare(`UPDATE users SET is_admin = 1 WHERE id = ?`).bind(user.id).run();
   }
   const session = randomToken();
   await c.env.DB.prepare(`INSERT INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`)
@@ -80,11 +82,21 @@ async function openSession(c: Context<{ Bindings: Env; Variables: Vars }>, email
 
 export const auth = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-auth.get('/me', (c) => c.json({ user: c.get('user') }));
+auth.get('/me', async (c) => {
+  const user = c.get('user');
+  if (!user) return c.json({ user: null });
+  const [adminFlag, del] = await Promise.all([
+    isAdmin(c.env, user.id),
+    c.env.DB.prepare(`SELECT requested_at FROM deletion_requests WHERE user_id = ?`).bind(user.id).first<{ requested_at: number }>(),
+  ]);
+  return c.json({ user: { ...user, isAdmin: adminFlag, deletionRequestedAt: del?.requested_at ?? null } });
+});
 
 auth.post('/request', async (c) => {
   const body = await c.req.json<{ email?: string }>().catch(() => ({}) as { email?: string });
   const email = normaliseEmail(body.email);
+  // Closed door: only existing users and invited addresses get a mail. Same answer either way for outsiders.
+  if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
   // At most three links per address per quarter hour: keeps a mistyped form or a bot from burning the mail quota.
   const recent = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM magic_links WHERE email = ? AND expires_at > ?`)
     .bind(email, now())
@@ -96,8 +108,8 @@ auth.post('/request', async (c) => {
     .bind(await sha256(token), email, now() + LINK_TTL_MS, await sha256(`${email}:${code}`))
     .run();
   const link = `${c.env.APP_ORIGIN}/api/auth/verify?token=${encodeURIComponent(token)}`;
-  await sendMagicLink(c.env, email, link, code);
-  return c.json({ ok: true, ...(c.env.DEV_ECHO_LINKS === '1' && !c.env.RESEND_API_KEY ? { link, code } : {}) });
+  await sendMagicLink(c.env, c.req.url, email, link, code);
+  return c.json({ ok: true, ...(echoMode(c.env, c.req.url) ? { link, code } : {}) });
 });
 
 /** The code from the mail, typed on the sign-in page. Five tries per link. */
@@ -154,4 +166,25 @@ auth.patch('/me', async (c) => {
     .bind(name || null, user.id)
     .run();
   return c.json({ user: { ...user, name: name || null } });
+});
+
+/** Users do not delete their own account: they ask, and the administrator approves. */
+auth.post('/deletion-request', async (c) => {
+  const user = c.get('user');
+  if (!user) throw new HttpError(401, 'sign in required');
+  const body = await c.req.json<{ note?: string }>().catch(() => ({}) as { note?: string });
+  const note = String(body.note ?? '')
+    .trim()
+    .slice(0, 500);
+  await c.env.DB.prepare(`INSERT OR REPLACE INTO deletion_requests (user_id, requested_at, note) VALUES (?, ?, ?)`)
+    .bind(user.id, now(), note || null)
+    .run();
+  return c.json({ ok: true, requestedAt: now() });
+});
+
+auth.delete('/deletion-request', async (c) => {
+  const user = c.get('user');
+  if (!user) throw new HttpError(401, 'sign in required');
+  await c.env.DB.prepare(`DELETE FROM deletion_requests WHERE user_id = ?`).bind(user.id).run();
+  return c.json({ ok: true });
 });

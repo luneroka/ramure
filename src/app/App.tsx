@@ -23,6 +23,7 @@ import { Modal, type AskSpec, type Pending } from './Modal';
 import { TreeMenu, UserMenu } from './Menus';
 import { parseRoute, useHashRoute } from './router';
 import { Settings, type DefaultView } from './Settings';
+import { Admin } from './Admin';
 import { PersonPanel } from './PersonPanel';
 import { MAX_PPY, MIN_PPY, Timeline } from './Timeline';
 import { MapView } from './MapView';
@@ -1062,6 +1063,7 @@ export function App() {
               setSettingsSection(undefined);
               navigate({ name: 'settings' });
             }}
+            onAdmin={() => navigate({ name: 'admin' })}
             onSignOut={() => void signOut()}
           />
         </div>
@@ -1368,6 +1370,8 @@ export function App() {
               })();
             }}
           />
+        ) : route.name === 'admin' && auth.user.isAdmin ? (
+          <Admin lang={lang} onBack={() => navigate({ name: 'home' })} toast={toast} ask={ask} />
         ) : route.name === 'settings' ? (
           <Settings
             lang={lang}
@@ -1391,6 +1395,7 @@ export function App() {
               void auth.refresh();
               toast(t(lang, 'saved'));
             }}
+            onDeletionChanged={() => void auth.refresh()}
             onLang={(l) => {
               setLang(l);
               saveLang(l);

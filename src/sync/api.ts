@@ -46,6 +46,23 @@ export interface Me {
   id: string;
   email: string;
   name: string | null;
+  isAdmin?: boolean;
+  deletionRequestedAt?: number | null;
+}
+
+export interface AdminOverview {
+  users: Array<{
+    id: string;
+    email: string;
+    name: string | null;
+    created_at: number;
+    is_admin: number;
+    accounts: number;
+    deletion_requested_at: number | null;
+    deletion_note: string | null;
+  }>;
+  invites: Array<{ id: string; email: string; created_at: number; expires_at: number }>;
+  accounts: Array<{ id: string; name: string; created_at: number; members: number; trees: number; bytes: number }>;
 }
 
 export interface TreeSummary {
@@ -79,6 +96,13 @@ export const api = {
   me: () => call<{ user: Me | null }>('GET', '/api/auth/me'),
   requestLink: (email: string) => call<{ ok: true; link?: string; code?: string }>('POST', '/api/auth/request', { email }),
   verifyCode: (email: string, code: string) => call<{ ok: true }>('POST', '/api/auth/code', { email, code }),
+  requestDeletion: (note: string) => call<{ ok: true; requestedAt: number }>('POST', '/api/auth/deletion-request', { note }),
+  cancelDeletion: () => call<{ ok: true }>('DELETE', '/api/auth/deletion-request'),
+  adminOverview: () => call<AdminOverview>('GET', '/api/admin/overview'),
+  adminInvite: (email: string) => call<{ id: string; email: string; expiresAt: number }>('POST', '/api/admin/invites', { email }),
+  adminRevokeInvite: (id: string) => call<{ ok: true }>('DELETE', `/api/admin/invites/${encodeURIComponent(id)}`),
+  adminApproveDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/approve`, {}),
+  adminDeclineDeletion: (userId: string) => call<{ ok: true }>('POST', `/api/admin/deletions/${encodeURIComponent(userId)}/decline`, {}),
   logout: () => call<{ ok: true }>('POST', '/api/auth/logout', {}),
   rename: (name: string) => call<{ user: Me }>('PATCH', '/api/auth/me', { name }),
 

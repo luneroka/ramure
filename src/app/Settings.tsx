@@ -21,6 +21,8 @@ interface Props {
   onAccountRenamed(name: string): void;
   onLeftAccount(): void;
   onProfileRenamed(name: string): void;
+  /** The deletion request was sent or cancelled: reload the user. */
+  onDeletionChanged(): void;
   onLang(lang: Lang): void;
   onTheme(theme: ThemeChoice): void;
   onDefaultView(v: DefaultView): void;
@@ -170,6 +172,7 @@ export function Settings(p: Props) {
             {owner && (
               <>
                 <h3>{t(lang, 'inviteLink')}</h3>
+                <p className="muted small">{t(lang, 'accountInviteRule')}</p>
                 <p className="muted small">
                   {t(lang, 'accountInviteHint')} {t(lang, 'viewerHint')}
                 </p>
@@ -277,6 +280,56 @@ export function Settings(p: Props) {
           )}
         </section>
       )}
+
+      <section className="home-card" id="settings-deletion">
+        <h2>{t(lang, 'deleteMyAccount')}</h2>
+        <p className="muted small">{t(lang, 'deleteMyAccountHint')}</p>
+        {p.user.deletionRequestedAt ? (
+          <div className="row">
+            <span className="grow">
+              {t(lang, 'deletionPending')} {new Date(p.user.deletionRequestedAt).toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB')}
+            </span>
+            <button
+              className="btn"
+              onClick={() =>
+                api
+                  .cancelDeletion()
+                  .then(() => {
+                    p.toast(t(lang, 'deletionCancelled'));
+                    p.onDeletionChanged();
+                  })
+                  .catch(() => p.toast(t(lang, 'syncError')))
+              }
+            >
+              {t(lang, 'cancelDeletion')}
+            </button>
+          </div>
+        ) : (
+          <button
+            className="btn subtle danger-text"
+            onClick={() =>
+              void p
+                .ask({
+                  title: t(lang, 'deleteMyAccount'),
+                  message: t(lang, 'deleteMyAccountHint'),
+                  input: { label: t(lang, 'deletionNote'), optional: true },
+                  confirmLabel: t(lang, 'requestDeletion'),
+                  danger: true,
+                })
+                .then((note) => {
+                  if (note === null) return;
+                  return api.requestDeletion(note.trim()).then(() => {
+                    p.toast(t(lang, 'deletionRequested'));
+                    p.onDeletionChanged();
+                  });
+                })
+                .catch(() => p.toast(t(lang, 'syncError')))
+            }
+          >
+            {t(lang, 'requestDeletion')}
+          </button>
+        )}
+      </section>
 
       <section className="home-card" id="settings-profile">
         <h2>{t(lang, 'profile')}</h2>

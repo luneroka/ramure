@@ -9,6 +9,7 @@ import { auth, SESSION_COOKIE, userFromRequest } from './auth';
 import type { Env, Vars } from './env';
 import { accounts, invites } from './accounts';
 import { trees } from './trees';
+import { admin } from './admin';
 import { HttpError } from './util';
 
 const app = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -27,6 +28,7 @@ app.route('/api/auth', auth);
 app.route('/api/accounts', accounts);
 app.route('/api/trees', trees);
 app.route('/api/invites', invites);
+app.route('/api/admin', admin);
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));
 app.onError((err, c) => {

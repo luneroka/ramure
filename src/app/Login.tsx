@@ -49,7 +49,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
       setSent({ email: email.trim(), ...r });
       setCode('');
     } catch (err) {
-      toast(t(lang, err instanceof ApiError && err.status === 429 ? 'signinThrottled' : 'signinFailed'));
+      const status = err instanceof ApiError ? err.status : 0;
+      toast(t(lang, status === 429 ? 'signinThrottled' : status === 403 ? 'signinInviteOnly' : 'signinFailed'));
     } finally {
       setBusy(false);
     }

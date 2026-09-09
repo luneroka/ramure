@@ -4,11 +4,13 @@
  *   #/arbre/<id>     a tree
  *   #/arbre/<id>/ressources   the tree's resources
  *   #/parametres     settings
+ *   #/administration the operator's page
  */
 
 import { useCallback, useEffect, useState } from 'react';
 
-export type Route = { name: 'home' } | { name: 'tree'; id: string } | { name: 'resources'; id: string } | { name: 'settings' };
+export type Route =
+  { name: 'home' } | { name: 'tree'; id: string } | { name: 'resources'; id: string } | { name: 'settings' } | { name: 'admin' };
 
 export function parseRoute(hash: string): Route {
   const h = hash.replace(/^#/, '');
@@ -17,6 +19,7 @@ export function parseRoute(hash: string): Route {
   const tree = /^\/arbre\/([^/?]+)/.exec(h);
   if (tree) return { name: 'tree', id: decodeURIComponent(tree[1]!) };
   if (/^\/parametres/.test(h) || /^\/settings/.test(h)) return { name: 'settings' };
+  if (/^\/administration/.test(h) || /^\/admin/.test(h)) return { name: 'admin' };
   return { name: 'home' };
 }
 
@@ -30,6 +33,8 @@ export function routeHash(r: Route): string {
       return `#/arbre/${encodeURIComponent(r.id)}/ressources`;
     case 'settings':
       return '#/parametres';
+    case 'admin':
+      return '#/administration';
   }
 }
 
