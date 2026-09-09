@@ -1399,10 +1399,14 @@ label.check input {
 
 /* ---------- Login and account home ---------- */
 .login {
-  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   padding: 24px;
+}
+.app.gate {
+  overflow: auto;
 }
 .login-card {
   width: min(420px, 100%);
