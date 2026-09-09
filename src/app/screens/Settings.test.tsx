@@ -42,7 +42,16 @@ function renderSettings(lang: 'fr' | 'en') {
 
 describe('Settings: personal data', () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { headers: { 'Content-Type': 'application/json' } }));
+    // A fresh Response per call, not one shared object: the screen loads members, invitations and
+    // the storage report on mount, and a body can only be read once — `mockResolvedValue` hands
+    // the same instance to all three and the second read throws. The payload carries every key
+    // those three read, so none of them lands an undefined in state.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ members: [], invites: [], trees: [], accounts: [], bytes: 0, files: 0, pendingBytes: 0 }), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
   });
   afterEach(() => {
     cleanup();
