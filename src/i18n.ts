@@ -6,17 +6,13 @@ const strings = {
   appName: { fr: 'Ramure', en: 'Ramure' },
   tagline: { fr: 'Votre généalogie, sur une seule toile.', en: 'Your family history, on one canvas.' },
   openFile: { fr: 'Importer un GEDCOM', en: 'Import a GEDCOM' },
-  openShort: { fr: 'Importer', en: 'Import' },
-  loadSample: { fr: 'Arbre d’exemple', en: 'Sample tree' },
   export: { fr: 'Exporter en GEDCOM', en: 'Export as GEDCOM' },
-  unlinkedPeople: { fr: 'personne(s) non rattachée(s) à aucune famille', en: 'person(s) not linked to any family' },
   search: { fr: 'Rechercher une personne…', en: 'Find a person…' },
   fit: { fr: 'Tout voir', en: 'Fit' },
   recentre: { fr: 'Recentrer', en: 'Re-centre' },
   zoomIn: { fr: 'Zoom avant', en: 'Zoom in' },
   zoomOut: { fr: 'Zoom arrière', en: 'Zoom out' },
-  people: { fr: 'personnes', en: 'people' },
-  onCanvas: { fr: 'sur la toile', en: 'on canvas' },
+  peopleCount: { fr: '{n} personne|{n} personnes', en: '{n} person|{n} people' },
   fullCards: { fr: 'fiches', en: 'cards' },
   namesOnly: { fr: 'noms', en: 'names' },
   dots: { fr: 'points', en: 'dots' },
@@ -35,19 +31,12 @@ const strings = {
   unmarried: { fr: 'union libre', en: 'unmarried' },
   unknownPerson: { fr: 'Inconnu·e', en: 'Unknown' },
   importReport: { fr: 'Vérifications', en: 'Checks' },
-  checkPending: { fr: 'vérification', en: 'check' },
-  checksPending: { fr: 'vérifications', en: 'checks' },
+  checksPendingCount: { fr: '{n} vérification|{n} vérifications', en: '{n} check|{n} checks' },
   reportHint: { fr: 'mis à jour en direct', en: 'updated live' },
   reportEmpty: { fr: 'Rien à signaler.', en: 'Nothing to report.' },
   dismiss: { fr: 'Ignorer', en: 'Dismiss' },
   fix: { fr: 'Corriger', en: 'Fix' },
   dismissHint: { fr: 'Ne plus afficher cette remarque sur cet appareil', en: 'Stop showing this note on this device' },
-  importedFrom: { fr: 'Importé depuis', en: 'Imported from' },
-  noTree: { fr: 'Aucun arbre chargé.', en: 'No tree loaded.' },
-  dropHint: {
-    fr: 'Ouvrez un fichier GEDCOM exporté de Geneanet, Gramps, webtrees ou n’importe quel logiciel, ou glissez-le ici. Tout reste sur votre appareil.',
-    en: 'Open a GEDCOM exported from Geneanet, Gramps, webtrees or any software, or drop it here. Everything stays on your device.',
-  },
   hint: {
     fr: 'Glissez pour déplacer, pincez ou molette pour zoomer, touchez une personne pour recentrer.',
     en: 'Drag to pan, pinch or scroll to zoom, tap a person to re-centre.',
@@ -90,10 +79,6 @@ const strings = {
   undo: { fr: 'Annuler', en: 'Undo' },
   redo: { fr: 'Rétablir', en: 'Redo' },
   newTree: { fr: 'Nouvel arbre', en: 'New tree' },
-  newTreeConfirm: {
-    fr: 'Commencer un nouvel arbre ? L’arbre actuel reste dans les sauvegardes.',
-    en: 'Start a new tree? The current one stays in the snapshots.',
-  },
   snapshots: { fr: 'Sauvegardes', en: 'Snapshots' },
   snapshotsHint: {
     fr: 'Copies automatiques conservées sur cet appareil. Restaurer remplace l’arbre affiché (annulable).',
@@ -106,7 +91,7 @@ const strings = {
   viewAll: { fr: 'Vue d’ensemble', en: 'Overview' },
   viewHourglass: { fr: 'Sablier', en: 'Hourglass' },
   showAll: { fr: 'Vue d’ensemble', en: 'Overview' },
-  shown: { fr: 'affichées', en: 'shown' },
+  shownOf: { fr: '{n} / {total} affichées', en: '{n} / {total} shown' },
   addRelative: { fr: 'Ajouter un proche', en: 'Add a relative' },
   viewAncestors: { fr: 'Ancêtres', en: 'Ancestors' },
   viewDescendants: { fr: 'Descendants', en: 'Descendants' },
@@ -144,7 +129,6 @@ const strings = {
     en: 'Kept on this device, downsized to 640 px. A portrait crop looks best in the medallion.',
   },
   addEvent: { fr: 'Événement', en: 'Event' },
-  privatePerson: { fr: 'Personne privée (masquée dans les partages)', en: 'Private person (hidden when shared)' },
   editUnion: { fr: 'Modifier l’union', en: 'Edit union' },
   unionType: { fr: 'Type d’union', en: 'Union type' },
   married: { fr: 'Mariage', en: 'Marriage' },
@@ -156,32 +140,23 @@ const strings = {
   },
   pickPerson: { fr: 'Choisir une personne…', en: 'Pick a person…' },
   noMatch: { fr: 'Aucun résultat', en: 'No match' },
-  hasFather: { fr: 'Père déjà renseigné', en: 'Father already set' },
-  hasMother: { fr: 'Mère déjà renseignée', en: 'Mother already set' },
   newPersonName: { fr: 'Nouvelle personne', en: 'New person' },
   draftHint: {
     fr: 'Cette personne n’est ajoutée à l’arbre qu’à l’enregistrement. Annuler ne laisse aucune trace.',
     en: 'This person joins the tree only when you save. Cancel leaves no trace.',
   },
-  startHint: {
-    fr: 'Commencez par vous, puis ajoutez vos parents depuis la fiche.',
-    en: 'Start with yourself, then add your parents from the card.',
-  },
   saved: { fr: 'Enregistré', en: 'Saved' },
   newTreeName: { fr: 'nouvel-arbre.ged', en: 'new-tree.ged' },
   other: { fr: 'Autre', en: 'Other' },
   library: { fr: 'Accueil', en: 'Home' },
-  cloudTrees: { fr: 'Arbres partagés', en: 'Shared trees' },
-  deviceTree: { fr: 'Arbre sur cet appareil', en: 'Tree on this device' },
-  onThisDevice: { fr: 'sur cet appareil uniquement', en: 'on this device only' },
-  noDeviceTree: { fr: 'Aucun arbre sur cet appareil pour l’instant.', en: 'No tree on this device yet.' },
-  noCloudTrees: {
-    fr: 'Aucun arbre partagé pour l’instant. Mettez en ligne l’arbre de cet appareil, ou ouvrez un lien d’invitation.',
-    en: 'No shared tree yet. Upload the tree on this device, or open an invite link.',
+  crashTitle: { fr: "Quelque chose s'est cassé", en: 'Something broke' },
+  crashHint: {
+    fr: 'Vos modifications sont conservées sur cet appareil et seront envoyées à la prochaine synchronisation.',
+    en: 'Your edits are kept on this device and will be sent at the next sync.',
   },
-  uploadLocal: { fr: 'Mettre cet arbre en ligne', en: 'Upload this tree' },
-  uploading: { fr: 'Mise en ligne…', en: 'Uploading…' },
-  uploaded: { fr: 'Arbre en ligne. Vous pouvez maintenant le partager.', en: 'Tree is online. You can share it now.' },
+  retry: { fr: 'Réessayer', en: 'Try again' },
+  reloadPage: { fr: 'Recharger la page', en: 'Reload the page' },
+  unexpectedError: { fr: 'Erreur inattendue', en: 'Unexpected error' },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',
@@ -222,7 +197,6 @@ const strings = {
     en: 'The email carries a six-digit code and a link: type the code here, or open the link.',
   },
   codeWrong: { fr: 'Code incorrect ou expiré. Demandez un nouveau courriel.', en: 'Wrong or expired code. Request a new email.' },
-  otherEmail: { fr: 'Autre adresse', en: 'Other address' },
   signinFailed: { fr: 'Envoi impossible. Vérifiez l’adresse.', en: 'Could not send. Check the address.' },
   treeTooLarge: {
     fr: 'Ce fichier dépasse 1,5 Mo, la taille maximale d’un arbre pour l’instant. Réduisez-le (notes, médias) avant l’import.',
@@ -298,7 +272,6 @@ const strings = {
   members: { fr: 'Membres', en: 'Members' },
   you: { fr: 'vous', en: 'you' },
   roleOwner: { fr: 'Administrateur', en: 'Administrator' },
-  roleEditor: { fr: 'Éditeur', en: 'Editor' },
   roleViewer: { fr: 'Lecteur', en: 'Viewer' },
   removeMember: { fr: 'Retirer', en: 'Remove' },
   inviteLink: { fr: 'Lien d’invitation', en: 'Invite link' },
@@ -308,31 +281,17 @@ const strings = {
     en: 'A viewer can look at the trees but not change them.',
   },
   adminsOnly: { fr: 'Réservé aux administrateurs', en: 'Administrators only' },
-  inviteHint: {
-    fr: 'Toute personne avec ce lien rejoint l’arbre avec le rôle choisi, après connexion. Valable 30 jours, révocable.',
-    en: 'Anyone with this link joins the tree with the chosen role, after signing in. Valid 30 days, revocable.',
-  },
   createLink: { fr: 'Créer un lien', en: 'Create a link' },
   copy: { fr: 'Copier', en: 'Copy' },
   copied: { fr: 'Lien copié', en: 'Link copied' },
   activeLink: { fr: 'Lien actif', en: 'Active link' },
   until: { fr: 'jusqu’au', en: 'until' },
-  leaveTree: { fr: 'Quitter cet arbre', en: 'Leave this tree' },
-  leaveConfirm: {
-    fr: 'Quitter cet arbre ? Vous n’y aurez plus accès sans nouvelle invitation.',
-    en: 'Leave this tree? You will need a new invite to come back.',
-  },
   inviteFor: { fr: 'Invitation à rejoindre', en: 'Invitation to join' },
-  inviteJoining: { fr: 'Ouverture…', en: 'Opening…' },
   inviteSignIn: { fr: 'Connectez-vous pour la rejoindre.', en: 'Sign in to join it.' },
   inviteInvalid: { fr: 'Ce lien d’invitation n’est plus valable.', en: 'This invite link is no longer valid.' },
   deleteTree: { fr: 'Supprimer l’arbre', en: 'Delete tree' },
-  deleteTreeConfirm: {
-    fr: 'Supprimer définitivement cet arbre partagé pour tous ses membres ? Exportez-le d’abord si besoin.',
-    en: 'Permanently delete this shared tree for every member? Export it first if needed.',
-  },
   syncSynced: { fr: 'À jour', en: 'Up to date' },
-  syncPending: { fr: 'modification(s) en attente', en: 'change(s) pending' },
+  syncPendingCount: { fr: '{n} modification en attente|{n} modifications en attente', en: '{n} change pending|{n} changes pending' },
   syncSyncing: { fr: 'Synchronisation…', en: 'Syncing…' },
   syncOffline: { fr: 'Hors ligne : vos modifications seront envoyées plus tard', en: 'Offline: your changes will be sent later' },
   syncError: { fr: 'Synchronisation impossible', en: 'Sync failed' },
@@ -348,12 +307,11 @@ const strings = {
   reloadFromServer: { fr: 'Recharger depuis le serveur', en: 'Reload from the server' },
   reloaded: { fr: 'Arbre rechargé depuis le serveur', en: 'Tree reloaded from the server' },
   treeGone: { fr: 'Cet arbre a été supprimé par un autre membre.', en: 'This tree was deleted by another member.' },
-  leaveWithPending: { fr: 'Des modifications ne sont pas encore synchronisées.', en: 'Some changes are not synced yet.' },
   syncReadonly: { fr: 'Lecture seule', en: 'Read only' },
   remoteChanges: { fr: 'Modifications reçues d’un autre membre', en: 'Changes received from another member' },
-  droppedChanges: {
-    fr: 'modification(s) abandonnée(s) : un autre membre a modifié la même chose entre-temps',
-    en: 'change(s) dropped: another member changed the same thing meanwhile',
+  droppedChangesCount: {
+    fr: '{n} modification abandonnée : un autre membre a modifié la même chose entre-temps|{n} modifications abandonnées : un autre membre a modifié la même chose entre-temps',
+    en: '{n} change dropped: another member changed the same thing meanwhile|{n} changes dropped: another member changed the same thing meanwhile',
   },
   readOnlyHint: { fr: 'Vous consultez cet arbre en lecture seule.', en: 'You are viewing this tree read only.' },
   account: { fr: 'Compte', en: 'Account' },
@@ -374,8 +332,6 @@ const strings = {
     fr: 'Chaque membre voit et modifie tous les arbres du compte. Les propriétaires gèrent les membres.',
     en: 'Every member sees and edits all the trees of the account. Owners manage members.',
   },
-  memberCount: { fr: 'membre', en: 'member' },
-  membersCount: { fr: 'membres', en: 'members' },
   roleMember: { fr: 'Membre', en: 'Member' },
   rename: { fr: 'Renommer', en: 'Rename' },
   accountInviteHint: {
@@ -437,8 +393,6 @@ const strings = {
     fr: 'Le fichier sera supprimé du stockage pour tous les membres du compte.',
     en: 'The file will be removed from storage for every member of the account.',
   },
-  setAsPortrait: { fr: 'Utiliser comme portrait', en: 'Use as portrait' },
-  isPortrait: { fr: 'Portrait', en: 'Portrait' },
   open: { fr: 'Ouvrir', en: 'Open' },
   missingFile: { fr: 'Fichier introuvable', en: 'File not found' },
   draftNoDocuments: {
@@ -453,9 +407,6 @@ const strings = {
   leadNote: { fr: 'Note (facultatif)', en: 'Note (optional)' },
   leadDone: { fr: 'Fait', en: 'Done' },
   leadReopen: { fr: 'Rouvrir', en: 'Reopen' },
-  leadAdded: { fr: 'Piste ajoutée', en: 'Lead added' },
-  leadDeleted: { fr: 'Piste supprimée', en: 'Lead deleted' },
-  deleteLead: { fr: 'Supprimer la piste', en: 'Delete the lead' },
   externalSearch: { fr: 'Recherches externes', en: 'External searches' },
   launchSearch: { fr: 'Lancer toutes les recherches', en: 'Run all the searches' },
   popupBlocked: {
@@ -472,7 +423,6 @@ const strings = {
   noResourceLinks: { fr: 'Aucun lien pour l’instant.', en: 'No links yet.' },
   noTreeDocuments: { fr: 'Aucun document pour l’instant.', en: 'No documents yet.' },
   backToTree: { fr: 'Arbre', en: 'Tree' },
-  noResources: { fr: 'Aucune ressource pour l’instant.', en: 'No resources yet.' },
   addResource: { fr: 'Ajouter', en: 'Add' },
   resourceTitle: { fr: 'Nom', en: 'Name' },
   resourceUrl: { fr: 'Adresse', en: 'Address' },
@@ -495,7 +445,7 @@ const strings = {
   geocoding: { fr: 'Localisation…', en: 'Locating…' },
   geocodeFound: { fr: 'trouvés', en: 'found' },
   geocodeNone: { fr: 'Aucun lieu n’a pu être localisé.', en: 'No place could be located.' },
-  placesLocated: { fr: 'lieux localisés', en: 'places located' },
+  placesLocatedCount: { fr: '{n} lieu localisé|{n} lieux localisés', en: '{n} place located|{n} places located' },
   noPlaces: { fr: 'Aucun lieu dans cet arbre pour l’instant.', en: 'No places in this tree yet.' },
   kinshipArmed: { fr: 'Cliquez sur une autre personne pour voir son lien avec', en: 'Click another person to see their link with' },
   unsureLabel: { fr: 'Informations à vérifier', en: 'Information to check' },
@@ -524,7 +474,6 @@ const strings = {
   switchTree: { fr: 'Changer d’arbre', en: 'Switch tree' },
   thisTree: { fr: 'Cet arbre', en: 'This tree' },
   versionHistory: { fr: 'Historique des versions', en: 'Version history' },
-  exportShort: { fr: 'Exporter', en: 'Export' },
   searchShort: { fr: 'Rechercher', en: 'Search' },
   openTree: { fr: 'Ouvrir', en: 'Open' },
   confirm: { fr: 'Confirmer', en: 'Confirm' },
@@ -558,7 +507,6 @@ const strings = {
   by: { fr: 'par', en: 'by' },
   memberRemoved: { fr: 'Membre retiré', en: 'Member removed' },
   roleChanged: { fr: 'Rôle modifié', en: 'Role changed' },
-  linkRevoked: { fr: 'Lien révoqué', en: 'Link revoked' },
   linkCreated: { fr: 'Lien créé', en: 'Link created' },
   leaveAccountTitle: { fr: 'Quitter ce compte ?', en: 'Leave this account?' },
   removeMemberTitle: { fr: 'Retirer ce membre ?', en: 'Remove this member?' },
@@ -566,7 +514,6 @@ const strings = {
     fr: 'Cette personne n’aura plus accès aux arbres du compte. Un nouveau lien d’invitation permettra de la réinviter.',
     en: 'This person loses access to the account’s trees. A new invite link can bring them back.',
   },
-  deletePersonTitle: { fr: 'Supprimer cette personne ?', en: 'Delete this person?' },
   age: { fr: 'Âge', en: 'Age' },
   address: { fr: 'Adresse', en: 'Address' },
   event: {
@@ -635,7 +582,7 @@ const strings = {
   },
 } as const;
 
-type StringKey = Exclude<keyof typeof strings, 'event'>;
+export type StringKey = Exclude<keyof typeof strings, 'event'>;
 
 /** The whole table, for tests that check every key has both languages. */
 export const stringTable = Object.fromEntries(
@@ -644,6 +591,25 @@ export const stringTable = Object.fromEntries(
 
 export function t(lang: Lang, key: StringKey): string {
   return strings[key][lang];
+}
+
+/** A string with `{name}` placeholders filled in. */
+export function tf(lang: Lang, key: StringKey, vars: Record<string, string | number>): string {
+  return fill(strings[key][lang], vars);
+}
+
+/**
+ * A counted string: the entry holds the singular and the plural separated by `|`, with `{n}` for the count.
+ * French treats 0 as singular (« 0 personne »), English as plural.
+ */
+export function tn(lang: Lang, key: StringKey, n: number, vars: Record<string, string | number> = {}): string {
+  const forms = strings[key][lang].split('|');
+  const one = lang === 'fr' ? n <= 1 : n === 1;
+  return fill((one ? forms[0] : forms[forms.length - 1]) ?? '', { n, ...vars });
+}
+
+function fill(text: string, vars: Record<string, string | number>): string {
+  return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 }
 
 export function eventLabel(lang: Lang, type: string, customType?: string): string {
