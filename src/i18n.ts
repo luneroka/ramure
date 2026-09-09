@@ -199,6 +199,7 @@ const strings = {
   },
   devLink: { fr: 'Lien de développement (aucun courriel envoyé)', en: 'Development link (no email sent)' },
   codeLabel: { fr: 'Code reçu par courriel', en: 'Code from the email' },
+  haveCode: { fr: 'J’ai déjà reçu un code', en: 'I already have a code' },
   codeSubmit: { fr: 'Se connecter', en: 'Sign in' },
   codeHint: {
     fr: 'Le courriel contient un code à six chiffres et un lien : l’un ou l’autre suffit.',

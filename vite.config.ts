@@ -25,6 +25,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // A new version takes over on the very next load, so a fresh deploy never serves the previous app once.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {

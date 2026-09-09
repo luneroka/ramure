@@ -14,7 +14,24 @@ interface Props {
 
 export function Login({ lang, auth, pendingInvite, toast }: Props) {
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState<{ email: string; link?: string; code?: string } | null>(null);
+  // The code screen survives a reload or a trip to the mail app: the address is kept for the session.
+  const [sent, setSentState] = useState<{ email: string; link?: string; code?: string } | null>(() => {
+    try {
+      const e = sessionStorage.getItem('ramure.signinEmail');
+      return e ? { email: e } : null;
+    } catch {
+      return null;
+    }
+  });
+  const setSent = (v: { email: string; link?: string; code?: string } | null) => {
+    setSentState(v);
+    try {
+      if (v) sessionStorage.setItem('ramure.signinEmail', v.email);
+      else sessionStorage.removeItem('ramure.signinEmail');
+    } catch {
+      /* ignore */
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
 
@@ -38,6 +55,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     setBusy(true);
     try {
       await auth.verifyCode(sent.email, code);
+      setSent(null);
       toast(t(lang, 'signedIn'));
     } catch {
       toast(t(lang, 'codeWrong'));
@@ -112,6 +130,9 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
               {t(lang, 'sendLink')}
             </button>
             <p className="muted small">{t(lang, 'signinHint')}</p>
+            <button type="button" className="link small" disabled={!email.includes('@')} onClick={() => setSent({ email: email.trim() })}>
+              {t(lang, 'haveCode')}
+            </button>
           </form>
         )}
       </div>
