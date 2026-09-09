@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { t, type Lang } from '../../i18n';
-import { api, type Account, type Role, type TreeSummary } from '../../sync/api';
+import { api, ApiError, type Account, type Role, type TreeSummary } from '../../sync/api';
 import type { Auth } from '../useAuth';
 import { parseRoute, type Route } from '../router';
 import { INVITE_KEY } from './useInvites';
@@ -51,8 +51,8 @@ export function useBoot(a: Args) {
       if (token) {
         try {
           prefer = (await api.acceptInvite(token)).accountId;
-        } catch {
-          toast(t(lang, 'inviteInvalid'));
+        } catch (err) {
+          toast(t(lang, err instanceof ApiError && err.status === 403 ? 'inviteOtherAddress' : 'inviteInvalid'));
         }
         sessionStorage.removeItem(INVITE_KEY);
         latest.current.onInviteSettled();

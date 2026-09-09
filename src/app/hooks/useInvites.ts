@@ -8,7 +8,7 @@ import type { Auth } from '../useAuth';
 export const INVITE_KEY = 'ramure.invite';
 
 export function useInvites(auth: Auth, lang: Lang, toast: (m: string) => void) {
-  const [pendingInvite, setPendingInvite] = useState<{ token: string; accountName: string } | null>(null);
+  const [pendingInvite, setPendingInvite] = useState<{ token: string; accountName: string; email: string | null } | null>(null);
   useEffect(() => {
     // Tokens arrive in the fragment (#signin=…, #invite=…): never sent to the server, stripped as soon as read.
     // Consumed on load and whenever the fragment changes, so a link opened into an already open tab works too.
@@ -32,7 +32,7 @@ export function useInvites(auth: Auth, lang: Lang, toast: (m: string) => void) {
     if (token) {
       api
         .inviteInfo(token)
-        .then((info) => setPendingInvite({ token, accountName: info.accountName }))
+        .then((info) => setPendingInvite({ token, accountName: info.accountName, email: info.email }))
         .catch(() => {
           sessionStorage.removeItem(INVITE_KEY);
           window.setTimeout(() => toast(t(lang, 'inviteInvalid')), 0);

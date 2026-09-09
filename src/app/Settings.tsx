@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatBytes } from '../media/documents';
 import { t, type Lang, type ThemeChoice } from '../i18n';
 import { localeOf } from './format';
-import { api, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
+import { api, ApiError, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
 import type { AskSpec } from './Modal';
 
 export type DefaultView = 'all' | 'hourglass';
@@ -39,8 +39,8 @@ export function Settings(p: Props) {
   const [name, setName] = useState(account?.name ?? '');
   const [profileName, setProfileName] = useState(p.user.name ?? '');
   const [members, setMembers] = useState<AccountMember[]>([]);
-  const [invites, setInvites] = useState<Array<{ id: string; expiresAt: number; role: AccountRole }>>([]);
-  const [link, setLink] = useState<string | null>(null);
+  const [invites, setInvites] = useState<Array<{ id: string; email: string | null; expiresAt: number; role: AccountRole }>>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'member' | 'viewer'>('member');
   const [refresh, setRefresh] = useState(0);
   const [storage, setStorage] = useState<StorageReport | null>(null);
@@ -67,15 +67,6 @@ export function Settings(p: Props) {
   }, [p.section]);
 
   const roleLabel = (r: AccountRole) => t(lang, r === 'owner' ? 'roleOwner' : r === 'member' ? 'roleMember' : 'roleViewer');
-  const copy = async () => {
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
-      p.toast(t(lang, 'copied'));
-    } catch {
-      /* visible to copy by hand */
-    }
-  };
 
   return (
     <div className="settings">
@@ -174,12 +165,33 @@ export function Settings(p: Props) {
             </ul>
             {owner && (
               <>
-                <h3>{t(lang, 'inviteLink')}</h3>
+                <h3>{t(lang, 'inviteSomeone')}</h3>
                 <p className="muted small">{t(lang, 'accountInviteRule')}</p>
                 <p className="muted small">
                   {t(lang, 'accountInviteHint')} {t(lang, 'viewerHint')}
                 </p>
-                <div className="row">
+                <form
+                  className="row"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const address = inviteEmail.trim();
+                    if (!address) return;
+                    api
+                      .createAccountInvite(account.id, address, inviteRole)
+                      .then(() => {
+                        setInviteEmail('');
+                        setRefresh((n) => n + 1);
+                        p.toast(t(lang, 'inviteSent'));
+                      })
+                      .catch((err: unknown) =>
+                        p.toast(t(lang, err instanceof ApiError && err.status === 409 ? 'inviteAlreadyMember' : 'syncError')),
+                      );
+                  }}
+                >
+                  <label className="field grow">
+                    {t(lang, 'inviteEmail')}
+                    <input type="email" required value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} autoComplete="off" />
+                  </label>
                   <label className="field">
                     {t(lang, 'inviteRole')}
                     <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'member' | 'viewer')}>
@@ -187,33 +199,16 @@ export function Settings(p: Props) {
                       <option value="viewer">{t(lang, 'roleViewer')}</option>
                     </select>
                   </label>
-                  <button
-                    className="btn primary"
-                    onClick={() =>
-                      api.createAccountInvite(account.id, inviteRole).then((r) => {
-                        setLink(r.link);
-                        setRefresh((n) => n + 1);
-                        p.toast(t(lang, 'linkCreated'));
-                      })
-                    }
-                  >
-                    {t(lang, 'createLink')}
+                  <button className="btn primary" disabled={!inviteEmail.trim()}>
+                    {t(lang, 'sendInvite')}
                   </button>
-                </div>
-                {link && (
-                  <div className="invite-link">
-                    <input readOnly value={link} onFocus={(e) => e.target.select()} />
-                    <button className="btn" onClick={() => void copy()}>
-                      {t(lang, 'copy')}
-                    </button>
-                  </div>
-                )}
+                </form>
                 {invites.length > 0 && (
                   <ul className="member-list">
                     {invites.map((i) => (
                       <li key={i.id}>
                         <span className="member-name">
-                          {t(lang, 'activeLink')} · {roleLabel(i.role)} · {t(lang, 'until')}{' '}
+                          {t(lang, 'invitePendingFor')} <strong>{i.email ?? '…'}</strong> · {roleLabel(i.role)} · {t(lang, 'until')}{' '}
                           {new Date(i.expiresAt).toLocaleDateString(localeOf(lang))}
                         </span>
                         <button

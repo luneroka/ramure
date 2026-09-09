@@ -61,7 +61,10 @@ describe('push limits and validation', () => {
 
 describe('destructive record patches', () => {
   async function editorOn(treeId: string, accountId: string, ownerClient: Client): Promise<Client> {
-    const inv = await ownerClient.call<{ link: string }>('POST', `/api/accounts/${accountId}/invites`, { role: 'member' });
+    const inv = await ownerClient.call<{ link: string }>('POST', `/api/accounts/${accountId}/invites`, {
+      email: 'editor2@example.org',
+      role: 'member',
+    });
     const token = decodeURIComponent(new URL(inv.body.link).hash.replace(/^#invite=/, ''));
     await invite('editor2@example.org');
     const e = new Client();

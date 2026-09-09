@@ -31,7 +31,14 @@ export async function mayEnter(env: Env, email: string): Promise<{ allowed: bool
   )
     .bind(email, now())
     .first<{ id: string }>();
-  return inv ? { allowed: true, inviteId: inv.id } : { allowed: false };
+  if (inv) return { allowed: true, inviteId: inv.id };
+  // An account owner's invitation to this address opens the door too: the family vouches for its own.
+  const fam = await env.DB.prepare(
+    `SELECT token_hash FROM account_invites WHERE email = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ? LIMIT 1`,
+  )
+    .bind(email, now())
+    .first<{ token_hash: string }>();
+  return fam ? { allowed: true } : { allowed: false };
 }
 
 /** Called once a user record exists for an invited address: the invitation is spent. */

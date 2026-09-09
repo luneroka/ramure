@@ -145,13 +145,19 @@ export const api = {
   setAccountRole: (id: string, userId: string, role: AccountRole) =>
     call<{ ok: true }>('PATCH', `/api/accounts/${id}/members/${userId}`, { role }),
   removeAccountMember: (id: string, userId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/members/${userId}`),
-  createAccountInvite: (id: string, role: 'member' | 'viewer' = 'member') =>
-    call<{ link: string; expiresAt: number; role: AccountRole }>('POST', `/api/accounts/${id}/invites`, { role }),
+  createAccountInvite: (id: string, email: string, role: 'member' | 'viewer' = 'member') =>
+    call<{ id: string; email: string; expiresAt: number; role: AccountRole; link?: string }>('POST', `/api/accounts/${id}/invites`, {
+      email,
+      role,
+    }),
   listAccountInvites: (id: string) =>
-    call<{ invites: Array<{ id: string; createdAt: number; expiresAt: number; role: AccountRole }> }>('GET', `/api/accounts/${id}/invites`),
+    call<{ invites: Array<{ id: string; email: string | null; createdAt: number; expiresAt: number; role: AccountRole }> }>(
+      'GET',
+      `/api/accounts/${id}/invites`,
+    ),
   revokeAccountInvite: (id: string, inviteId: string) => call<{ ok: true }>('DELETE', `/api/accounts/${id}/invites/${inviteId}`),
   inviteInfo: (token: string) =>
-    call<{ accountId: string; accountName: string; role: AccountRole }>('POST', '/api/invites/info', { token }),
+    call<{ accountId: string; accountName: string; role: AccountRole; email: string | null }>('POST', '/api/invites/info', { token }),
   acceptInvite: (token: string) => call<{ accountId: string; role: 'owner' | 'member' }>('POST', '/api/invites/accept', { token }),
 
   listTrees: (accountId: string) => call<{ trees: TreeSummary[] }>('GET', `/api/trees?account=${encodeURIComponent(accountId)}`),

@@ -71,7 +71,10 @@ describe('family invitations', () => {
     const host = new Client();
     await host.signIn('host@example.org');
     const acc = await host.call<{ id: string }>('POST', '/api/accounts', { name: 'Hôtes' });
-    const inv = await host.call<{ link: string; expiresAt: number }>('POST', `/api/accounts/${acc.body.id}/invites`, { role: 'viewer' });
+    const inv = await host.call<{ link: string; expiresAt: number }>('POST', `/api/accounts/${acc.body.id}/invites`, {
+      email: 'guest2@example.org',
+      role: 'viewer',
+    });
     expect(inv.body.link).toContain('/#invite=');
     expect(inv.body.expiresAt - Date.now()).toBeLessThanOrEqual(7 * 86400000 + 1000);
     const token = decodeURIComponent(inv.body.link.split('#invite=')[1]!);

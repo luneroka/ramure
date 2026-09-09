@@ -6,7 +6,8 @@
 
 import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
-import { HttpError, maskEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { echoMode, sendMail } from './mail';
+import { HttpError, maskEmail, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
 
@@ -141,20 +142,56 @@ accounts.delete('/:id/members/:userId', async (c) => {
   return c.json({ ok: true });
 });
 
+/** Invite an address to the account: the mail carries the link, and the address may sign in from then on. */
 accounts.post('/:id/invites', async (c) => {
   const user = requireUser(c.get('user'));
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
-  const body = await readJson<{ role?: string }>(c.req.raw, 4096);
+  const body = await readJson<{ email?: string; role?: string }>(c.req.raw, 4096);
+  const email = normaliseEmail(body.email);
   const role: AccountRole = body.role === 'viewer' ? 'viewer' : 'member';
-  const token = randomToken();
-  await c.env.DB.prepare(
-    `INSERT INTO account_invites (token_hash, account_id, created_by, created_at, expires_at, role) VALUES (?, ?, ?, ?, ?, ?)`,
+  const account = await c.env.DB.prepare(`SELECT name FROM accounts WHERE id = ?`).bind(id).first<{ name: string }>();
+  if (!account) throw new HttpError(404, 'account not found');
+  const already = await c.env.DB.prepare(
+    `SELECT m.user_id FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? AND u.email = ?`,
   )
-    .bind(await sha256(token), id, user.id, now(), now() + INVITE_TTL_MS, role)
+    .bind(id, email)
+    .first();
+  if (already) throw new HttpError(409, 'already a member');
+  // One live invitation per address and account: a new one replaces the previous.
+  await c.env.DB.prepare(
+    `UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND email = ? AND used_at IS NULL AND revoked_at IS NULL`,
+  )
+    .bind(now(), id, email)
+    .run();
+  const token = randomToken();
+  const expiresAt = now() + INVITE_TTL_MS;
+  await c.env.DB.prepare(
+    `INSERT INTO account_invites (token_hash, account_id, created_by, created_at, expires_at, role, email) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(await sha256(token), id, user.id, now(), expiresAt, role, email)
     .run();
   // Fragment, so the token never reaches a server log; the app reads it and posts it.
-  return c.json({ link: `${c.env.APP_ORIGIN}/#invite=${encodeURIComponent(token)}`, expiresAt: now() + INVITE_TTL_MS, role }, 201);
+  const link = `${c.env.APP_ORIGIN}/#invite=${encodeURIComponent(token)}`;
+  const from = user.name || user.email;
+  await sendMail(
+    c.env,
+    c.req.url,
+    email,
+    `${from} vous invite à rejoindre « ${account.name} » sur Ramure`,
+    [
+      'Bonjour,',
+      '',
+      `${from} vous invite à rejoindre l'arbre généalogique « ${account.name} » sur Ramure${role === 'viewer' ? ' (en lecture seule)' : ''}.`,
+      '',
+      'Ouvrez ce lien, puis connectez-vous avec cette adresse :',
+      link,
+      '',
+      'Aucun mot de passe : un code à six chiffres vous est envoyé à chaque connexion.',
+      'Cette invitation est valable trente jours.',
+    ].join('\n'),
+  );
+  return c.json({ id: (await sha256(token)).slice(0, 12), email, expiresAt, role, ...(echoMode(c.env, c.req.url) ? { link } : {}) }, 201);
 });
 
 accounts.get('/:id/invites', async (c) => {
@@ -162,14 +199,22 @@ accounts.get('/:id/invites', async (c) => {
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
   const rows = await c.env.DB.prepare(
-    `SELECT token_hash, created_at, expires_at, revoked_at, role FROM account_invites WHERE account_id = ? ORDER BY created_at DESC`,
+    `SELECT token_hash, created_at, expires_at, revoked_at, used_at, role, email FROM account_invites WHERE account_id = ? ORDER BY created_at DESC`,
   )
     .bind(id)
-    .all<{ token_hash: string; created_at: number; expires_at: number; revoked_at: number | null; role: AccountRole }>();
+    .all<{
+      token_hash: string;
+      created_at: number;
+      expires_at: number;
+      revoked_at: number | null;
+      used_at: number | null;
+      role: AccountRole;
+      email: string | null;
+    }>();
   return c.json({
     invites: rows.results
-      .filter((r) => !r.revoked_at && r.expires_at > now())
-      .map((r) => ({ id: r.token_hash.slice(0, 12), createdAt: r.created_at, expiresAt: r.expires_at, role: r.role })),
+      .filter((r) => !r.revoked_at && !r.used_at && r.expires_at > now())
+      .map((r) => ({ id: r.token_hash.slice(0, 12), email: r.email, createdAt: r.created_at, expiresAt: r.expires_at, role: r.role })),
   });
 });
 
@@ -189,27 +234,48 @@ invites.post('/info', async (c) => {
   const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
   if (!token || token.length > 200) throw new HttpError(400, 'bad token');
   const row = await c.env.DB.prepare(
-    `SELECT i.account_id, i.expires_at, i.revoked_at, i.role, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
+    `SELECT i.account_id, i.expires_at, i.revoked_at, i.used_at, i.role, i.email, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
   )
     .bind(await sha256(token))
-    .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole; name: string }>();
-  if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
-  return c.json({ accountId: row.account_id, accountName: row.name, role: row.role });
+    .first<{
+      account_id: string;
+      expires_at: number;
+      revoked_at: number | null;
+      used_at: number | null;
+      role: AccountRole;
+      email: string | null;
+      name: string;
+    }>();
+  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
+  return c.json({ accountId: row.account_id, accountName: row.name, role: row.role, email: row.email });
 });
 
 invites.post('/accept', async (c) => {
   const user = requireUser(c.get('user'));
   const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
   if (!token || token.length > 200) throw new HttpError(400, 'bad token');
-  const row = await c.env.DB.prepare(`SELECT account_id, expires_at, revoked_at, role FROM account_invites WHERE token_hash = ?`)
-    .bind(await sha256(token))
-    .first<{ account_id: string; expires_at: number; revoked_at: number | null; role: AccountRole }>();
-  if (!row || row.revoked_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
+  const hash = await sha256(token);
+  const row = await c.env.DB.prepare(
+    `SELECT account_id, expires_at, revoked_at, used_at, role, email FROM account_invites WHERE token_hash = ?`,
+  )
+    .bind(hash)
+    .first<{
+      account_id: string;
+      expires_at: number;
+      revoked_at: number | null;
+      used_at: number | null;
+      role: AccountRole;
+      email: string | null;
+    }>();
+  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
+  // An addressed invitation is for that address only.
+  if (row.email && row.email !== user.email) throw new HttpError(403, 'invite for another address');
   const existing = await accountRole(c.env, row.account_id, user.id);
   if (!existing) {
     await c.env.DB.prepare(`INSERT INTO account_members (account_id, user_id, role, added_at) VALUES (?, ?, ?, ?)`)
       .bind(row.account_id, user.id, row.role, now())
       .run();
   }
+  if (row.email) await c.env.DB.prepare(`UPDATE account_invites SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
   return c.json({ accountId: row.account_id, role: existing ?? row.role });
 });

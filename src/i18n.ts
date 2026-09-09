@@ -207,6 +207,16 @@ const strings = {
   clearErrors: { fr: 'Tout effacer', en: 'Clear all' },
   noErrors: { fr: 'Aucune erreur signalée.', en: 'No error reported.' },
   details: { fr: 'Détails', en: 'Details' },
+  inviteSomeone: { fr: 'Inviter un proche', en: 'Invite someone' },
+  inviteEmail: { fr: 'Adresse courriel du proche', en: 'Their email address' },
+  sendInvite: { fr: 'Envoyer l’invitation', en: 'Send the invitation' },
+  inviteSent: { fr: 'Invitation envoyée', en: 'Invitation sent' },
+  invitePendingFor: { fr: 'Invitation envoyée à', en: 'Invitation sent to' },
+  inviteAlreadyMember: { fr: 'Cette personne fait déjà partie du compte.', en: 'This person is already a member.' },
+  inviteOtherAddress: {
+    fr: 'Cette invitation est destinée à une autre adresse : connectez-vous avec l’adresse qui l’a reçue.',
+    en: 'This invitation is for another address: sign in with the address that received it.',
+  },
   apiUnavailable: {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',
@@ -270,7 +280,6 @@ const strings = {
     fr: 'La personne reçoit un courriel et peut se connecter avec cette adresse pendant sept jours. Sans invitation, personne n’entre.',
     en: 'The person receives an email and may sign in with that address for seven days. Without an invitation, nobody gets in.',
   },
-  sendInvite: { fr: 'Inviter', en: 'Invite' },
   inviteSentTo: { fr: 'Invitation envoyée à', en: 'Invitation sent to' },
   alreadyUser: { fr: 'Cette adresse a déjà accès à Ramure.', en: 'This address already has access.' },
   expires: { fr: 'expire le', en: 'expires' },
@@ -305,8 +314,8 @@ const strings = {
   deletionRequested: { fr: 'Demande envoyée', en: 'Request sent' },
   deletionCancelled: { fr: 'Demande annulée', en: 'Request cancelled' },
   accountInviteRule: {
-    fr: 'La personne doit déjà avoir accès à Ramure (invitation de l’administrateur).',
-    en: 'The person must already have access to Ramure (an invitation from the administrator).',
+    fr: 'Votre invitation suffit : la personne n’a pas besoin d’un accès préalable à Ramure.',
+    en: 'Your invitation is enough: the person needs no prior access to Ramure.',
   },
   signinThrottled: {
     fr: 'Trop de demandes pour cette adresse. Réessayez dans un quart d’heure.',
@@ -333,17 +342,13 @@ const strings = {
   roleOwner: { fr: 'Administrateur', en: 'Administrator' },
   roleViewer: { fr: 'Lecteur', en: 'Viewer' },
   removeMember: { fr: 'Retirer', en: 'Remove' },
-  inviteLink: { fr: 'Lien d’invitation', en: 'Invite link' },
-  inviteRole: { fr: 'Rôle donné par le lien', en: 'Role given by the link' },
+  inviteRole: { fr: 'Rôle', en: 'Role' },
   viewerHint: {
     fr: 'Un lecteur consulte les arbres sans pouvoir les modifier.',
     en: 'A viewer can look at the trees but not change them.',
   },
   adminsOnly: { fr: 'Réservé aux administrateurs', en: 'Administrators only' },
-  createLink: { fr: 'Créer un lien', en: 'Create a link' },
   copy: { fr: 'Copier', en: 'Copy' },
-  copied: { fr: 'Lien copié', en: 'Link copied' },
-  activeLink: { fr: 'Lien actif', en: 'Active link' },
   until: { fr: 'jusqu’au', en: 'until' },
   inviteFor: { fr: 'Invitation à rejoindre', en: 'Invitation to join' },
   inviteSignIn: { fr: 'Connectez-vous pour la rejoindre.', en: 'Sign in to join it.' },
@@ -394,8 +399,8 @@ const strings = {
   roleMember: { fr: 'Membre', en: 'Member' },
   rename: { fr: 'Renommer', en: 'Rename' },
   accountInviteHint: {
-    fr: 'Envoyez ce lien à un proche : après connexion avec son adresse, il rejoint ce compte et voit les mêmes arbres. Valable 30 jours, révocable.',
-    en: 'Send this link to a relative: after signing in with their own address they join this account and see the same trees. Valid 30 days, revocable.',
+    fr: 'La personne reçoit un courriel avec un lien ; après connexion avec cette adresse, elle rejoint ce compte et voit les mêmes arbres. Valable 30 jours, révocable.',
+    en: 'The person receives an email with a link; after signing in with that address they join this account and see the same trees. Valid 30 days, revocable.',
   },
   leaveAccount: { fr: 'Quitter ce compte', en: 'Leave this account' },
   leaveAccountConfirm: {
@@ -565,7 +570,6 @@ const strings = {
   by: { fr: 'par', en: 'by' },
   memberRemoved: { fr: 'Membre retiré', en: 'Member removed' },
   roleChanged: { fr: 'Rôle modifié', en: 'Role changed' },
-  linkCreated: { fr: 'Lien créé', en: 'Link created' },
   leaveAccountTitle: { fr: 'Quitter ce compte ?', en: 'Leave this account?' },
   removeMemberTitle: { fr: 'Retirer ce membre ?', en: 'Remove this member?' },
   removeMemberMessage: {

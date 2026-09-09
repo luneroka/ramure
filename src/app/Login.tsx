@@ -8,7 +8,7 @@ import type { Auth } from './useAuth';
 interface Props {
   lang: Lang;
   auth: Auth;
-  pendingInvite: { accountName: string } | null;
+  pendingInvite: { accountName: string; email: string | null } | null;
   toast(msg: string): void;
 }
 
@@ -38,6 +38,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
       /* ignore */
     }
   };
+  // An addressed invitation fills the address in until something else is typed.
+  const typed = email || pendingInvite?.email || '';
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
 
@@ -45,8 +47,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await auth.requestLink(email.trim());
-      setSent({ email: email.trim(), ...r });
+      const r = await auth.requestLink(typed.trim());
+      setSent({ email: typed.trim(), ...r });
       setCode('');
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
@@ -123,7 +125,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
                 required
                 autoFocus={!sent}
                 autoComplete="email"
-                value={email}
+                value={typed}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vous@exemple.fr"
               />
