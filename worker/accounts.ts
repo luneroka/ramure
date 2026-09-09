@@ -7,7 +7,7 @@
 import { Hono } from 'hono';
 import type { Env, User, Vars } from './env';
 import { echoMode, sendMail } from './mail';
-import { emailFor, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { cleanText, emailFor, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { hit } from './ratelimit';
 
 export type AccountRole = 'owner' | 'member' | 'viewer';
@@ -60,10 +60,7 @@ accounts.get('/', async (c) => {
 accounts.post('/', async (c) => {
   const user = requireUser(c.get('user'));
   const body = await readJson<{ name?: string }>(c.req.raw, 4096);
-  const name =
-    String(body.name ?? '')
-      .trim()
-      .slice(0, 80) || 'Famille';
+  const name = cleanText(body.name, 80) || 'Famille';
   const id = randomId('A');
   const ts = now();
   await c.env.DB.batch([
@@ -78,9 +75,7 @@ accounts.patch('/:id', async (c) => {
   const id = c.req.param('id');
   await requireAccountRole(c.env, id, user, ['owner']);
   const body = await readJson<{ name?: string }>(c.req.raw, 4096);
-  const name = String(body.name ?? '')
-    .trim()
-    .slice(0, 80);
+  const name = cleanText(body.name, 80);
   if (!name) throw new HttpError(400, 'name_required');
   await c.env.DB.prepare(`UPDATE accounts SET name = ? WHERE id = ?`).bind(name, id).run();
   return c.json({ ok: true });
@@ -294,6 +289,9 @@ invites.post('/accept', async (c) => {
       .bind(row.account_id, user.id, row.role, now())
       .run();
   }
-  if (row.email) await c.env.DB.prepare(`UPDATE account_invites SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
+  // Spent either way. No route makes an invitation without an address any more — `normaliseEmail`
+  // throws first — but the condition that used to be here read as "reusable for seven days by
+  // anyone holding the link", which is not something to leave lying in the accept path.
+  await c.env.DB.prepare(`UPDATE account_invites SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
   return c.json({ accountId: row.account_id, role: existing ?? row.role });
 });

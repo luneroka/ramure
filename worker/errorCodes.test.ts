@@ -34,7 +34,7 @@ describe('the error envelope', () => {
     await c.signIn('big@example.org');
     const acc = await c.call<{ id: string }>('POST', '/api/accounts', { name: 'Famille' });
     // Between the two limits on purpose: over MAX_DOC_BYTES (1.5 MB) so the document is refused,
-    // but under readJson's MAX_DOC_BYTES + 4096 cap, which would otherwise answer body_too_large first.
+    // but under readJson's cap, which would otherwise answer body_too_large and name no limit.
     const r = await c.call<{ code: string; maxBytes: number }>('POST', '/api/trees', {
       accountId: acc.body.id,
       name: 'Trop grand',

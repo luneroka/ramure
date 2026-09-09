@@ -9,7 +9,7 @@
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env, User, Vars } from './env';
-import { hmac, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
+import { cleanText, hmac, HttpError, normaliseEmail, now, randomId, randomToken, readJson, sha256 } from './util';
 import { echoMode, sendMail } from './mail';
 import { requireCodePepper } from './config';
 import { clientIp, hit } from './ratelimit';
@@ -18,6 +18,46 @@ import { consumeInvite, isAdmin, mayEnter } from './admin';
 export const SESSION_COOKIE = 'ramure_session';
 /** Set when a sign-in is requested; the link or code only works from the browser that holds it. */
 export const SIGNIN_COOKIE = 'ramure_signin';
+
+/**
+ * Cookie names carry the `__Host-` prefix wherever the browser will accept it.
+ *
+ * `workers.dev` is on the Public Suffix List, which makes `ramure.workers.dev`
+ * the registrable domain and every Worker under it — production and staging
+ * among them — siblings. A sibling can set a `Domain=ramure.workers.dev`
+ * cookie that this origin would then receive. Only our own Workers live there,
+ * so this is hardening rather than a hole, but the prefix makes a cookie of
+ * this name structurally impossible to set from anywhere but this exact origin.
+ *
+ * The prefix requires the `Secure` attribute, which is only set on an https
+ * origin, so development and the tests keep the plain names. Reads accept
+ * either, which is what lets a session opened before this change carry on: the
+ * old name is never written again and dies with its ninety-day cookie.
+ */
+const isSecure = (env: Env): boolean => env.APP_ORIGIN.startsWith('https://');
+const cookieName = (env: Env, base: string): string => (isSecure(env) ? `__Host-${base}` : base);
+
+/** The value under either name, prefixed first: during the changeover a browser may hold both. */
+function readCookie(c: Context<{ Bindings: Env; Variables: Vars }>, base: string): string | undefined {
+  return getCookie(c, `__Host-${base}`) ?? getCookie(c, base);
+}
+
+/** The session cookie this request carries, under either name. Used by the middleware in index.ts. */
+export function sessionCookie(c: Context<{ Bindings: Env; Variables: Vars }>): string | undefined {
+  return readCookie(c, SESSION_COOKIE);
+}
+
+/**
+ * Clear both names, so signing out cannot leave the other one behind.
+ *
+ * The prefixed one only where it could have been set: a `__Host-` cookie is
+ * invalid without `Secure`, and Hono refuses to write one rather than emitting
+ * a header a browser would drop.
+ */
+function clearCookie(c: Context<{ Bindings: Env; Variables: Vars }>, base: string): void {
+  if (isSecure(c.env)) deleteCookie(c, `__Host-${base}`, { path: '/', secure: true });
+  deleteCookie(c, base, { path: '/' });
+}
 const WINDOW_MS = 15 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 /**
@@ -101,20 +141,30 @@ async function openSession(c: Context<{ Bindings: Env; Variables: Vars }>, email
     // A first sign-in needs a live invitation (the request step already checked; a stale link is refused here too).
     if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation_required');
     user = { id: randomId('U'), email, name: null };
-    const adminFlag = c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email ? 1 : 0;
-    await c.env.DB.prepare(`INSERT INTO users (id, email, name, created_at, is_admin) VALUES (?, ?, NULL, ?, ?)`)
-      .bind(user.id, user.email, now(), adminFlag)
+    await c.env.DB.prepare(`INSERT INTO users (id, email, name, created_at, is_admin) VALUES (?, ?, NULL, ?, 0)`)
+      .bind(user.id, user.email, now())
       .run();
     await consumeInvite(c.env, email);
-  } else if (c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email) {
-    await c.env.DB.prepare(`UPDATE users SET is_admin = 1 WHERE id = ?`).bind(user.id).run();
+  }
+  if (c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email) {
+    // The flag follows the setting: changing ADMIN_EMAIL moves the role rather than adding a
+    // second administrator who keeps it for ever because nothing ever took it away.
+    await c.env.DB.batch([
+      c.env.DB.prepare(`UPDATE users SET is_admin = 1 WHERE id = ?`).bind(user.id),
+      c.env.DB.prepare(`UPDATE users SET is_admin = 0 WHERE id != ?`).bind(user.id),
+    ]);
   }
   const session = randomToken();
   await c.env.DB.prepare(`INSERT INTO sessions (id_hash, user_id, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)`)
     .bind(await sha256(session), user.id, now(), now() + SESSION_TTL_MS, now())
     .run();
-  const secure = c.env.APP_ORIGIN.startsWith('https://');
-  setCookie(c, SESSION_COOKIE, session, { httpOnly: true, secure, sameSite: 'Lax', path: '/', maxAge: SESSION_TTL_MS / 1000 });
+  setCookie(c, cookieName(c.env, SESSION_COOKIE), session, {
+    httpOnly: true,
+    secure: isSecure(c.env),
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: SESSION_TTL_MS / 1000,
+  });
 }
 
 export const auth = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -143,10 +193,10 @@ auth.post('/request', async (c) => {
   const token = randomToken();
   const code = randomCode();
   // The browser that asks gets a nonce; the link and the code are only honoured alongside it.
-  const nonce = getCookie(c, SIGNIN_COOKIE) || randomToken();
-  setCookie(c, SIGNIN_COOKIE, nonce, {
+  const nonce = readCookie(c, SIGNIN_COOKIE) || randomToken();
+  setCookie(c, cookieName(c.env, SIGNIN_COOKIE), nonce, {
     httpOnly: true,
-    secure: c.env.APP_ORIGIN.startsWith('https://'),
+    secure: isSecure(c.env),
     sameSite: 'Lax',
     path: '/',
     maxAge: LINK_TTL_MS / 1000,
@@ -167,7 +217,7 @@ auth.post('/code', async (c) => {
   const code = String(body.code ?? '').replace(/\D/g, '');
   if (code.length !== 6) throw new HttpError(400, 'bad_code');
   await hit(c.env, `code:ip:${clientIp(c.req.raw)}`, 30, WINDOW_MS);
-  const nonce = getCookie(c, SIGNIN_COOKIE);
+  const nonce = readCookie(c, SIGNIN_COOKIE);
   if (!nonce) throw new HttpError(403, 'other_device');
   const browserHash = await sha256(nonce);
   // Failures count across every live link for the address, so a new request does not reset them.
@@ -191,7 +241,7 @@ auth.post('/code', async (c) => {
   }
   await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), match.token_hash).run();
   await openSession(c, email);
-  deleteCookie(c, SIGNIN_COOKIE, { path: '/' });
+  clearCookie(c, SIGNIN_COOKIE);
   return c.json({ ok: true });
 });
 
@@ -212,21 +262,21 @@ auth.post('/verify', async (c) => {
     .bind(hash)
     .first<{ email: string; expires_at: number; used_at: number | null; browser_hash: string | null }>();
   if (!row || row.used_at || row.expires_at < now()) throw new HttpError(400, 'link_expired');
-  const nonce = getCookie(c, SIGNIN_COOKIE);
+  const nonce = readCookie(c, SIGNIN_COOKIE);
   if (!nonce || (await sha256(nonce)) !== row.browser_hash) throw new HttpError(403, 'other_device');
   await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
   await openSession(c, row.email);
-  deleteCookie(c, SIGNIN_COOKIE, { path: '/' });
+  clearCookie(c, SIGNIN_COOKIE);
   return c.json({ ok: true });
 });
 
 auth.post('/logout', async (c) => {
-  const cookie = getCookie(c, SESSION_COOKIE);
+  const cookie = readCookie(c, SESSION_COOKIE);
   if (cookie)
     await c.env.DB.prepare(`DELETE FROM sessions WHERE id_hash = ?`)
       .bind(await sha256(cookie))
       .run();
-  deleteCookie(c, SESSION_COOKIE, { path: '/' });
+  clearCookie(c, SESSION_COOKIE);
   return c.json({ ok: true });
 });
 
@@ -235,7 +285,7 @@ auth.post('/logout-all', async (c) => {
   const user = c.get('user');
   if (!user) throw new HttpError(401, 'sign_in_required');
   const r = await c.env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
-  deleteCookie(c, SESSION_COOKIE, { path: '/' });
+  clearCookie(c, SESSION_COOKIE);
   return c.json({ ok: true, closed: r.meta.changes ?? 0 });
 });
 
@@ -243,9 +293,7 @@ auth.patch('/me', async (c) => {
   const user = c.get('user');
   if (!user) throw new HttpError(401, 'sign_in_required');
   const body = await readJson<{ name?: string }>(c.req.raw, 2048);
-  const name = String(body.name ?? '')
-    .trim()
-    .slice(0, 80);
+  const name = cleanText(body.name, 80);
   await c.env.DB.prepare(`UPDATE users SET name = ? WHERE id = ?`)
     .bind(name || null, user.id)
     .run();
@@ -258,9 +306,7 @@ auth.post('/access-request', async (c) => {
   await hit(c.env, 'access:all', ACCESS_REQUESTS_OVERALL_PER_HOUR, HOUR_MS);
   const body = await readJson<{ email: string; message: string }>(c.req.raw, 4096);
   const email = normaliseEmail(body.email);
-  const message = String(body.message ?? '')
-    .trim()
-    .slice(0, 600);
+  const message = cleanText(body.message, 600, { multiline: true });
   const known = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first();
   const recent = await c.env.DB.prepare(`SELECT requested_at FROM access_requests WHERE email = ?`)
     .bind(email)
@@ -294,9 +340,7 @@ auth.post('/deletion-request', async (c) => {
   const user = c.get('user');
   if (!user) throw new HttpError(401, 'sign_in_required');
   const body = await readJson<{ note?: string }>(c.req.raw, 2048);
-  const note = String(body.note ?? '')
-    .trim()
-    .slice(0, 500);
+  const note = cleanText(body.note, 500, { multiline: true });
   await c.env.DB.prepare(`INSERT OR REPLACE INTO deletion_requests (user_id, requested_at, note) VALUES (?, ?, ?)`)
     .bind(user.id, now(), note || null)
     .run();

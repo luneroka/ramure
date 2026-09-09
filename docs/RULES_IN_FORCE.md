@@ -40,6 +40,25 @@ malformed lines; running it again on an already-repaired document could
 corrupt it. It is applied on the import path and nowhere else
 ([src/gedcom/geneweb.ts](../src/gedcom/geneweb.ts)).
 
+**Free text loses its control characters.** Names, account and tree names and
+snapshot labels go through `cleanText`; several of them are interpolated into a
+mail subject, and a value that can carry a newline has no business being there.
+Multi-line fields — an access-request message, a deletion note — keep their
+newlines and lose the rest.
+
+**A batch op may not nest past 32 levels.** Flattening and replaying both
+recurse, and the op log is replayed by every client, so an op nested far enough
+would take out each relative's browser rather than just this Worker. The check
+is a predicate that stops descending at the limit, not a measurement — a
+function that measured the depth first would overflow on exactly the input it
+exists to refuse.
+
+**A record patch cannot name `__proto__`, `constructor` or `prototype`.** A
+patch table arrives as JSON, where those are ordinary own properties, and
+assigning one would give the table a prototype of the caller's choosing — after
+which a lookup for a record that does not exist answers with a planted one
+([src/tree/diff.ts](../src/tree/diff.ts)).
+
 **A document is capped at 1.5 MB of UTF-8.** D1 stores at most 2 MB in a row,
 and the row carries other columns. Measured in _bytes_, not characters —
 accented French names are two bytes each and a character count would let a
@@ -121,9 +140,12 @@ to learn that a tree id exists (`requireRole`, `requireAccountRole`).
 **An account always has at least one owner.** The last owner can neither demote
 themselves nor leave.
 
-**Owners see addresses; everyone else sees masked ones.** A member roster shows
-« j\*\*\*@example.org » to non-owners — enough to recognise a relative, not
-enough to write to them (`maskEmail`).
+**Owners see addresses; everyone else sees masked ones.** A non-owner sees
+« j\*\*\*@example.org » — enough to recognise a relative, not enough to write to
+them. Every surface that returns an address goes through `emailFor`
+([worker/util.ts](../worker/util.ts)), the member roster and the snapshot list
+alike: the rule was written once and enforced in one of the two places, and the
+snapshot list quietly handed viewers real addresses until September 2026.
 
 **Deleting a tree deletes its files immediately**, from R2 and D1 both. This is
 the one place where deletion is not soft.
@@ -138,6 +160,20 @@ address that already has a user, holds a live application invitation, or holds
 an account owner's invitation — and nothing else. An uninvited address gets the
 same answer as an invited one that mistyped, so the endpoint does not
 enumerate users.
+
+**The session cookie carries the `__Host-` prefix wherever it can.**
+`workers.dev` is on the Public Suffix List, so every Worker under
+`ramure.workers.dev` — staging included — is a sibling that could set a
+`Domain=`-scoped cookie this origin would receive. The prefix makes that
+structurally impossible. It requires `Secure`, so http development keeps the
+plain names; reads accept either, which is what let the change ship without
+signing anyone out. The unprefixed name is never written on an https
+deployment.
+
+**The administrator flag follows `ADMIN_EMAIL`.** It is set on that address's
+sign-in and cleared from everyone else in the same statement, so changing the
+setting moves the role instead of adding a second administrator who keeps it
+because nothing ever took it away.
 
 **Tokens are stored hashed.** Sessions as SHA-256 of the cookie, sign-in codes
 as HMAC keyed by `CODE_PEPPER`. A database copy alone therefore does not hand
@@ -156,6 +192,11 @@ never reaches a server or a log, and merely opening the page does nothing.
 **Rate limits, all in D1**: 3 links per address per quarter hour, 20 requests
 and 30 code attempts per IP per quarter hour, and 10 failed codes per address
 across _every_ live link — so requesting a new one does not reset the count.
+Asking for access is 5 per client per quarter hour **and 50 overall per hour**:
+it mails the operator at an address the caller cannot vary, so a per-client
+limit alone would not hold against many clients. Inviting is 10 per account and
+20 per user per day, because inviting mails an address of the caller's choosing
+from the domain that carries everyone's sign-in codes.
 
 **Sessions expire twice over**: 90 days absolute, and 30 days idle, whichever
 comes first. `last_seen_at` is touched at most hourly to keep the write cost
@@ -223,6 +264,14 @@ race.
 - The op log is never compacted. It is the audit trail, and it is cheap.
 - Rate limits in D1 rather than a rate-limiting product. It is one more binding
   and one more bill for a load this small.
+- **`POST /api/errors` accepting a report with no session.** The reports worth
+  having most come from a browser that broke before or during sign-in, when
+  there is no session to check; requiring one would hide exactly the bugs that
+  leave somebody unable to get in. It is write-only, reads back to the operator
+  alone, and is purged after thirty days. The two guards that pays for live in
+  the Worker rather than the browser: the URL fragment is stripped server-side
+  too, because a sign-in token travels there and a browser is not the only thing
+  that can post here, and the per-client limit is paired with an overall one.
 - `DEV_ECHO_LINKS` returning the link and code in the response body. It is
   gated three times over — no `RESEND_API_KEY`, the flag set to `1`, and the
   request host being `localhost` or `127.0.0.1` (`echoMode`) — and it is the

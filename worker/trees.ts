@@ -14,7 +14,7 @@ import type { Op, OpEnvelope } from '../src/tree/ops';
 import { displayName } from '../src/gedcom/model';
 import { replayOps } from '../src/tree/replay';
 import type { Env, Role, User, Vars } from './env';
-import { emailFor, HttpError, now, randomId, readJson, requireId } from './util';
+import { cleanText, emailFor, HttpError, now, randomId, readJson, requireId } from './util';
 import type { ErrorCode } from './errorCodes';
 import { extensionOf, sniffMediaType } from './media';
 
@@ -31,6 +31,28 @@ const PATCH_SNAPSHOT_TOUCHED = 20;
 const PATCH_OWNER_REMOVALS = 20;
 const SNAPSHOT_EVERY = 100;
 const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
+/**
+ * How deep a `batch` op may nest. Flattening and replaying both recurse, so an
+ * op nested far enough overflows the stack and the push answers 500 instead of
+ * refusing cleanly. The stored op log is what other clients replay, so the cap
+ * protects every relative's browser and not only this Worker — the same code
+ * runs on both sides, and a browser's stack is the smaller of the two. The UI
+ * builds batches a handful deep.
+ */
+const MAX_OP_DEPTH = 32;
+
+/**
+ * True when a batch nests deeper than `limit`.
+ *
+ * Written as a predicate rather than a depth so that it stops descending at the
+ * limit: a function that measured the depth first would overflow the stack on
+ * exactly the input it exists to refuse.
+ */
+function tooDeep(op: Op, limit: number): boolean {
+  if (op.t !== 'batch') return false;
+  if (limit <= 1) return true;
+  return op.ops.some((inner) => tooDeep(inner, limit - 1));
+}
 
 interface TreeRow {
   id: string;
@@ -82,13 +104,14 @@ trees.get('/', async (c) => {
 
 trees.post('/', async (c) => {
   const user = requireUser(c.get('user'));
-  const body = await readJson<{ accountId: string; name: string; gedcom: string }>(c.req.raw, MAX_DOC_BYTES + 4096);
+  // Twice the document limit, deliberately: the cap is here to refuse an absurd body, and a
+  // *slightly* oversized document must still reach `docBytes` below so the answer names the real
+  // limit rather than saying the body was too big. An accented French name is two bytes, so a
+  // document just over 1.5 MB can carry a good deal more than 1.5 MB of them.
+  const body = await readJson<{ accountId: string; name: string; gedcom: string }>(c.req.raw, MAX_DOC_BYTES * 2);
   const accountId = String(body.accountId ?? '');
   const accRole = await requireAccountRole(c.env, accountId, user, ['owner', 'member']);
-  const name =
-    String(body.name ?? '')
-      .trim()
-      .slice(0, 120) || 'Arbre';
+  const name = cleanText(body.name, 120) || 'Arbre';
   const gedcom = String(body.gedcom ?? '');
   if (docBytes(gedcom) > MAX_DOC_BYTES) throw new HttpError(413, 'tree_too_large', { maxBytes: MAX_DOC_BYTES });
   // Normalise through the parser so the stored document is always Ramure's own serialisation.
@@ -122,9 +145,7 @@ trees.patch('/:id', async (c) => {
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner']);
   const body = await readJson<{ name: string }>(c.req.raw, 4096);
-  const name = String(body.name ?? '')
-    .trim()
-    .slice(0, 120);
+  const name = cleanText(body.name, 120);
   if (!name) throw new HttpError(400, 'name_required');
   await c.env.DB.prepare(`UPDATE trees SET name = ?, updated_at = ? WHERE id = ?`).bind(name, now(), id).run();
   return c.json({ ok: true });
@@ -176,6 +197,7 @@ trees.post('/:id/ops', async (c) => {
   for (const e of envelopes) {
     if (!e || typeof e !== 'object' || !/^[A-Za-z0-9_-]{1,40}$/.test(String(e.id ?? ''))) throw new HttpError(400, 'bad_op_id');
     if (!e.op || typeof e.op !== 'object' || typeof e.op.t !== 'string') throw new HttpError(400, 'bad_op');
+    if (tooDeep(e.op, MAX_OP_DEPTH)) throw new HttpError(400, 'op_too_deep', { max: MAX_OP_DEPTH });
   }
 
   const row = await c.env.DB.prepare(`SELECT id, version, doc FROM trees WHERE id = ?`)
@@ -340,10 +362,7 @@ trees.post('/:id/snapshots', async (c) => {
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner', 'editor']);
   const body = await readJson<{ label: string }>(c.req.raw, 4096);
-  const label =
-    String(body.label ?? '')
-      .trim()
-      .slice(0, 120) || null;
+  const label = cleanText(body.label, 120) || null;
   const row = await c.env.DB.prepare(`SELECT version, doc FROM trees WHERE id = ?`).bind(id).first<{ version: number; doc: string }>();
   if (!row) throw new HttpError(404, 'tree_not_found');
   const sid = randomId('S');

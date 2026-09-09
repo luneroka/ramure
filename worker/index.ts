@@ -4,9 +4,8 @@
  */
 
 import { Hono } from 'hono';
-import { getCookie } from 'hono/cookie';
 import { secureHeaders } from 'hono/secure-headers';
-import { auth, SESSION_COOKIE, userFromRequest } from './auth';
+import { auth, sessionCookie, userFromRequest } from './auth';
 import type { Env, Vars } from './env';
 import { accounts, invites } from './accounts';
 import { trees } from './trees';
@@ -20,7 +19,18 @@ import { HttpError } from './util';
 /** The Hono app itself, for tests that drive it in-process. */
 export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-app.use('/api/*', secureHeaders({ crossOriginResourcePolicy: 'same-origin', referrerPolicy: 'strict-origin-when-cross-origin' }));
+app.use(
+  '/api/*',
+  secureHeaders({
+    crossOriginResourcePolicy: 'same-origin',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    // Matched to public/_headers on purpose. Hono's defaults are SAMEORIGIN and a 180-day HSTS,
+    // so without these one origin answered with two different policies depending on whether the
+    // path was served by the Worker or by static assets — nothing exposed, but a trap to read.
+    xFrameOptions: 'DENY',
+    strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+  }),
+);
 app.use('/api/*', async (c, next) => {
   // A misconfigured deployment says so in the logs on its first request, rather than
   // waiting for someone to notice that mail never arrives.
@@ -29,7 +39,7 @@ app.use('/api/*', async (c, next) => {
   const origin = c.req.header('origin');
   if (origin && c.req.method !== 'GET' && origin !== c.env.APP_ORIGIN && origin !== new URL(c.req.url).origin)
     throw new HttpError(403, 'cross_site_request');
-  c.set('user', await userFromRequest(c.env, getCookie(c, SESSION_COOKIE)));
+  c.set('user', await userFromRequest(c.env, sessionCookie(c)));
   await next();
 });
 

@@ -484,7 +484,14 @@ tripwire, which is the pattern this repository already uses.
 
 See also S16: CI would not report these even if they were fixable.
 
-#### `[-]` S10 — `POST /api/errors` is unauthenticated, and should stay that way
+#### `[x]` S10 — `POST /api/errors` is unauthenticated, and should stay that way
+
+_Closed 2026-09-09, pass 2, as a decision rather than a change of behaviour. The
+route stays open; the reasoning is now in the module comment and in
+[RULES_IN_FORCE.md](RULES_IN_FORCE.md) §8 so it is not re-litigated as an
+oversight. Both guards it asked for shipped: `clipUrl` strips the fragment in
+the Worker as well as the browser, tested with a planted `#signin=` token, and
+the per-client limit is paired with 200 per hour overall._
 
 **Decided: keep, with two changes.**
 
@@ -544,7 +551,14 @@ own rule is that ids go through `requireId`.
 **Fix.** `if (!/^[0-9a-f]{12}$/.test(inviteId)) throw new HttpError(400, 'bad_id')`
 — the value is a hex prefix of a hash.
 
-#### `[ ]` S12 — A deeply nested `batch` op overflows the stack
+#### `[x]` S12 — A deeply nested `batch` op overflows the stack
+
+_Done 2026-09-09, pass 2. `MAX_OP_DEPTH` is 32, checked in the loop that
+already walks the envelopes. Written as a predicate that stops descending at
+the limit rather than a function that measures depth — the first attempt
+measured first and would have overflowed on exactly the input it exists to
+refuse. The test pushes the same 50 000-level op that used to answer 500 and
+expects `400 op_too_deep`, then checks a three-level batch still applies._
 
 **Verified.** An editor pushing one op nested 50 000 `batch` levels deep gets a
 `500 {"error":"server error"}`; the trace names `flat` at
@@ -562,7 +576,16 @@ survive `flat()` would be stored and then replayed into every relative's tab.
 ([worker/trees.ts:176](../worker/trees.ts#L176)), refused with a registered code.
 Batches are built by the UI a handful deep; 32 is far past any real one.
 
-#### `[ ]` S13 — `applyRecordPatch` assigns client-supplied keys directly
+#### `[x]` S13 — `applyRecordPatch` assigns client-supplied keys directly
+
+_Done 2026-09-09, pass 2. `RESERVED_KEYS` skips `__proto__`, `constructor` and
+`prototype`. The test builds the patch with `JSON.parse` rather than an object
+literal, which matters more than it looks: `__proto__` in a literal sets the
+prototype and creates no own property, so the first version of this test passed
+with the guard removed and proved nothing. Parsed from the wire — how an op
+actually arrives — it is an own property, and the test now fails without the
+fix. Confirmed at the same time that `Object.prototype` itself is never
+touched, as the finding said._
 
 **Reviewed.** `applyTable` writes `out[id] = value` for every key in a
 client-supplied patch table ([src/tree/diff.ts:74](../src/tree/diff.ts#L74)).
@@ -582,7 +605,20 @@ LOW and not higher.
 say in a comment why the guard is there so it is not tidied away. Note that
 this runs on both sides, so a test belongs with it.
 
-#### `[ ]` S14 — Small hardening, worth doing together
+#### `[x]` S14 — Small hardening, worth doing together
+
+_Done 2026-09-09, pass 2, all six. The `__Host-` prefix reads both names and
+writes only the prefixed one, so no session was ended; `worker/sessions.test.ts`
+drives a real sign-in against an https environment and asserts the prefix,
+`Secure`, no `Domain`, and that a cookie under the old name still
+authenticates. The administrator flag is cleared from everyone else in the same
+statement that sets it. `cleanText` takes control characters out of every field
+that reaches a mail subject and leaves newlines in the two that are multi-line.
+`secureHeaders` now passes `DENY` and the year-long HSTS, matched to
+`public/_headers` and asserted in a new `worker/index.test.ts`. `readJson`
+measures bytes — which changed which error an oversized document gets, so the
+create route's cap moved to twice `MAX_DOC_BYTES` to leave room for the
+specific answer to win. The dead `if (row.email)` branch is gone._
 
 Each is a few lines; none justifies its own pass.
 
