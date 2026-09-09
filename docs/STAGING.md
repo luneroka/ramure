@@ -68,8 +68,22 @@ npx wrangler secret put ADMIN_EMAIL --env staging
 - `CODE_PEPPER` — generate a **different** value from production, so a staging
   database copy tells an attacker nothing about production codes. Any long
   random string: `openssl rand -base64 32`.
-- `RESEND_API_KEY` — the same key as production is fine; it is the same sending
-  domain and the same person receiving.
+
+- `RESEND_API_KEY` — **a second key, not production's.** In Resend: API Keys →
+  Create API Key → name it `ramure-staging`, permission _Sending access_ (it
+  does not need full access). Same account and same verified domain, so mail
+  still comes from the address in `MAIL_FROM`.
+
+  Staging cannot run without a key at all: `sendMail` throws
+  `mail_not_configured`, and the echo-links shortcut only works on `localhost`,
+  so there would be no way to sign in — the codes are stored hashed, so one
+  cannot be read back out of the database either.
+
+  A separate key can be revoked without touching production, reports its usage
+  separately, and survives staging being treated casually. The blast radius of
+  sharing one is small — the rate limits cap sign-in mail at three per address
+  per quarter hour — but a second key costs one click.
+
 - `ADMIN_EMAIL` — your own address, so you are the administrator here too.
 
 **6. Deploy.**
