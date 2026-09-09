@@ -8,6 +8,11 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // Node scripts, not browser code: they may use console and the Node globals.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks, 'react-refresh': reactRefresh },
     rules: {
