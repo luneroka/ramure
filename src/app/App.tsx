@@ -226,7 +226,7 @@ function Shell() {
     const themeLabel = `${t(lang, 'theme')} : ${nextTheme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`;
     return (
       <div className="app gate">
-        <Login lang={lang} auth={auth} pendingInvite={invites.pendingInvite} toast={toast} />
+        <Login key={invites.pendingInvite?.email ?? ''} lang={lang} auth={auth} pendingInvite={invites.pendingInvite} toast={toast} />
         <div className="gate-tools">
           <button className="btn icon" onClick={ui.cycleTheme} aria-label={themeLabel} title={themeLabel}>
             <ThemeIcon choice={nextTheme} />

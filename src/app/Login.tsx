@@ -13,11 +13,13 @@ interface Props {
 }
 
 export function Login({ lang, auth, pendingInvite, toast }: Props) {
+  // The address: what was kept for the session, else the one an invitation was sent to (the shell remounts
+  // this form when that address arrives, so the initialiser sees it).
   const [email, setEmail] = useState(() => {
     try {
-      return sessionStorage.getItem('ramure.signinEmail') ?? '';
+      return sessionStorage.getItem('ramure.signinEmail') || pendingInvite?.email || '';
     } catch {
-      return '';
+      return pendingInvite?.email ?? '';
     }
   });
   // The code screen survives a reload or a trip to the mail app: the address is kept for the session.
@@ -38,8 +40,6 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
       /* ignore */
     }
   };
-  // An addressed invitation fills the address in until something else is typed.
-  const typed = email || pendingInvite?.email || '';
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
 
@@ -47,8 +47,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
     e.preventDefault();
     setBusy(true);
     try {
-      const r = await auth.requestLink(typed.trim());
-      setSent({ email: typed.trim(), ...r });
+      const r = await auth.requestLink(email.trim());
+      setSent({ email: email.trim(), ...r });
       setCode('');
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
@@ -125,7 +125,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
                 required
                 autoFocus={!sent}
                 autoComplete="email"
-                value={typed}
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vous@exemple.fr"
               />
@@ -140,7 +140,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             <button
               type="button"
               className={`btn ${sent ? '' : 'primary'}`}
-              disabled={busy || !typed.includes('@')}
+              disabled={busy || !email.includes('@')}
               onClick={(e) => void request(e)}
             >
               {t(lang, sent ? 'sendAgain' : 'sendLink')}
