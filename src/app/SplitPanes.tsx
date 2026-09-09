@@ -35,13 +35,31 @@ function readRatio(): number {
 }
 
 function TabStrip({ tabs, active, onSelect, extra }: { tabs: Tab[]; active: string; onSelect(id: string): void; extra?: ReactNode }) {
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+    const i = tabs.findIndex((t) => t.id === active);
+    const next =
+      e.key === 'Home'
+        ? 0
+        : e.key === 'End'
+          ? tabs.length - 1
+          : e.key === 'ArrowRight'
+            ? (i + 1) % tabs.length
+            : (i - 1 + tabs.length) % tabs.length;
+    const id = tabs[next]?.id;
+    if (!id) return;
+    e.preventDefault();
+    onSelect(id);
+    (e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[next] ?? null)?.focus();
+  };
   return (
-    <div className="tabs" role="tablist">
+    <div className="tabs" role="tablist" onKeyDown={onKey}>
       {tabs.map((tab) => (
         <button
           key={tab.id}
           role="tab"
           aria-selected={active === tab.id}
+          tabIndex={active === tab.id ? 0 : -1}
           className={`tab ${active === tab.id ? 'on' : ''}`}
           onClick={() => onSelect(tab.id)}
         >

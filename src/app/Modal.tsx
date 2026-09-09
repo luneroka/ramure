@@ -4,8 +4,9 @@
  * `ask()` which resolves with the answer, so callers read like a sentence.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { t, type Lang } from '../i18n';
+import { useDialog } from './ui/useDialog';
 
 export interface AskSpec {
   title: string;
@@ -35,19 +36,7 @@ export function Modal({ pending, lang }: { pending: Pending | null; lang: Lang }
     setValue(pending?.spec.input?.initial ?? '');
     setTyped('');
   }
-  useEffect(() => {
-    if (!pending) return;
-    const before = document.activeElement as HTMLElement | null;
-    first.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') pending.resolve(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      before?.focus?.();
-    };
-  }, [pending]);
+  const dialog = useDialog<HTMLFormElement>(!!pending, () => pending?.resolve(null), first);
   if (!pending) return null;
   const { spec, resolve } = pending;
   const guardOk = !spec.requireText || typed.trim() === spec.requireText.trim();
@@ -55,6 +44,7 @@ export function Modal({ pending, lang }: { pending: Pending | null; lang: Lang }
   return (
     <div className="dialog-backdrop" onClick={() => resolve(null)}>
       <form
+        ref={dialog}
         className="dialog modal"
         role="dialog"
         aria-modal="true"

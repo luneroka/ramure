@@ -32,6 +32,7 @@ import { defaultFocus } from './hooks/useTreeLayout';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import { ThemeIcon } from './ui/icons';
 import { UiProvider, useUi } from './ui/UiContext';
+import { UpdateBanner } from './ui/UpdateBanner';
 import { useAuth } from './useAuth';
 
 const DEFAULT_VIEW_KEY = 'ramure.defaultView';
@@ -41,6 +42,7 @@ export function App() {
     <ErrorBoundary>
       <UiProvider>
         <Shell />
+        <UpdateBanner />
       </UiProvider>
     </ErrorBoundary>
   );

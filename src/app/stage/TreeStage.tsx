@@ -1,11 +1,10 @@
 /** The stage of an open tree: canvas, timeline or map, with the tools, hud, menus and banners over it. */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { TreeCanvas, type TreeCanvasHandle } from '../../canvas/TreeCanvas';
 import type { DetailBand, HandleKind } from '../../canvas/renderer';
 import { tn } from '../../i18n';
 import { ops } from '../../tree/ops';
-import { MapView } from '../MapView';
 import { Timeline } from '../Timeline';
 import { useWorkspace } from '../session/Workspace';
 import { useUi } from '../ui/UiContext';
@@ -14,6 +13,9 @@ import { CanvasTools } from './CanvasTools';
 import { Hud } from './Hud';
 import { KinshipBanner } from './KinshipBanner';
 import { ReportPanel } from './ReportPanel';
+
+// Leaflet and its stylesheet only load the first time the map is shown.
+const MapView = lazy(() => import('../MapView').then((m) => ({ default: m.MapView })));
 
 export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string, at: { x: number; y: number }): void }) {
   const ui = useUi();
@@ -37,18 +39,20 @@ export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string,
   return (
     <>
       {editor.mode === 'map' && (
-        <MapView
-          tree={displayTree}
-          lang={lang}
-          selectedId={editor.selectedId}
-          readOnly={w.readOnly}
-          dark={ui.effectiveTheme === 'dark'}
-          onSelect={(id) => w.dispatch({ type: 'select', id })}
-          onGeocoded={(fixes) => {
-            if (w.commit(ops.geocodePlaces(fixes))) ui.toast(tn(lang, 'placesLocatedCount', fixes.length));
-          }}
-          onNotice={ui.toast}
-        />
+        <Suspense fallback={<div className="map-loading muted">…</div>}>
+          <MapView
+            tree={displayTree}
+            lang={lang}
+            selectedId={editor.selectedId}
+            readOnly={w.readOnly}
+            dark={ui.effectiveTheme === 'dark'}
+            onSelect={(id) => w.dispatch({ type: 'select', id })}
+            onGeocoded={(fixes) => {
+              if (w.commit(ops.geocodePlaces(fixes))) ui.toast(tn(lang, 'placesLocatedCount', fixes.length));
+            }}
+            onNotice={ui.toast}
+          />
+        </Suspense>
       )}
       {editor.mode === 'timeline' && (
         <Timeline

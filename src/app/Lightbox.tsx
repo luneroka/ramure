@@ -1,22 +1,16 @@
 /** Full-window view of one document: an image, or a PDF in a frame. */
 
-import { useEffect } from 'react';
 import type { MediaObject } from '../gedcom/model';
 import { t, type Lang } from '../i18n';
 import { isPdf } from '../media/documents';
 import { usePortraitUrl } from './fields/Portrait';
+import { useDialog } from './ui/useDialog';
 
 export function Lightbox({ media, lang, onClose }: { media: MediaObject; lang: Lang; onClose(): void }) {
   const url = usePortraitUrl(media.id);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const ref = useDialog<HTMLDivElement>(true, onClose);
   return (
-    <div className="lightbox" role="dialog" aria-modal="true" aria-label={media.title ?? t(lang, 'documents')} onClick={onClose}>
+    <div ref={ref} className="lightbox" role="dialog" aria-modal="true" aria-label={media.title ?? t(lang, 'documents')} onClick={onClose}>
       <div className="lightbox-head" onClick={(e) => e.stopPropagation()}>
         <strong>{media.title}</strong>
         <span className="spacer" />

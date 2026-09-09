@@ -105,7 +105,10 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
   const sharedNotes = new Map<string, string>();
   for (const r of records) if (r.tag === 'NOTE' && r.xref) sharedNotes.set(pointerId(r.xref)!, r.value);
 
-  const ctx: Ctx = { tree, sharedNotes };
+  // Media ids declared anywhere in the file, so an inline OBJE promoted to a record never takes one of them.
+  const usedMedia = new Set<string>();
+  for (const r of records) if (r.tag === 'OBJE' && r.xref) usedMedia.add(pointerId(r.xref)!);
+  const ctx: Ctx = { tree, sharedNotes, usedMedia };
 
   for (const r of records) {
     const id = r.xref ? pointerId(r.xref) : undefined;
@@ -138,6 +141,7 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
   }
 
   linkFamilies(tree);
+  reportKeptTags(tree);
 
   // Import-time repairs only: replaying the same text later must give the same tree, byte for byte.
   if (options.repairGeneWeb === true) repairGeneWeb(tree);
@@ -147,6 +151,52 @@ export function parseGedcom(text: string, options: ParseOptions = {}): Tree {
 interface Ctx {
   tree: Tree;
   sharedNotes: Map<string, string>;
+  usedMedia: Set<string>;
+}
+
+function freshMediaId(ctx: Ctx): string {
+  let n = ctx.usedMedia.size + 1;
+  while (ctx.usedMedia.has(`M${n}`) || ctx.tree.media[`M${n}`]) n++;
+  const id = `M${n}`;
+  ctx.usedMedia.add(id);
+  return id;
+}
+
+/** Everything kept verbatim because we do not interpret it, counted by tag, so the person knows what the file carries silently. */
+function reportKeptTags(tree: Tree): void {
+  const counts = new Map<string, number>();
+  const add = (recs: GedcomRecord[] | undefined) => {
+    for (const r of recs ?? []) counts.set(r.tag, (counts.get(r.tag) ?? 0) + 1);
+  };
+  add(tree.extra);
+  for (const ind of Object.values(tree.individuals)) {
+    add(ind.extra);
+    for (const e of ind.events) {
+      add(e.extra);
+      add(e.place?.extra);
+    }
+  }
+  for (const fam of Object.values(tree.families)) {
+    add(fam.extra);
+    for (const e of fam.events) {
+      add(e.extra);
+      add(e.place?.extra);
+    }
+  }
+  for (const s of Object.values(tree.sources)) add(s.extra);
+  for (const r of Object.values(tree.repositories)) add(r.extra);
+  for (const m of Object.values(tree.media)) add(m.extra);
+  if (!counts.size) return;
+  const list = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([tag, n]) => (n > 1 ? `${tag} ×${n}` : tag))
+    .join(', ');
+  tree.importNotes.push({
+    level: 'info',
+    code: 'kept-tags',
+    message: `Balises non interprétées, conservées telles quelles dans le fichier : ${list}${counts.size > 12 ? '…' : ''}.`,
+  });
 }
 
 function parseHeader(ctx: Ctx, r: GedcomRecord): void {
@@ -198,15 +248,16 @@ function mediaOf(ctx: Ctx, r: GedcomRecord): string[] {
       continue;
     }
     // Inline OBJE (5.5.1 allows FILE directly under the event). Promote to a media record.
-    const file = childValue(o, 'FILE');
-    if (file) {
-      const newId = `M${Object.keys(ctx.tree.media).length + 1}`;
-      const fileRec = child(o, 'FILE')!;
+    const files = children(o, 'FILE');
+    const fileRec = files[0];
+    if (fileRec) {
+      const newId = freshMediaId(ctx);
       ctx.tree.media[newId] = {
         id: newId,
-        file,
+        file: fileRec.value,
         format: childValue(fileRec, 'FORM') ?? childValue(o, 'FORM'),
         title: childValue(o, 'TITL') ?? childValue(fileRec, 'TITL'),
+        ...(files.length > 1 ? { files: files.slice(1).map((f) => f.value) } : {}),
         notes: notesOf(ctx, o),
         extra: [],
       };
@@ -240,8 +291,14 @@ function citationsOf(ctx: Ctx, r: GedcomRecord): Citation[] {
   });
 }
 
-function parsePlace(r: GedcomRecord): Place {
+function parsePlace(ctx: Ctx, r: GedcomRecord): Place {
   const p: Place = { text: r.value, parts: r.value.split(',').map((s) => s.trim()) };
+  const form = childValue(r, 'FORM');
+  if (form) p.form = form;
+  const notes = notesOf(ctx, r);
+  if (notes.length) p.notes = notes;
+  const extra = r.children.filter((c) => c.tag !== 'MAP' && c.tag !== 'FORM' && c.tag !== 'NOTE');
+  if (extra.length) p.extra = extra;
   const map = child(r, 'MAP');
   if (map) {
     const lati = childValue(map, 'LATI');
@@ -286,7 +343,7 @@ function parseEvent(ctx: Ctx, r: GedcomRecord, type: EventType): Event {
         e.date = parseDate(c.value);
         break;
       case 'PLAC':
-        e.place = parsePlace(c);
+        e.place = parsePlace(ctx, c);
         break;
       case 'ADDR':
         e.address = parseAddress(c);
@@ -317,7 +374,7 @@ function parseEvent(ctx: Ctx, r: GedcomRecord, type: EventType): Event {
   return e;
 }
 
-function parseName(r: GedcomRecord): Name {
+function parseName(ctx: Ctx, r: GedcomRecord): Name {
   const raw = r.value.trim();
   const m = /^([^/]*)\/([^/]*)\/(.*)$/.exec(raw);
   let given = raw,
@@ -342,6 +399,10 @@ function parseName(r: GedcomRecord): Name {
   if (nick) n.nick = nick;
   const type = childValue(r, 'TYPE');
   if (type) n.type = type;
+  const notes = notesOf(ctx, r);
+  if (notes.length) n.notes = notes;
+  const citations = citationsOf(ctx, r);
+  if (citations.length) n.citations = citations;
   return n;
 }
 
@@ -349,7 +410,7 @@ function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
   const ind = newIndividual(id);
   for (const c of r.children) {
     if (c.tag === 'NAME') {
-      ind.names.push(parseName(c));
+      ind.names.push(parseName(ctx, c));
       continue;
     }
     if (c.tag === 'SEX') {
@@ -451,10 +512,17 @@ function parseSource(ctx: Ctx, id: string, r: GedcomRecord): Source {
       case 'TEXT':
         s.text = c.value;
         break;
-      case 'REPO':
-        s.repositoryId = pointerId(c.value);
-        s.callNumber = childValue(c, 'CALN');
+      case 'REPO': {
+        const rid = pointerId(c.value);
+        if (!rid) break;
+        const callNumber = childValue(c, 'CALN');
+        (s.repositories ??= []).push(callNumber ? { id: rid, callNumber } : { id: rid });
+        if (!s.repositoryId) {
+          s.repositoryId = rid;
+          s.callNumber = callNumber;
+        }
         break;
+      }
       case 'NOTE':
       case 'OBJE':
         break;
@@ -477,8 +545,10 @@ function parseRepository(ctx: Ctx, id: string, r: GedcomRecord): Repository {
 }
 
 function parseMedia(ctx: Ctx, id: string, r: GedcomRecord): MediaObject {
-  const fileRec = child(r, 'FILE');
+  const files = children(r, 'FILE');
+  const fileRec = files[0];
   const m: MediaObject = { id, file: fileRec?.value ?? '', notes: notesOf(ctx, r), extra: [] };
+  if (files.length > 1) m.files = files.slice(1).map((f) => f.value);
   m.format = (fileRec && childValue(fileRec, 'FORM')) ?? childValue(r, 'FORM');
   m.title = (fileRec && childValue(fileRec, 'TITL')) ?? childValue(r, 'TITL');
   const kind = childValue(r, '_KIND');

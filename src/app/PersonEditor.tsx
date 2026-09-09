@@ -18,6 +18,7 @@ import { PortraitPicker } from './fields/Portrait';
 import { mediaStore } from '../store';
 import { DateField } from './fields/DateField';
 import { PlaceField } from './fields/PlaceField';
+import { useDialog } from './ui/useDialog';
 
 interface Props {
   tree: Tree;
@@ -173,13 +174,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   useEffect(() => {
     cancelRef.current = cancel;
   });
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') cancelRef.current();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  const dialog = useDialog<HTMLFormElement>(true, () => cancelRef.current());
 
   const update = (key: number, patch: Partial<EventDraft>) =>
     setEvents((evs) => {
@@ -225,6 +220,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   return (
     <div className="dialog-backdrop editor-backdrop" onClick={cancel}>
       <form
+        ref={dialog}
         className="dialog editor-dialog"
         role="dialog"
         aria-modal="true"
