@@ -80,8 +80,8 @@
   <div class="verdict">
     <div class="card warn"><strong>Usable for your friend's trial, with two precautions.</strong>
       <p>Export the tree as GEDCOM from the tree menu every few days, and keep the number of people under a few thousand until the first pass below lands. The data model, the sync core and the authorisation rules are sound. What is missing is the armour around them: hardened headers, limits that match the platform, and recovery paths when something goes wrong.</p></div>
-    <div class="card crit"><strong>Not ready for people you do not know.</strong>
-      <p>Anyone with an editor role on an account could today run script on the app's origin through an uploaded SVG, or wipe a tree with one crafted request that leaves no safety snapshot. Nothing rate-limits sign-in. These are fixed first.</p></div>
+    <div class="card ok"><strong>Update, 9 September evening: passes 0 and 1 are live.</strong>
+      <p>Sign-in is invitation-only with an access-request path, media is typed from its bytes and served sandboxed, every page carries security headers, the sync limits match the platform, sign-in links and codes only work from the browser that asked, and the API is covered by 22 tests in CI. The critical items above are closed; the sync-honesty work of pass 2 is next.</p></div>
     <div class="card ok"><strong>Where the shortcuts were taken, plainly.</strong>
       <p>Speed went into features and the canvas. It did not go into: a test suite for the API and the sync engine, checking Cloudflare's hard limits against the code's own constants, security headers, an architecture that keeps the main component under control, and operational safety nets such as backups you could restore per tree. Each of those is listed below with its fix.</p></div>
   </div>
@@ -140,7 +140,7 @@
   <h2>The refactoring passes, in order</h2>
   <p>Each pass is shippable on its own and verified before the next. Estimates are working days of my time; your time is the decisions marked below.</p>
 
-  <div class="phase"><h3>Pass 1, harden</h3><div class="when">Built 9 September on branch pass-1-harden, stacked on pass 0, pull request #2. Left for the hygiene pass: session idle timeout and purge, member emails hidden from viewers, a pepper on the code hash.</div>
+  <div class="phase"><h3>Pass 1, harden</h3><div class="when">Deployed to production on 9 September 2026 (migration 0007 applied). Left for the hygiene pass: session idle timeout and purge, member emails hidden from viewers, a pepper on the code hash.</div>
     <ul>
       <li>Media allow-list by magic bytes, protective headers on media, security headers on everything.</li>
       <li>Escape the map tooltip; allow-list link schemes.</li>
@@ -215,7 +215,7 @@
     </ul>
   </div>
 
-  <div class="phase"><h3>Pass 0, closed door</h3><div class="when">Built 9 September on branch pass-0-closed-door, pull request #1, awaiting your go to merge (run the production migration first)</div>
+  <div class="phase"><h3>Pass 0, closed door</h3><div class="when">Deployed to production on 9 September 2026 (migration 0006 applied)</div>
     <ul>
       <li>An <em>administrateur de l'application</em> flag on users; Yoann's user carries it. An « Administration » page reachable from the avatar menu for that user only.</li>
       <li>Application invitations: the admin enters an address, the app mails « Yoann vous invite sur Ramure » with a link and a code, valid seven days, single use. The address is allowed to sign in from that moment; the first sign-in creates the user.</li>
