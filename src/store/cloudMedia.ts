@@ -4,7 +4,7 @@
  * opportunity if they fail.
  */
 
-import { kvGet, kvSet, mediaDelete, mediaGet, mediaPut } from '../db';
+import { kvGet, kvSet, mediaGet, mediaPut } from '../db';
 import { api } from '../sync/api';
 import type { MediaStore } from './types';
 
@@ -44,12 +44,12 @@ export class CloudMediaStore implements MediaStore {
     }
   }
 
+  /** The server marks the file; the local copy stays so an undo shows it at once. */
   async delete(id: string): Promise<void> {
-    await mediaDelete(id);
     try {
       await api.deleteMedia(this.treeId, id);
     } catch {
-      /* the server copy is orphaned at worst; a later cleanup can reap it */
+      /* not reachable now: the nightly reaper only takes what the document no longer references */
     }
   }
 

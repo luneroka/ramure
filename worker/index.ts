@@ -11,9 +11,11 @@ import type { Env, Vars } from './env';
 import { accounts, invites } from './accounts';
 import { trees } from './trees';
 import { admin } from './admin';
+import { reap } from './maintenance';
 import { HttpError } from './util';
 
-const app = new Hono<{ Bindings: Env; Variables: Vars }>();
+/** The Hono app itself, for tests that drive it in-process. */
+export const app = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 app.use('/api/*', secureHeaders({ crossOriginResourcePolicy: 'same-origin', referrerPolicy: 'strict-origin-when-cross-origin' }));
 app.use('/api/*', async (c, next) => {
@@ -39,4 +41,10 @@ app.onError((err, c) => {
   return c.json({ error: 'server error' }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** The nightly cron from wrangler.toml. */
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(reap(env));
+  },
+};

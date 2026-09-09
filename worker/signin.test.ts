@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
-import app from './index';
+import { app } from './index';
 import { Client, invite } from './test/helpers';
 
 describe('sign-in bound to the browser that asked', () => {

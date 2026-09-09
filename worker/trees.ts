@@ -405,7 +405,9 @@ trees.delete('/:id/media/:mediaId', async (c) => {
   const id = c.req.param('id');
   await requireRole(c.env, id, user, ['owner', 'editor']);
   const mediaId = requireId(c.req.param('mediaId'), 'media id');
-  await c.env.MEDIA.delete(`trees/${id}/media/${mediaId}`);
-  await c.env.DB.prepare(`DELETE FROM media WHERE id = ? AND tree_id = ?`).bind(mediaId, id).run();
+  // Marked, not removed: an undo can still show the file; the nightly reaper takes it once nothing references it.
+  await c.env.DB.prepare(`UPDATE media SET deleted_at = ? WHERE id = ? AND tree_id = ? AND deleted_at IS NULL`)
+    .bind(now(), mediaId, id)
+    .run();
   return c.json({ ok: true });
 });

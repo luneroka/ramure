@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
-import app from './index';
+import { app } from './index';
 import { sniffMediaType } from './media';
 import { Client, invite } from './test/helpers';
 

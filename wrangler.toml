@@ -5,6 +5,9 @@ compatibility_flags = ["nodejs_compat"]
 
 # The built app is served by the same Worker: one origin, no CORS, cookies just work.
 # Request logs and errors in the dashboard (Workers & Pages → ramure → Logs).
+[triggers]
+crons = ["0 4 * * *"]
+
 [observability]
 enabled = true
 

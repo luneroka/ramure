@@ -1,7 +1,7 @@
 /** Drive the Hono app in-process: JSON calls with a cookie jar, and a sign-in that goes through the real code path. */
 
 import { env } from 'cloudflare:test';
-import app from '../index';
+import { app } from '../index';
 
 export class Client {
   /** A small cookie jar: several cookies, replaced by name, dropped when expired by the server. */
@@ -30,7 +30,7 @@ export class Client {
     for (const line of res.headers.getSetCookie()) {
       const [pair, ...attrs] = line.split(';');
       const [name, value] = pair!.split('=');
-      const gone = attrs.some((a) => /max-age=0/i.test(a.trim()));
+      const gone = attrs.some((a: string) => /max-age=0/i.test(a.trim()));
       if (gone || !value) this.jar.delete(name!.trim());
       else this.jar.set(name!.trim(), value);
     }

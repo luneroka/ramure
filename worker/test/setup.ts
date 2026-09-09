@@ -4,6 +4,7 @@ declare module 'cloudflare:test' {
   interface ProvidedEnv {
     DB: D1Database;
     MEDIA: R2Bucket;
+    ASSETS: Fetcher;
     TEST_MIGRATIONS: D1Migration[];
     APP_ORIGIN: string;
     MAIL_FROM: string;
