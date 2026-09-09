@@ -13,7 +13,7 @@ for a codebase that AI agents navigate daily.
 **The code itself is in better shape than the brief implied.** TypeScript is
 strict with `noUncheckedIndexedAccess`; there are **zero** `any` in `src/` and
 `worker/`; no `TODO`, `FIXME` or dead-code markers anywhere; every module opens
-with a block comment explaining *why*; 189 tests across 46 files all pass; lint
+with a block comment explaining _why_; 189 tests across 46 files all pass; lint
 and Prettier are clean. Authorization is applied systematically — every tree,
 account and admin route goes through `requireUser` plus a role check, and "not
 a member" is a 404 while "wrong role" is a 403. Input validation is
@@ -44,7 +44,6 @@ fix (say why).
 
 _Done 2026-09-09, pass 1 — but **not** the way this finding first proposed;
 see "How H1 was actually solved" below._
-
 
 `CODE_PEPPER` is optional in [worker/env.ts](../worker/env.ts), and `hmac()`
 in [worker/util.ts](../worker/util.ts) **silently degrades to a plain SHA-256**
@@ -83,7 +82,7 @@ graded ways instead:
    loudly; tree sync, and everyone already signed in, are untouched.
 
 Severity is calibrated to that: `fatal` means an operation refuses (only
-`CODE_PEPPER`, whose absence is otherwise *invisible* — everything keeps
+`CODE_PEPPER`, whose absence is otherwise _invisible_ — everything keeps
 working and the hashes are simply weaker). Everything else is a `warning`,
 because a missing mail key breaks new sign-ins but must not break a working
 app. Problems carry setting names and reasons, never values — there is a test
@@ -93,7 +92,6 @@ asserting that.
 
 _Pass 1, 2026-09-09. The first attempt was **wrong** and is recorded here
 because the mistake is the useful part; see "What H2 turned out to be"._
-
 
 `ccig-app` runs Gitleaks on every push and pull request. Ramure runs nothing:
 [.github/workflows/ci.yml](../.github/workflows/ci.yml) is `workflow_dispatch`
@@ -108,8 +106,8 @@ own tiny workflow, not a job inside the disabled one.
 #### What H2 turned out to be
 
 The workflow was written, pushed, and **failed on every run** — not on a
-finding, but because the job never started: *"recent account payments have
-failed or your spending limit needs to be increased."*
+finding, but because the job never started: _"recent account payments have
+failed or your spending limit needs to be increased."_
 
 The premise was wrong. Gitleaks is free on public repositories, and
 `luneroka/ramure` is **private** — so its Actions minutes are metered like
@@ -125,16 +123,16 @@ install instructions when gitleaks is absent, so "did not run" can never be
 mistaken for "found nothing". First run over 111 commits: **clean**.
 
 **The real fix — make the repository public.** Yoann chose this on
-2026-09-09. Public repositories get *unlimited* Actions minutes, so this does
+2026-09-09. Public repositories get _unlimited_ Actions minutes, so this does
 not merely restore the secret scan: it restores the **entire CI gate** that had
 to be disabled, and removes the standing risk that the local suite is skipped
 because a human or an agent forgot. That is the largest hygiene win available
 here, and it costs nothing.
 
 Checked before recommending it: gitleaks clean over all 111 commits; the only
-`.ged` files in history are the two fixtures, whose own header states *« Arbre
+`.ged` files in history are the two fixtures, whose own header states _« Arbre
 entièrement fictif… Toute ressemblance avec des personnes réelles serait
-fortuite »* (the real 124-person file from a friend was never committed); and
+fortuite »_ (the real 124-person file from a friend was never committed); and
 the auth design leans on hashed tokens, a peppered code, browser binding and
 rate limits rather than on obscurity.
 
@@ -169,7 +167,6 @@ writes a deb822 `.sources` file instead. All four checks green afterwards.
 _Done 2026-09-09, pass 1: untracked with `git rm --cached` and added to
 `.gitignore`. The files stay on disk; they are simply no longer in git._
 
-
 40 files under [coverage/](../coverage/) are tracked, including
 `coverage-final.json`. It is absent from [.gitignore](../.gitignore), so every
 `npm run test:coverage` dirties the working tree and any PR touching coverage
@@ -192,7 +189,6 @@ is written up in [API_ERRORS.md](API_ERRORS.md). Both code sets are union
 types, so TypeScript checked every site — and the tests that asserted on prose
 now assert on codes, which is the point._
 
-
 The Worker throws free-text English messages — `'not allowed'`, `'tree not
 found'`, `'other device'`, `'invitation required'` — and the browser
 distinguishes them by **HTTP status alone**:
@@ -209,7 +205,7 @@ directly:
 
 ```ts
 // src/app/hooks/useDrafts.ts:56
-err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message
+err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message;
 ```
 
 — which also means raw English error text can reach a French user's screen.
@@ -232,24 +228,22 @@ agents, for which a shallow tree is materially better — a file's home is
 guessable from its name, `ls src/app/` stays informative, and there are fewer
 wrong path guesses. Do not re-open this without a reason that answers both._
 
-
 The directory is committed to an organisation it never finished — **37 files
 at the root against 36 in subfolders**. `stage/`, `ui/`, `fields/`, `hooks/`
 and `session/` exist, but the root still mixes four different kinds of thing:
 
 (Two things that look like disorder here are not. Tests sitting beside their
-subject is the *dominant* TypeScript convention — the Vitest default — and only
+subject is the _dominant_ TypeScript convention — the Vitest default — and only
 looks odd next to ccig-app, which follows the pytest convention of a separate
 `tests/` tree. And the rest of `src/` — `gedcom/`, `tree/`, `canvas/`, `sync/`,
 `store/` — is cleanly separated already. The mess is one room, not the house.)
 
-
-| Kind | Files at `src/app/` root |
-|---|---|
-| Top-level screens | `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Leads`, `MapView`, `Timeline`, `PrintPage` |
-| Reusable widgets | `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `PersonPicker`, `PersonRow` |
-| Domain panels | `PersonPanel`, `PersonEditor` |
-| Pure logic, no React | `format`, `history`, `report`, `router`, `editorState`, `mapPopup`, `useAuth` |
+| Kind                 | Files at `src/app/` root                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Top-level screens    | `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Leads`, `MapView`, `Timeline`, `PrintPage` |
+| Reusable widgets     | `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `PersonPicker`, `PersonRow`                                     |
+| Domain panels        | `PersonPanel`, `PersonEditor`                                                                               |
+| Pure logic, no React | `format`, `history`, `report`, `router`, `editorState`, `mapPopup`, `useAuth`                               |
 
 `session/` holds exactly one file. An agent asked to "change the settings
 screen" has no way to guess whether it is at the root, in `stage/`, or in
@@ -299,7 +293,6 @@ misconfiguration.
 _Done 2026-09-09, pass 1: [.dev.vars.example](../.dev.vars.example), with the
 reason `RESEND_API_KEY` must stay absent spelled out._
 
-
 `.dev.vars` is correctly git-ignored, and correctly never contains a real key
 — but nothing in the repository records what it must contain. A fresh clone
 (or a fresh agent) cannot start the API without being told. `ccig-app` tracks
@@ -309,7 +302,16 @@ Two lines, no secrets: `APP_ORIGIN=http://localhost:5175` and
 `DEV_ECHO_LINKS=1`, with a comment saying `RESEND_API_KEY` is deliberately
 absent because echo mode replaces it locally.
 
-### `[ ]` H9. The two main design documents are HTML artifacts
+### `[x]` H9. The two main design documents are HTML artifacts
+
+_Done 2026-09-09, pass 3. Both are Markdown now, converted with a purpose-built
+parser rather than by hand so nothing was reworded in passing. Verified by
+diffing the prose word-for-word: the only words not carried across were each
+file's `<title>`, which both `<h1>`s already say, plus the "Fit" and "Re-centre"
+button labels of the design brief's interactive canvas demo — page chrome, not
+document text. Each file gained a header saying it is historical and pointing at
+what is true now. With `docs/` all Markdown, it also left `.prettierignore`, so
+the documentation is format-checked like the code._
 
 [docs/design-brief.html](design-brief.html) (46 KB) and
 [docs/gap-analysis.html](gap-analysis.html) (30 KB) are published-artifact
@@ -327,7 +329,7 @@ artifacts stay where they are for reading; the repo copy is what agents and
 
 ### `[ ]` H10. The `@/*` alias is configured and never used
 
-Declared in [tsconfig.json](../tsconfig.json) *and*
+Declared in [tsconfig.json](../tsconfig.json) _and_
 [vite.config.ts](../vite.config.ts), used **zero** times. Meanwhile 105 imports
 climb with `../../`. Either adopt it in `src/app/` (where the nesting is
 deepest and the restructure in H5 will deepen it further) or delete both
@@ -340,8 +342,8 @@ anyway.
 ### `[ ]` H11. `src/styles.css` is 3252 lines in one file
 
 Sectioned by comment banners, which is better than nothing, but one section is
-named `/* ---------- Phase 2: editing ---------- */` — organised by *when it
-was written* rather than what it styles. Finding the rule for a component
+named `/* ---------- Phase 2: editing ---------- */` — organised by _when it
+was written_ rather than what it styles. Finding the rule for a component
 means scrolling or grepping a guessed class name.
 
 Split by concern into `src/styles/` (`base`, `canvas`, `panel`, `forms`,
@@ -363,7 +365,6 @@ _Decided by Yoann 2026-09-09: free of charge, not free to reuse.
 source is published at all. Deliberately reversible — it can be opened up
 later; MIT could not have been taken back._
 
-
 The README calls Ramure "a free family-tree builder". With no licence file the
 repository is, legally, all rights reserved — the opposite of what it says.
 Pick one deliberately (MIT if "free" means free to reuse; none, stated
@@ -382,20 +383,20 @@ preflight suite green, each is independently revertible. The order matters:
 the safety nets land before the invasive moves, so a mistake in pass 4 is
 caught by something.
 
-| Pass | Branch | Findings | Risk | Why here |
-|---|---|---|---|---|
-| 1 | `hygiene-1-safety-nets` | H1, H2, H3, H8, H13 | Low | Nothing structural. Config validation and secret scanning must exist *before* the passes that move files around. |
-| 2 | `hygiene-2-error-codes` | H4 | Medium | Touches every route and several call sites, but purely additive. Needs its own PR to be reviewable. |
-| 3 | `hygiene-3-docs` | H9, plus wiring the new docs into the README | Low | Prose only. Lands before the restructure so the architecture map is available while reviewing it. |
-| 4 | `hygiene-4-structure` | H5, H6, H10, H12 | **High** | Pure file moves and import rewrites. Verified by the test suite passing unchanged — if a test needed editing beyond its import path, something moved that should not have. |
-| 5 | `hygiene-5-styles` | H11, H7, H14 | Low | Mechanical CSS split plus the port pin. Last because it is the easiest to eyeball and the easiest to defer. |
+| Pass | Branch                  | Findings                                     | Risk     | Why here                                                                                                                                                                   |
+| ---- | ----------------------- | -------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | `hygiene-1-safety-nets` | H1, H2, H3, H8, H13                          | Low      | Nothing structural. Config validation and secret scanning must exist _before_ the passes that move files around.                                                           |
+| 2    | `hygiene-2-error-codes` | H4                                           | Medium   | Touches every route and several call sites, but purely additive. Needs its own PR to be reviewable.                                                                        |
+| 3    | `hygiene-3-docs`        | H9, plus wiring the new docs into the README | Low      | Prose only. Lands before the restructure so the architecture map is available while reviewing it.                                                                          |
+| 4    | `hygiene-4-structure`   | H5, H6, H10, H12                             | **High** | Pure file moves and import rewrites. Verified by the test suite passing unchanged — if a test needed editing beyond its import path, something moved that should not have. |
+| 5    | `hygiene-5-styles`      | H11, H7, H14                                 | Low      | Mechanical CSS split plus the port pin. Last because it is the easiest to eyeball and the easiest to defer.                                                                |
 
 ### Rules for the passes
 
 - **Pass 4 changes no logic.** Not one line inside a function body. Moves and
   import paths only. If a diff shows anything else, split it out.
 - **No pass touches behaviour** except pass 2, which changes what an error
-  response *carries* — never its status code.
+  response _carries_ — never its status code.
 - Run `/preflight` before each merge and say in the PR that it passed.
 - After each pass, tick its findings above and update the memory note on pass
   status.

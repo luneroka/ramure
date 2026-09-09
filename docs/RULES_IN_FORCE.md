@@ -6,7 +6,7 @@ something looks like a bug.
 
 **What this is not.** It is not history. `design-brief` records how the design
 was arrived at, including decisions later superseded; the git log records what
-changed and when. This page states only what is true *now*. Where they
+changed and when. This page states only what is true _now_. Where they
 disagree, this page is wrong and should be corrected — it is a summary, not a
 source.
 
@@ -41,10 +41,10 @@ corrupt it. It is applied on the import path and nowhere else
 ([src/gedcom/geneweb.ts](../src/gedcom/geneweb.ts)).
 
 **A document is capped at 1.5 MB of UTF-8.** D1 stores at most 2 MB in a row,
-and the row carries other columns. Measured in *bytes*, not characters —
+and the row carries other columns. Measured in _bytes_, not characters —
 accented French names are two bytes each and a character count would let a
 document past the real limit (`MAX_DOC_BYTES`). Both the create and the push
-paths check it, the push path *after* replay, so an edit that would tip the
+paths check it, the push path _after_ replay, so an edit that would tip the
 document over is refused rather than half-applied.
 
 ## 2. Sync: ops, versions and races
@@ -84,7 +84,7 @@ violation on `tree_ops.seq`.
 
 **Deleting or merging a person snapshots the tree first**, automatically,
 labelled « Avant suppression de … » / « Avant fusion de … ». The snapshot holds
-the document *as it was before* the push.
+the document _as it was before_ the push.
 
 **Bulk record patches count as destructive too.** Undo and redo travel as
 `patchRecords`, which can rewrite or remove many records at once. Past 3
@@ -155,7 +155,7 @@ never reaches a server or a log, and merely opening the page does nothing.
 
 **Rate limits, all in D1**: 3 links per address per quarter hour, 20 requests
 and 30 code attempts per IP per quarter hour, and 10 failed codes per address
-across *every* live link — so requesting a new one does not reset the count.
+across _every_ live link — so requesting a new one does not reset the count.
 
 **Sessions expire twice over**: 90 days absolute, and 30 days idle, whichever
 comes first. `last_seen_at` is touched at most hourly to keep the write cost
@@ -181,7 +181,7 @@ never render as a page on the app's origin.
 
 **Deletion is a mark, not a removal.** An undo can still show the file. The
 nightly reaper takes it once it has been unreferenced for 30 days
-(`MEDIA_GRACE_MS`), and *un*-marks a file an undo brought back.
+(`MEDIA_GRACE_MS`), and _un_-marks a file an undo brought back.
 
 **10 MB per file**, checked from `content-length` before the body is read, then
 again on the bytes.

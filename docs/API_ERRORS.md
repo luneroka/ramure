@@ -63,7 +63,7 @@ toast(errorText(lang, err));
   a detail nobody can do anything about — falls back to « Erreur inattendue »
   deliberately, rather than leaking an internal English message.
 - Use `isApiCode(err, 'already_a_member')` for the few places that need to
-  *branch* rather than just report.
+  _branch_ rather than just report.
 
 Adding a translation is two lines: a key in `src/i18n.ts` with `fr` and `en`,
 and an entry in `API_TEXT` or `EDIT_TEXT`.
