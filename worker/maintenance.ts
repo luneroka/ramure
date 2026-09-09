@@ -30,6 +30,42 @@ export interface ReapReport {
   filesDeleted: number;
   snapshotsDeleted: number;
   rowsPurged: number;
+  /** Files under a tree that no longer exists at all. */
+  orphansDeleted: number;
+}
+
+/**
+ * Files belonging to trees that are gone.
+ *
+ * `deleteUser` and `DELETE /api/trees/:id` both write their D1 rows before
+ * touching R2, on purpose: a crash in between must leave files nothing points
+ * at rather than rows pointing at files that are gone. That is only the better
+ * failure if something eventually collects them, and the per-tree sweep above
+ * cannot — it walks the `trees` table, so a tree with no row is never visited.
+ * This is the same shape as the orphaned-backup sweep in backup.ts.
+ */
+async function reapOrphanedMedia(env: Env): Promise<number> {
+  const known = new Set((await env.DB.prepare(`SELECT id FROM trees`).all<{ id: string }>()).results.map((t) => t.id));
+  let deleted = 0;
+  let cursor: string | undefined;
+  do {
+    const page = await env.MEDIA.list({ prefix: 'trees/', delimiter: '/', cursor });
+    for (const prefix of page.delimitedPrefixes) {
+      const treeId = prefix.slice('trees/'.length, -1);
+      if (known.has(treeId)) continue;
+      let inner: string | undefined;
+      do {
+        const files = await env.MEDIA.list({ prefix, cursor: inner });
+        if (files.objects.length) {
+          await env.MEDIA.delete(files.objects.map((o) => o.key));
+          deleted += files.objects.length;
+        }
+        inner = files.truncated ? files.cursor : undefined;
+      } while (inner);
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return deleted;
 }
 
 /** Media ids a document still points at. */
@@ -41,7 +77,7 @@ function referencedMedia(doc: string): Set<string> {
 }
 
 export async function reap(env: Env, at = now()): Promise<ReapReport> {
-  const report: ReapReport = { filesDeleted: 0, snapshotsDeleted: 0, rowsPurged: 0 };
+  const report: ReapReport = { filesDeleted: 0, snapshotsDeleted: 0, rowsPurged: 0, orphansDeleted: 0 };
   const trees = await env.DB.prepare(`SELECT id, doc FROM trees`).all<{ id: string; doc: string }>();
   for (const t of trees.results) {
     // Files: deleted long enough ago, or never referenced and older than the grace, and not in the document today.
@@ -109,5 +145,6 @@ export async function reap(env: Env, at = now()): Promise<ReapReport> {
     .bind(at - KEEP_ACCESS_REQUESTS_MS)
     .run();
   report.rowsPurged += asked.meta.changes ?? 0;
+  report.orphansDeleted = await reapOrphanedMedia(env);
   return report;
 }

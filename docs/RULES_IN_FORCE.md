@@ -203,8 +203,26 @@ comes first. `last_seen_at` is touched at most hourly to keep the write cost
 down.
 
 **Users do not delete their own account.** They ask; the operator approves. A
-deletion takes the user's sessions, memberships, and any account they were the
-sole owner of, with its trees and files.
+deletion takes the person's sessions, memberships, any account they were the
+sole owner of with its trees and files, and every row that carries their
+address — magic links, access requests, crash reports.
+
+**A deletion reassigns before it removes, and touches R2 last.** Four columns
+named `users(id)` with no `ON DELETE` clause, so a member who had created a
+tree, or an owner since demoted, could not be deleted at all — and because the
+accounts and files went first, the failure destroyed the person's own genealogy
+and left the person. Now `trees.owner_id`, `accounts.created_by` and
+`account_invites.created_by` are handed to an owner who remains (there always is
+one, since the last owner can neither be demoted nor leave), the whole of D1
+happens in **one batch**, and files are deleted only once those rows are
+committed. A crash therefore leaves files nothing points at, never rows pointing
+at files that are gone ([worker/admin.ts](../worker/admin.ts), `deleteUser`).
+
+**What a deletion deliberately keeps** is the family's edit history:
+`tree_ops.actor_id` and `tree_snapshots.created_by` hold an opaque id that no
+longer resolves to anybody. The op log is the tree's history, not a profile of
+the person who left, and compacting it would rewrite what the rest of the
+family sees.
 
 ## 6. Files
 
@@ -223,6 +241,13 @@ never render as a page on the app's origin.
 **Deletion is a mark, not a removal.** An undo can still show the file. The
 nightly reaper takes it once it has been unreferenced for 30 days
 (`MEDIA_GRACE_MS`), and _un_-marks a file an undo brought back.
+
+**Files whose tree is gone entirely are swept separately.** The per-tree sweep
+walks the `trees` table, so it can never visit a tree that no longer has a row —
+and both deletion paths write their rows before touching R2 on purpose.
+`reapOrphanedMedia` closes that by listing R2's own `trees/` prefixes and
+dropping any the database does not know, the same shape as the orphaned-backup
+sweep in [worker/backup.ts](../worker/backup.ts).
 
 **10 MB per file**, checked from `content-length` before the body is read, then
 again on the bytes.

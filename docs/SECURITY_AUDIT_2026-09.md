@@ -174,7 +174,33 @@ and never by prose or bare status. Unexpected errors become a bare
 
 ### HIGH
 
-#### `[ ]` S1 — Approving a deletion request can destroy the person's own family tree and then fail, leaving them with an account they asked to have removed
+#### `[x]` S1 — Approving a deletion request can destroy the person's own family tree and then fail, leaving them with an account they asked to have removed
+
+_Done 2026-09-09, pass 3, **without the table rebuild this finding proposed**._
+
+_The rebuild was the wrong instrument. Dropping and recreating `trees` under
+SQLite performs an implicit `DELETE` first, and `tree_ops`, `tree_snapshots` and
+`media` all cascade from it — so the migration written to protect the data was
+the one thing in this audit that could have destroyed all of it. `deleteUser`
+now hands every reference to an owner who remains instead, computed per account
+in TypeScript rather than in a subquery, so "there is nobody to inherit this" is
+an error with a name rather than a `NOT NULL` violation buried in a batch. The
+`NOT NULL` on `trees.owner_id` is a real invariant and stays._
+
+_Atomicity was the other half: all of D1 now happens in a single batch, and R2
+only once those rows are committed, so a crash leaves files nothing points at
+rather than rows pointing at files that are gone. That is only the better
+failure if something collects them, and the per-tree sweep could not — it walks
+the `trees` table — so `reapOrphanedMedia` was added alongside._
+
+_Two blockers came from the dead tables of S15, whose `created_by` columns would
+have stopped a deletion just as surely; migration 0012 drops them, which is why
+that finding moved into this pass. Both were empty in production, checked first._
+
+_`worker/erasure.test.ts` covers the two shapes that failed, the half-deletion,
+the full sweep of rows carrying the address, and the orphan collector. **Four of
+its seven tests were confirmed to fail against the previous `deleteUser` with
+`FOREIGN KEY constraint failed`**, which is the point of writing them first._
 
 **Verified**, by executing `deleteUser` against a real D1 in three
 configurations.
@@ -664,7 +690,14 @@ Each is a few lines; none justifies its own pass.
   branch that reads as "reusable for seven days by anyone holding the link".
   Remove the condition, or say in a comment why it is there.
 
-#### `[ ]` S15 — Two dead tables still hold role data
+#### `[x]` S15 — Two dead tables still hold role data
+
+_Done 2026-09-09, **moved into pass 3** rather than pass 4: `tree_members.user_id`
+and `invites.created_by` both reference `users(id)`, so a row in either would
+block a deletion exactly as S1's columns did. Dropped by migration
+0012 — safe because nothing references either table, so the drop cascades
+nowhere, and both were empty in production and staging. Applied to staging
+first, where the remaining fourteen tables were confirmed intact._
 
 **Reviewed.** `tree_members` and `invites` ([migrations/0001_init.sql](../migrations/0001_init.sql))
 were superseded by accounts in 0002 and are referenced by no query in `worker/`
@@ -735,7 +768,14 @@ code, never tree content. D1 runs in `WEUR` (**verified**).
    day it does. One page in `docs/`, plus a short section reachable from
    Paramètres, is proportionate to the whole risk.
 
-2. **`[ ]` P2 — Erasure is broken (S1) and partial where it works.** Beyond the
+2. **`[x]` P2 — Erasure is broken (S1) and partial where it works.**
+   _Done 2026-09-09, pass 3. A deletion now also takes the person's
+   `client_errors`, `access_requests` and `magic_links` rows. The honest limit
+   the finding named is unchanged and now written into
+   [RULES_IN_FORCE.md](RULES_IN_FORCE.md) §5: `tree_ops.actor_id` and
+   `tree_snapshots.created_by` keep an opaque id that resolves to nobody,
+   because the op log is the family's history rather than a profile, and a
+   person recorded in a tree is not a user and still has no route to erasure._ Beyond the
    constraint failure, `deleteUser` leaves `client_errors.user_id` pointing at
    a user who no longer exists — no foreign key was declared
    ([migrations/0010_client_errors.sql](../migrations/0010_client_errors.sql)) —
