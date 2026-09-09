@@ -68,7 +68,9 @@ docs/          design brief, architecture, rules in force, plans
 [`CLAUDE.md`](CLAUDE.md) is the working agreement — read it before changing
 anything. [`docs/`](docs/README.md) holds the map:
 [architecture](docs/ARCHITECTURE.md) for where things live,
-[rules in force](docs/RULES_IN_FORCE.md) for the invariants you must not break.
+[rules in force](docs/RULES_IN_FORCE.md) for the invariants you must not break,
+[privacy](docs/PRIVACY.md) for what is held about people who never signed up for
+it.
 
 CI runs on every push to main and every pull request. Run the same suite
 locally before a merge anyway — it is faster than waiting, and it is what

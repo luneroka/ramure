@@ -18,7 +18,7 @@ interface Props {
   theme: ThemeChoice;
   defaultView: DefaultView;
   /** Which section to scroll to on open. */
-  section?: 'account' | 'profile' | 'preferences';
+  section?: 'account' | 'profile' | 'preferences' | 'privacy';
   onSelectAccount(a: Account): void;
   onAccountRenamed(name: string): void;
   onLeftAccount(): void;
@@ -277,6 +277,28 @@ export function Settings(p: Props) {
           )}
         </section>
       )}
+
+      {/*
+        A tree records living people who never signed up for it, so what is held and for how long
+        is said in the app and not only in docs/PRIVACY.md. Kept to what a person would actually
+        read; the reasoning, the processors and the legal position are in that document.
+      */}
+      <section className="home-card" id="settings-privacy">
+        <h2>{t(lang, 'privacy')}</h2>
+        <p className="muted small">{t(lang, 'privacyIntro')}</p>
+        <dl className="privacy">
+          <dt>{t(lang, 'privacyWhatTitle')}</dt>
+          <dd>{t(lang, 'privacyWhat')}</dd>
+          <dt>{t(lang, 'privacyWhereTitle')}</dt>
+          <dd>{t(lang, 'privacyWhere')}</dd>
+          <dt>{t(lang, 'privacyKeptTitle')}</dt>
+          <dd>{t(lang, 'privacyKept')}</dd>
+          <dt>{t(lang, 'privacyWhoTitle')}</dt>
+          <dd>{t(lang, 'privacyWho')}</dd>
+          <dt>{t(lang, 'privacyRightsTitle')}</dt>
+          <dd>{t(lang, 'privacyRights')}</dd>
+        </dl>
+      </section>
 
       <section className="home-card" id="settings-deletion">
         <h2>{t(lang, 'deleteMyAccount')}</h2>
