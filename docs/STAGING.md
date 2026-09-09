@@ -60,10 +60,19 @@ deploy.
 **5. Set the three secrets.**
 
 ```bash
-npx wrangler secret put CODE_PEPPER --env staging
-npx wrangler secret put RESEND_API_KEY --env staging
-npx wrangler secret put ADMIN_EMAIL --env staging
+openssl rand -base64 32 | npm run secret:staging CODE_PEPPER
+npm run secret:staging RESEND_API_KEY
+npm run secret:staging ADMIN_EMAIL
 ```
+
+> **Use the wrapper, not `wrangler secret put` directly.** Forgetting
+> `--env staging` does not fail — it silently writes the secret to
+> **production**, which is what happened the first time this was set up on
+> 9 September 2026. Production kept answering `config: "ok"`, because the check
+> can only see that a value is present, not that it is the right one. The
+> `secret:prod` and `secret:staging` scripts name their target so there is
+> nothing to forget. Piping the pepper in keeps it out of the terminal and the
+> shell history.
 
 - `CODE_PEPPER` — generate a **different** value from production, so a staging
   database copy tells an attacker nothing about production codes. Any long

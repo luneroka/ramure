@@ -24,6 +24,13 @@
       "Bash(gh run list:*)"
     ],
     "ask": ["Bash(npm run db:migrate)", "Bash(npm run deploy)", "Bash(npx wrangler deploy:*)", "Bash(npx wrangler d1 execute:*)"],
-    "deny": ["Bash(npx wrangler secret put:*)", "Bash(npx wrangler versions secret put:*)", "Read(./.dev.vars)"]
+    "deny": [
+      "Bash(npx wrangler secret put:*)",
+      "Bash(npx wrangler versions secret put:*)",
+      "Bash(wrangler secret put:*)",
+      "Bash(npm run secret:prod:*)",
+      "Bash(npm run secret:staging:*)",
+      "Read(./.dev.vars)"
+    ]
   }
 }

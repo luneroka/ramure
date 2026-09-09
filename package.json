@@ -20,6 +20,8 @@
     "db:migrate:staging": "wrangler d1 migrations apply ramure-staging --remote --env staging",
     "deploy": "npm run build && wrangler deploy",
     "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "secret:prod": "wrangler secret put",
+    "secret:staging": "wrangler secret put --env staging",
     "tail:staging": "wrangler tail --env staging",
     "test:worker": "vitest run --config vitest.workers.config.ts",
     "test:all": "npm test && npm run test:worker",
