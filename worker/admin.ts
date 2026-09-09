@@ -18,8 +18,8 @@ export async function isAdmin(env: Env, userId: string): Promise<boolean> {
 }
 
 async function requireAdmin(env: Env, user: User | null): Promise<User> {
-  if (!user) throw new HttpError(401, 'sign in required');
-  if (!(await isAdmin(env, user.id))) throw new HttpError(403, 'administrator only');
+  if (!user) throw new HttpError(401, 'sign_in_required');
+  if (!(await isAdmin(env, user.id))) throw new HttpError(403, 'administrator_only');
   return user;
 }
 
@@ -105,7 +105,7 @@ async function inviteAddress(
   email: string,
 ): Promise<{ id: string; expiresAt: number }> {
   const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first<{ id: string }>();
-  if (existing) throw new HttpError(409, 'already a user');
+  if (existing) throw new HttpError(409, 'already_a_user');
   const id = randomId('V');
   await c.env.DB.prepare(`UPDATE app_invites SET revoked_at = ? WHERE email = ? AND used_at IS NULL AND revoked_at IS NULL`)
     .bind(now(), email)
@@ -163,7 +163,7 @@ admin.delete('/errors', async (c) => {
 admin.get('/backups/:treeId', async (c) => {
   await requireAdmin(c.env, c.get('user'));
   const treeId = c.req.param('treeId');
-  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId)) throw new HttpError(400, 'bad id');
+  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId)) throw new HttpError(400, 'bad_id');
   return c.json({ backups: await listBackups(c.env, treeId) });
 });
 
@@ -172,9 +172,9 @@ admin.get('/backups/:treeId/:day', async (c) => {
   await requireAdmin(c.env, c.get('user'));
   const treeId = c.req.param('treeId'),
     day = c.req.param('day');
-  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new HttpError(400, 'bad id');
+  if (!/^[A-Za-z0-9]{1,20}$/.test(treeId) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new HttpError(400, 'bad_id');
   const obj = await c.env.MEDIA.get(`${BACKUP_PREFIX}${treeId}/${day}.ged`);
-  if (!obj) throw new HttpError(404, 'no copy');
+  if (!obj) throw new HttpError(404, 'no_copy');
   return new Response(obj.body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
@@ -195,7 +195,7 @@ admin.post('/invites', async (c) => {
 admin.post('/access-requests/:id/invite', async (c) => {
   const me = await requireAdmin(c.env, c.get('user'));
   const row = await c.env.DB.prepare(`SELECT email FROM access_requests WHERE id = ?`).bind(c.req.param('id')).first<{ email: string }>();
-  if (!row) throw new HttpError(404, 'no request');
+  if (!row) throw new HttpError(404, 'no_request');
   const r = await inviteAddress(c, me, row.email);
   return c.json({ id: r.id, email: row.email, expiresAt: r.expiresAt }, 201);
 });
@@ -209,7 +209,7 @@ admin.delete('/access-requests/:id', async (c) => {
 admin.delete('/invites/:id', async (c) => {
   await requireAdmin(c.env, c.get('user'));
   const id = c.req.param('id');
-  if (!/^[A-Za-z0-9]{1,20}$/.test(id)) throw new HttpError(400, 'bad id');
+  if (!/^[A-Za-z0-9]{1,20}$/.test(id)) throw new HttpError(400, 'bad_id');
   await c.env.DB.prepare(`UPDATE app_invites SET revoked_at = ? WHERE id = ? AND used_at IS NULL`).bind(now(), id).run();
   return c.json({ ok: true });
 });
@@ -264,9 +264,9 @@ export async function deleteUser(env: Env, userId: string): Promise<{ accountsDe
 admin.post('/deletions/:userId/approve', async (c) => {
   const me = await requireAdmin(c.env, c.get('user'));
   const userId = c.req.param('userId');
-  if (userId === me.id) throw new HttpError(400, 'cannot delete yourself');
+  if (userId === me.id) throw new HttpError(400, 'cannot_delete_yourself');
   const req = await c.env.DB.prepare(`SELECT user_id FROM deletion_requests WHERE user_id = ?`).bind(userId).first();
-  if (!req) throw new HttpError(404, 'no request');
+  if (!req) throw new HttpError(404, 'no_request');
   const result = await deleteUser(c.env, userId);
   return c.json({ ok: true, ...result });
 });

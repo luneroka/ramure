@@ -277,6 +277,52 @@ const strings = {
     fr: 'Qui peut entrer, qui demande à partir, et ce que pèse chaque compte famille.',
     en: 'Who may come in, who asked to leave, and what each family account weighs.',
   },
+  // Errors the API or an edit can refuse with, keyed from src/app/errorText.ts.
+  // Only what a person can act on is here; anything else falls back to unexpectedError.
+  errSignInRequired: { fr: 'Votre session a expiré, reconnectez-vous.', en: 'Your session has expired, sign in again.' },
+  errInvitationRequired: {
+    fr: 'Cette adresse n’a pas d’invitation. Demandez un accès depuis la page de connexion.',
+    en: 'That address has no invitation. Ask for access from the sign-in page.',
+  },
+  errAdministratorOnly: { fr: 'Réservé à l’administrateur.', en: 'Administrator only.' },
+  errWrongCode: { fr: 'Code incorrect.', en: 'Wrong code.' },
+  errTooManyRequests: {
+    fr: 'Trop de tentatives. Réessayez dans un quart d’heure.',
+    en: 'Too many tries. Try again in a quarter of an hour.',
+  },
+  errTooManyAttempts: {
+    fr: 'Trop de codes erronés. Demandez-en un nouveau dans un quart d’heure.',
+    en: 'Too many wrong codes. Ask for a new one in a quarter of an hour.',
+  },
+  errNotAllowed: { fr: 'Votre rôle ne permet pas cette action.', en: 'Your role does not allow that.' },
+  errAccountNeedsAnOwner: { fr: 'Un compte famille garde au moins un administrateur.', en: 'A family account keeps at least one owner.' },
+  errLastOwnerCannotLeave: {
+    fr: 'Le dernier administrateur ne peut pas quitter le compte.',
+    en: 'The last owner cannot leave the account.',
+  },
+  errTreeNotFound: { fr: 'Cet arbre est introuvable.', en: 'That tree cannot be found.' },
+  errTreeTooLarge: {
+    fr: 'Cet arbre dépasse la taille maximale. Retirez des notes ou des sources.',
+    en: 'That tree is over the size limit. Remove some notes or sources.',
+  },
+  errNameRequired: { fr: 'Un nom est nécessaire.', en: 'A name is needed.' },
+  errRestoreIsForOwners: { fr: 'Restaurer une version est réservé à l’administrateur.', en: 'Restoring a version is for owners.' },
+  errBulkRemovalIsForOwners: {
+    fr: 'Supprimer autant d’enregistrements d’un coup est réservé à l’administrateur.',
+    en: 'Removing that many records at once is for owners.',
+  },
+  errFileTooLarge: { fr: 'Ce fichier dépasse 10 Mo.', en: 'That file is over 10 MB.' },
+  errUnsupportedMediaType: {
+    fr: 'Images (JPEG, PNG, WebP, GIF, HEIC) et PDF uniquement.',
+    en: 'Images (JPEG, PNG, WebP, GIF, HEIC) and PDFs only.',
+  },
+  errMediaNotFound: { fr: 'Ce fichier est introuvable.', en: 'That file cannot be found.' },
+  errInvalidEmail: { fr: 'Adresse électronique invalide.', en: 'Invalid email address.' },
+  errMailNotSent: { fr: 'Le courriel n’a pas pu être envoyé.', en: 'The email could not be sent.' },
+  errAlreadyHasAFather: { fr: 'Cette personne a déjà un père.', en: 'This person already has a father.' },
+  errAlreadyHasAMother: { fr: 'Cette personne a déjà une mère.', en: 'This person already has a mother.' },
+  errCannotBeOwnChild: { fr: 'Une personne ne peut pas être son propre enfant.', en: 'A person cannot be their own child.' },
+  errSamePerson: { fr: 'C’est la même personne.', en: 'That is the same person.' },
   configProblems: { fr: 'Configuration', en: 'Configuration' },
   configProblemsHint: {
     fr: 'Réglages manquants sur ce déploiement. Ceux en orange font échouer une opération plutôt que de la laisser tourner à moitié.',

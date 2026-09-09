@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { t, type Lang } from '../../i18n';
-import { api, ApiError } from '../../sync/api';
+import { api } from '../../sync/api';
 import type { Auth } from '../useAuth';
+import { errorText } from '../errorText';
 
 export const INVITE_KEY = 'ramure.invite';
 
@@ -22,7 +23,7 @@ export function useInvites(auth: Auth, lang: Lang, toast: (m: string) => void) {
         auth
           .verifyLink(signinToken)
           .then(() => toast(t(lang, 'signedIn')))
-          .catch((err) => toast(t(lang, err instanceof ApiError && err.status === 403 ? 'signinOtherDevice' : 'signinExpired')));
+          .catch((err) => toast(errorText(lang, err)));
       }
       if (inviteToken) sessionStorage.setItem(INVITE_KEY, inviteToken);
     };

@@ -21,7 +21,7 @@ errors.post('/', async (c) => {
   await hit(c.env, `errors:${clientIp(c.req.raw)}`, MAX_PER_WINDOW, WINDOW_MS);
   const body = await readJson<{ kind?: unknown; message?: unknown; stack?: unknown; url?: unknown; version?: unknown }>(c.req.raw, 16_384);
   const message = clip(body.message, 500);
-  if (!message) throw new HttpError(400, 'message required');
+  if (!message) throw new HttpError(400, 'message_required');
   const kind = clip(body.kind, 40) ?? 'error';
   const user = c.get('user');
   await c.env.DB.prepare(

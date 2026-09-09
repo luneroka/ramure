@@ -14,7 +14,7 @@ export type AccountRole = 'owner' | 'member' | 'viewer';
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function requireUser(user: User | null): User {
-  if (!user) throw new HttpError(401, 'sign in required');
+  if (!user) throw new HttpError(401, 'sign_in_required');
   return user;
 }
 
@@ -27,8 +27,8 @@ export async function accountRole(env: Env, accountId: string, userId: string): 
 
 export async function requireAccountRole(env: Env, accountId: string, user: User, allowed: AccountRole[]): Promise<AccountRole> {
   const role = await accountRole(env, accountId, user.id);
-  if (!role) throw new HttpError(404, 'account not found');
-  if (!allowed.includes(role)) throw new HttpError(403, 'not allowed');
+  if (!role) throw new HttpError(404, 'account_not_found');
+  if (!allowed.includes(role)) throw new HttpError(403, 'not_allowed');
   return role;
 }
 
@@ -69,7 +69,7 @@ accounts.patch('/:id', async (c) => {
   const name = String(body.name ?? '')
     .trim()
     .slice(0, 80);
-  if (!name) throw new HttpError(400, 'name required');
+  if (!name) throw new HttpError(400, 'name_required');
   await c.env.DB.prepare(`UPDATE accounts SET name = ? WHERE id = ?`).bind(name, id).run();
   return c.json({ ok: true });
 });
@@ -114,12 +114,12 @@ accounts.patch('/:id/members/:userId', async (c) => {
   await requireAccountRole(c.env, id, user, ['owner']);
   const target = c.req.param('userId');
   const body = await readJson<{ role?: AccountRole }>(c.req.raw, 4096);
-  if (body.role !== 'owner' && body.role !== 'member' && body.role !== 'viewer') throw new HttpError(400, 'bad role');
+  if (body.role !== 'owner' && body.role !== 'member' && body.role !== 'viewer') throw new HttpError(400, 'bad_role');
   if (target === user.id && body.role !== 'owner') {
     const owners = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM account_members WHERE account_id = ? AND role = 'owner'`)
       .bind(id)
       .first<{ n: number }>();
-    if ((owners?.n ?? 0) <= 1) throw new HttpError(400, 'an account needs at least one owner');
+    if ((owners?.n ?? 0) <= 1) throw new HttpError(400, 'account_needs_an_owner');
   }
   await c.env.DB.prepare(`UPDATE account_members SET role = ? WHERE account_id = ? AND user_id = ?`).bind(body.role, id, target).run();
   return c.json({ ok: true });
@@ -130,13 +130,13 @@ accounts.delete('/:id/members/:userId', async (c) => {
   const id = c.req.param('id');
   const target = c.req.param('userId');
   const role = await requireAccountRole(c.env, id, user, ['owner', 'member', 'viewer']);
-  if (target !== user.id && role !== 'owner') throw new HttpError(403, 'not allowed');
+  if (target !== user.id && role !== 'owner') throw new HttpError(403, 'not_allowed');
   const targetRole = await accountRole(c.env, id, target);
   if (targetRole === 'owner') {
     const owners = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM account_members WHERE account_id = ? AND role = 'owner'`)
       .bind(id)
       .first<{ n: number }>();
-    if ((owners?.n ?? 0) <= 1) throw new HttpError(400, 'the last owner cannot leave');
+    if ((owners?.n ?? 0) <= 1) throw new HttpError(400, 'last_owner_cannot_leave');
   }
   await c.env.DB.prepare(`DELETE FROM account_members WHERE account_id = ? AND user_id = ?`).bind(id, target).run();
   return c.json({ ok: true });
@@ -151,13 +151,13 @@ accounts.post('/:id/invites', async (c) => {
   const email = normaliseEmail(body.email);
   const role: AccountRole = body.role === 'viewer' ? 'viewer' : 'member';
   const account = await c.env.DB.prepare(`SELECT name FROM accounts WHERE id = ?`).bind(id).first<{ name: string }>();
-  if (!account) throw new HttpError(404, 'account not found');
+  if (!account) throw new HttpError(404, 'account_not_found');
   const already = await c.env.DB.prepare(
     `SELECT m.user_id FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = ? AND u.email = ?`,
   )
     .bind(id, email)
     .first();
-  if (already) throw new HttpError(409, 'already a member');
+  if (already) throw new HttpError(409, 'already_a_member');
   // One live invitation per address and account: a new one replaces the previous.
   await c.env.DB.prepare(
     `UPDATE account_invites SET revoked_at = ? WHERE account_id = ? AND email = ? AND used_at IS NULL AND revoked_at IS NULL`,
@@ -232,7 +232,7 @@ export const invites = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 invites.post('/info', async (c) => {
   const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
-  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad_token');
   const row = await c.env.DB.prepare(
     `SELECT i.account_id, i.expires_at, i.revoked_at, i.used_at, i.role, i.email, a.name FROM account_invites i JOIN accounts a ON a.id = i.account_id WHERE i.token_hash = ?`,
   )
@@ -246,14 +246,14 @@ invites.post('/info', async (c) => {
       email: string | null;
       name: string;
     }>();
-  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
+  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite_not_valid');
   return c.json({ accountId: row.account_id, accountName: row.name, role: row.role, email: row.email });
 });
 
 invites.post('/accept', async (c) => {
   const user = requireUser(c.get('user'));
   const token = String((await readJson<{ token: string }>(c.req.raw, 2048)).token ?? '');
-  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad_token');
   const hash = await sha256(token);
   const row = await c.env.DB.prepare(
     `SELECT account_id, expires_at, revoked_at, used_at, role, email FROM account_invites WHERE token_hash = ?`,
@@ -267,9 +267,9 @@ invites.post('/accept', async (c) => {
       role: AccountRole;
       email: string | null;
     }>();
-  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite not valid');
+  if (!row || row.revoked_at || row.used_at || row.expires_at < now()) throw new HttpError(404, 'invite_not_valid');
   // An addressed invitation is for that address only.
-  if (row.email && row.email !== user.email) throw new HttpError(403, 'invite for another address');
+  if (row.email && row.email !== user.email) throw new HttpError(403, 'invite_for_another_address');
   const existing = await accountRole(c.env, row.account_id, user.id);
   if (!existing) {
     await c.env.DB.prepare(`INSERT INTO account_members (account_id, user_id, role, added_at) VALUES (?, ?, ?, ?)`)

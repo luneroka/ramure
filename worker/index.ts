@@ -28,7 +28,7 @@ app.use('/api/*', async (c, next) => {
   // Same-origin only, checked before anything costs a query: the app and the API share a host.
   const origin = c.req.header('origin');
   if (origin && c.req.method !== 'GET' && origin !== c.env.APP_ORIGIN && origin !== new URL(c.req.url).origin)
-    throw new HttpError(403, 'cross-site request');
+    throw new HttpError(403, 'cross_site_request');
   c.set('user', await userFromRequest(c.env, getCookie(c, SESSION_COOKIE)));
   await next();
 });
@@ -52,7 +52,9 @@ app.route('/api/errors', errors);
 
 app.notFound((c) => c.json({ error: 'not found' }, 404));
 app.onError((err, c) => {
-  if (err instanceof HttpError) return c.json({ error: err.message, ...(err.extra ?? {}) }, err.status as 400);
+  // `code` is the contract the browser matches on; `error` is the English fallback for
+  // logs and for anyone reading the API directly.
+  if (err instanceof HttpError) return c.json({ code: err.code, error: err.message, ...(err.extra ?? {}) }, err.status as 400);
   console.error(err);
   return c.json({ error: 'server error' }, 500);
 });

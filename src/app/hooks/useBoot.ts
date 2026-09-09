@@ -6,12 +6,13 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { t, type Lang } from '../../i18n';
-import { api, ApiError, type Account, type Role, type TreeSummary } from '../../sync/api';
+import { type Lang } from '../../i18n';
+import { api, type Account, type Role, type TreeSummary } from '../../sync/api';
 import type { Auth } from '../useAuth';
 import { parseRoute, type Route } from '../router';
 import { INVITE_KEY } from './useInvites';
 import { readLastTree, type Source } from './useTreeSession';
+import { errorText } from '../errorText';
 
 interface Args {
   auth: Auth;
@@ -52,7 +53,7 @@ export function useBoot(a: Args) {
         try {
           prefer = (await api.acceptInvite(token)).accountId;
         } catch (err) {
-          toast(t(lang, err instanceof ApiError && err.status === 403 ? 'inviteOtherAddress' : 'inviteInvalid'));
+          toast(errorText(lang, err));
         }
         sessionStorage.removeItem(INVITE_KEY);
         latest.current.onInviteSettled();

@@ -13,7 +13,7 @@ describe('replayOps', () => {
     const r = replayOps(base, list);
     expect(r.applied).toHaveLength(2);
     expect(r.rejected).toHaveLength(1);
-    expect(r.rejected[0]!.reason).toContain('Unknown person');
+    expect(r.rejected[0]!.reason).toContain('unknown person');
     expect(Object.keys(r.tree.individuals)).toHaveLength(Object.keys(base.individuals).length); // +1 child, -1 Rosalie
   });
 

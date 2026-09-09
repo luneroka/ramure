@@ -40,10 +40,10 @@ describe('ops', () => {
   });
 
   it('rejects ops that no longer make sense', () => {
-    expect(() => applyOp(base, ops.updatePerson('nope', { sex: 'M' }))).toThrow('Unknown person');
-    expect(() => applyOp(base, ops.linkChild('F5', 'I1'))).toThrow('cannot be own child');
+    expect(() => applyOp(base, ops.updatePerson('nope', { sex: 'M' }))).toThrow(expect.objectContaining({ code: 'unknown_person' }));
+    expect(() => applyOp(base, ops.linkChild('F5', 'I1'))).toThrow(expect.objectContaining({ code: 'cannot_be_own_child' }));
     const dup: Op = { t: 'createPerson', id: 'I1', data: {} };
-    expect(() => applyOp(base, dup)).toThrow('Duplicate id');
+    expect(() => applyOp(base, dup)).toThrow(expect.objectContaining({ code: 'duplicate_id' }));
   });
 
   it('wraps ops in envelopes with unique ids', () => {

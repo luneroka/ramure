@@ -9,6 +9,7 @@ Start here.
 | [../CLAUDE.md](../CLAUDE.md) | Always, first. The working agreement: non-negotiables, the pre-merge suite, the conventions that hold. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | You need to find the right file, or decide where new code goes. |
 | [RULES_IN_FORCE.md](RULES_IN_FORCE.md) | Before changing behaviour, and before deciding something looks like a bug. Every non-obvious rule with the reason it exists. |
+| [API_ERRORS.md](API_ERRORS.md) | You are adding an error, or deciding how one should reach the screen. Codes, not status, not prose. |
 
 ## Plans and audits
 

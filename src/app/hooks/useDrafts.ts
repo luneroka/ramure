@@ -7,6 +7,7 @@ import { layoutHourglass, type LayoutOptions } from '../../tree/layout';
 import type { PersonPatch } from '../../tree/edit';
 import { applyOp, ops, opSubject, type Op } from '../../tree/ops';
 import type { AddKind, Draft, EditorAction, ViewMode } from '../editorState';
+import { errorText } from '../errorText';
 
 function relativeOp(kind: AddKind, id: string, familyId?: string): Op {
   switch (kind) {
@@ -53,7 +54,7 @@ export function useDrafts(a: Args) {
         }
         dispatch({ type: 'openDraft', draft: { kind, relativeId: id, op, preview }, newId, view: nextView });
       } catch (err) {
-        toast(err instanceof Error ? (err.message === 'choose a family' ? t(lang, 'chooseFamily') : err.message) : String(err));
+        toast(errorText(lang, err));
       }
     },
     [tree, readOnly, view, effectiveFocus, layoutOpts, dispatch, toast, lang],

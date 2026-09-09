@@ -66,7 +66,7 @@ describe('edit operations', () => {
   });
 
   it('refuses to guess between two families', () => {
-    expect(() => addChild(base, 'I2')).toThrow('choose a family');
+    expect(() => addChild(base, 'I2')).toThrow(expect.objectContaining({ code: 'choose_a_family' }));
     const r = addChild(base, 'I2', {}, 'F1');
     expect(r.tree.families['F1']!.childIds).toHaveLength(2);
   });
@@ -75,7 +75,7 @@ describe('edit operations', () => {
     const r1 = addParent(base, 'I31', 'mother', { given: 'Camille', surname: 'ROY' }); // Inès has a father only
     const fam = r1.tree.families['F12']!;
     expect(fam.wifeId).toBe(r1.focusId);
-    expect(() => addParent(r1.tree, 'I31', 'mother')).toThrow('already has a mother');
+    expect(() => addParent(r1.tree, 'I31', 'mother')).toThrow(expect.objectContaining({ code: 'already_has_a_mother' }));
     const r2 = addParent(base, 'I33', 'father'); // Rosalie GUERIN has no family at all
     const f2 = r2.tree.individuals['I33']!.childOf[0]!.familyId;
     expect(r2.tree.families[f2]!.husbandId).toBe(r2.focusId);
@@ -157,7 +157,7 @@ describe('edit operations', () => {
     expect(c.focusId).toBe('Iabcdefghijk');
     const p = addPartner(base, 'I33', {}, { person: 'Ipppppppppp1', family: 'Fffffffffff1' });
     expect(p.tree.families['Fffffffffff1']!.wifeId).toBe('I33');
-    expect(() => addChild(base, 'I1', {}, undefined, { person: 'I1' })).toThrow('Duplicate id');
+    expect(() => addChild(base, 'I1', {}, undefined, { person: 'I1' })).toThrow(expect.objectContaining({ code: 'duplicate_id' }));
     expect(nextId(base, 'I')).toBe('I34');
   });
 });

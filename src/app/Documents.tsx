@@ -15,6 +15,7 @@ import { portraitId, RAMURE_MEDIA_SCHEME } from '../tree/edit';
 import { DateField } from './fields/DateField';
 import { usePortraitUrl } from './fields/Portrait';
 import { Lightbox } from './Lightbox';
+import { errorText } from './errorText';
 
 const KINDS: MediaKind[] = ['birth', 'marriage', 'death', 'photo', 'other'];
 
@@ -106,7 +107,7 @@ export function DocumentList(p: DocumentListProps) {
       p.onSave(media);
       setDraft(null);
     } catch (err) {
-      p.onError(err instanceof Error ? err.message : String(err));
+      p.onError(errorText(lang, err));
     } finally {
       setBusy(false);
     }

@@ -183,7 +183,15 @@ Untrack it and ignore it. Same for `dist/` (already ignored, but present) and
 
 ## Tier 2 — costs correctness or agent time, daily
 
-### `[ ]` H4. The API has no stable error contract
+### `[x]` H4. The API has no stable error contract
+
+_Done 2026-09-09, pass 2. All 74 `HttpError` sites and all 11 `EditError` sites
+carry a code from a registry; the response envelope gained `code` alongside
+`error`; `src/app/errorText.ts` is the single translation point; the convention
+is written up in [API_ERRORS.md](API_ERRORS.md). Both code sets are union
+types, so TypeScript checked every site — and the tests that asserted on prose
+now assert on codes, which is the point._
+
 
 The Worker throws free-text English messages — `'not allowed'`, `'tree not
 found'`, `'other device'`, `'invitation required'` — and the browser

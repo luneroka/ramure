@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import { formatBytes } from '../media/documents';
 import { t, type Lang, type ThemeChoice } from '../i18n';
 import { localeOf } from './format';
-import { api, ApiError, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
+import { api, type Account, type AccountMember, type AccountRole, type Me, type StorageReport } from '../sync/api';
 import type { AskSpec } from './Modal';
+import { errorText } from './errorText';
 
 export type DefaultView = 'all' | 'hourglass';
 
@@ -183,9 +184,7 @@ export function Settings(p: Props) {
                         setRefresh((n) => n + 1);
                         p.toast(t(lang, 'inviteSent'));
                       })
-                      .catch((err: unknown) =>
-                        p.toast(t(lang, err instanceof ApiError && err.status === 409 ? 'inviteAlreadyMember' : 'syncError')),
-                      );
+                      .catch((err: unknown) => p.toast(errorText(lang, err)));
                   }}
                 >
                   <label className="field grow">

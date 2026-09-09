@@ -89,7 +89,7 @@ async function openSession(c: Context<{ Bindings: Env; Variables: Vars }>, email
   let user = await c.env.DB.prepare(`SELECT id, email, name FROM users WHERE email = ?`).bind(email).first<User>();
   if (!user) {
     // A first sign-in needs a live invitation (the request step already checked; a stale link is refused here too).
-    if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
+    if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation_required');
     user = { id: randomId('U'), email, name: null };
     const adminFlag = c.env.ADMIN_EMAIL && normaliseEmail(c.env.ADMIN_EMAIL) === email ? 1 : 0;
     await c.env.DB.prepare(`INSERT INTO users (id, email, name, created_at, is_admin) VALUES (?, ?, NULL, ?, ?)`)
@@ -124,12 +124,12 @@ auth.post('/request', async (c) => {
   const email = normaliseEmail(body.email);
   await hit(c.env, `req:ip:${clientIp(c.req.raw)}`, 20, WINDOW_MS);
   // Closed door: only existing users and invited addresses get a mail. Same answer either way for outsiders.
-  if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation required');
+  if (!(await mayEnter(c.env, email)).allowed) throw new HttpError(403, 'invitation_required');
   // At most three links per address per quarter hour: keeps a mistyped form or a bot from burning the mail quota.
   const recent = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM magic_links WHERE email = ? AND expires_at > ?`)
     .bind(email, now())
     .first<{ n: number }>();
-  if ((recent?.n ?? 0) >= 3) throw new HttpError(429, 'too many requests, try again later');
+  if ((recent?.n ?? 0) >= 3) throw new HttpError(429, 'too_many_requests');
   const token = randomToken();
   const code = randomCode();
   // The browser that asks gets a nonce; the link and the code are only honoured alongside it.
@@ -155,28 +155,29 @@ auth.post('/code', async (c) => {
   const body = await readJson<{ email?: string; code?: string }>(c.req.raw, 2048);
   const email = normaliseEmail(body.email);
   const code = String(body.code ?? '').replace(/\D/g, '');
-  if (code.length !== 6) throw new HttpError(400, 'bad code');
+  if (code.length !== 6) throw new HttpError(400, 'bad_code');
   await hit(c.env, `code:ip:${clientIp(c.req.raw)}`, 30, WINDOW_MS);
   const nonce = getCookie(c, SIGNIN_COOKIE);
-  if (!nonce) throw new HttpError(403, 'other device');
+  if (!nonce) throw new HttpError(403, 'other_device');
   const browserHash = await sha256(nonce);
   // Failures count across every live link for the address, so a new request does not reset them.
   const failed = await c.env.DB.prepare(`SELECT COALESCE(SUM(attempts), 0) AS n FROM magic_links WHERE email = ? AND expires_at > ?`)
     .bind(email, now())
     .first<{ n: number }>();
-  if ((failed?.n ?? 0) >= MAX_FAILED_CODES) throw new HttpError(429, 'too many attempts, try again later');
+  if ((failed?.n ?? 0) >= MAX_FAILED_CODES) throw new HttpError(429, 'too_many_attempts');
   const rows = await c.env.DB.prepare(
     `SELECT token_hash, code_hash, browser_hash FROM magic_links WHERE email = ? AND used_at IS NULL AND expires_at > ? AND code_hash IS NOT NULL ORDER BY expires_at DESC`,
   )
     .bind(email, now())
     .all<{ token_hash: string; code_hash: string; browser_hash: string | null }>();
   const mine = rows.results.filter((r) => r.browser_hash === browserHash);
-  if (!mine.length) throw new HttpError(rows.results.length ? 403 : 400, rows.results.length ? 'other device' : 'code expired');
+  // A live link for this address but not for this browser is "other device"; none at all is simply expired.
+  if (!mine.length) throw new HttpError(rows.results.length ? 403 : 400, rows.results.length ? 'other_device' : 'code_expired');
   const expected = await codeHash(c.env, email, code);
   const match = mine.find((r) => r.code_hash === expected);
   if (!match) {
     await c.env.DB.prepare(`UPDATE magic_links SET attempts = attempts + 1 WHERE token_hash = ?`).bind(mine[0]!.token_hash).run();
-    throw new HttpError(400, 'wrong code');
+    throw new HttpError(400, 'wrong_code');
   }
   await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), match.token_hash).run();
   await openSession(c, email);
@@ -194,15 +195,15 @@ auth.get('/verify', (c) => {
 auth.post('/verify', async (c) => {
   const body = await readJson<{ token: string }>(c.req.raw, 2048);
   const token = String(body.token ?? '');
-  if (!token || token.length > 200) throw new HttpError(400, 'bad token');
+  if (!token || token.length > 200) throw new HttpError(400, 'bad_token');
   await hit(c.env, `verify:ip:${clientIp(c.req.raw)}`, 30, WINDOW_MS);
   const hash = await sha256(token);
   const row = await c.env.DB.prepare(`SELECT email, expires_at, used_at, browser_hash FROM magic_links WHERE token_hash = ?`)
     .bind(hash)
     .first<{ email: string; expires_at: number; used_at: number | null; browser_hash: string | null }>();
-  if (!row || row.used_at || row.expires_at < now()) throw new HttpError(400, 'link expired');
+  if (!row || row.used_at || row.expires_at < now()) throw new HttpError(400, 'link_expired');
   const nonce = getCookie(c, SIGNIN_COOKIE);
-  if (!nonce || (await sha256(nonce)) !== row.browser_hash) throw new HttpError(403, 'other device');
+  if (!nonce || (await sha256(nonce)) !== row.browser_hash) throw new HttpError(403, 'other_device');
   await c.env.DB.prepare(`UPDATE magic_links SET used_at = ? WHERE token_hash = ?`).bind(now(), hash).run();
   await openSession(c, row.email);
   deleteCookie(c, SIGNIN_COOKIE, { path: '/' });
@@ -222,7 +223,7 @@ auth.post('/logout', async (c) => {
 /** Close every session of the signed-in person, this one included. */
 auth.post('/logout-all', async (c) => {
   const user = c.get('user');
-  if (!user) throw new HttpError(401, 'sign in required');
+  if (!user) throw new HttpError(401, 'sign_in_required');
   const r = await c.env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
   deleteCookie(c, SESSION_COOKIE, { path: '/' });
   return c.json({ ok: true, closed: r.meta.changes ?? 0 });
@@ -230,7 +231,7 @@ auth.post('/logout-all', async (c) => {
 
 auth.patch('/me', async (c) => {
   const user = c.get('user');
-  if (!user) throw new HttpError(401, 'sign in required');
+  if (!user) throw new HttpError(401, 'sign_in_required');
   const body = await readJson<{ name?: string }>(c.req.raw, 2048);
   const name = String(body.name ?? '')
     .trim()
@@ -279,7 +280,7 @@ auth.post('/access-request', async (c) => {
 /** Users do not delete their own account: they ask, and the administrator approves. */
 auth.post('/deletion-request', async (c) => {
   const user = c.get('user');
-  if (!user) throw new HttpError(401, 'sign in required');
+  if (!user) throw new HttpError(401, 'sign_in_required');
   const body = await readJson<{ note?: string }>(c.req.raw, 2048);
   const note = String(body.note ?? '')
     .trim()
@@ -292,7 +293,7 @@ auth.post('/deletion-request', async (c) => {
 
 auth.delete('/deletion-request', async (c) => {
   const user = c.get('user');
-  if (!user) throw new HttpError(401, 'sign in required');
+  if (!user) throw new HttpError(401, 'sign_in_required');
   await c.env.DB.prepare(`DELETE FROM deletion_requests WHERE user_id = ?`).bind(user.id).run();
   return c.json({ ok: true });
 });
