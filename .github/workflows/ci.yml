@@ -40,6 +40,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # `--with-deps` runs `apt-get update`, which on the GitHub runner image also refreshes
+      # Google's Chrome repository. That index is rotated often enough to be caught mid-write,
+      # and apt then fails the whole install on a hash-sum mismatch — a flake that has nothing
+      # to do with this project and that a re-run only sometimes clears. Playwright downloads
+      # its own Chromium, so the repository is not needed here: dropping it removes the flake
+      # rather than retrying around it.
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
       - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: printf 'APP_ORIGIN=http://localhost:8787\nDEV_ECHO_LINKS=1\n' > .dev.vars
