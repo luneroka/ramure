@@ -37,4 +37,23 @@ describe('browser error reports', () => {
     for (let i = 0; i < 21; i++) last = (await c.call('POST', '/api/errors', { message: `e${i}` })).status;
     expect(last).toBe(429);
   });
+
+  it('strips the fragment from the page, so a sign-in token cannot be stored in a report', async () => {
+    // The browser already strips it. This route is unauthenticated by design, so a browser is not
+    // the only thing that can post to it, and the guarantee must not depend on the caller.
+    const c = new Client();
+    expect(
+      (
+        await c.call('POST', '/api/errors', {
+          message: 'Fragment test',
+          url: 'https://ramure.example/#signin=SECRET-TOKEN-VALUE',
+        })
+      ).status,
+    ).toBe(201);
+    const admin = await adminClient();
+    const list = await admin.call<{ errors: Array<{ message: string; url: string | null }> }>('GET', '/api/admin/errors');
+    const mine = list.body.errors.find((e) => e.message === 'Fragment test')!;
+    expect(mine.url).toBe('https://ramure.example/#…');
+    expect(mine.url).not.toContain('SECRET-TOKEN-VALUE');
+  });
 });

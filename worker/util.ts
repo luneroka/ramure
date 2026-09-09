@@ -73,12 +73,21 @@ export class HttpError extends Error {
   }
 }
 
-/** Parse a JSON body, refusing oversized or malformed ones with a 4xx instead of a crash. */
+/**
+ * Parse a JSON body, refusing oversized or malformed ones with a 4xx instead of a crash.
+ *
+ * Both checks are in bytes, which is what the cap means: `text.length` counts
+ * characters, so an accented French name — two bytes each in UTF-8 — could put
+ * a body past a limit that looked honoured. Neither check is a real backstop
+ * against a hostile client, since the body is buffered before the second one
+ * runs; Cloudflare's own request-size limit is. They keep an ordinary mistake
+ * from becoming a 500.
+ */
 export async function readJson<T extends object>(req: Request, maxBytes: number): Promise<Partial<T>> {
   const declared = Number(req.headers.get('content-length') ?? 0);
   if (declared > maxBytes) throw new HttpError(413, 'body_too_large');
   const text = await req.text();
-  if (text.length > maxBytes) throw new HttpError(413, 'body_too_large');
+  if (new TextEncoder().encode(text).byteLength > maxBytes) throw new HttpError(413, 'body_too_large');
   if (!text.trim()) return {};
   try {
     const v: unknown = JSON.parse(text);
@@ -98,6 +107,23 @@ export function requireId(value: unknown, what = 'id'): string {
   const s = String(value ?? '');
   if (!ID_RE.test(s)) throw new HttpError(400, 'bad_id', { field: what });
   return s;
+}
+
+/**
+ * A free-text field, trimmed and clipped, with control characters taken out.
+ *
+ * Several of these end up in a mail subject — a display name in « X vous
+ * invite », an account name in « rejoindre "Y" ». Resend is handed JSON and
+ * builds the header itself, so a newline there is not header injection, but a
+ * value that can carry one has no business being interpolated into a subject
+ * either. Multi-line fields keep their newlines and lose the rest.
+ */
+export function cleanText(raw: unknown, max: number, opts: { multiline?: boolean } = {}): string {
+  const text = String(raw ?? '');
+  // `[^\P{C}\n]` is "a control character that is not a newline": the double negation is how a
+  // set difference is spelled without the `v` flag, which needs a newer target than this build.
+  const cleaned = opts.multiline ? text.replace(/\r\n?/g, '\n').replace(/[^\P{C}\n]+/gu, ' ') : text.replace(/\p{C}+/gu, ' ');
+  return cleaned.trim().slice(0, max);
 }
 
 export function normaliseEmail(raw: unknown): string {

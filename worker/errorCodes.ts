@@ -48,6 +48,7 @@ export const ERROR_MESSAGES = {
   no_ops: 'no ops',
   too_many_ops: 'too many ops',
   bad_op: 'bad op',
+  op_too_deep: 'op nested too deeply',
   bad_op_id: 'bad op id',
   bad_base_version: 'bad base version',
   /** The push was built on an older version; the answer carries the ops it is missing. */

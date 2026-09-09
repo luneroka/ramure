@@ -53,7 +53,16 @@ export class Client {
   }
 }
 
-/** One administrator session for the whole run: an address may only request three sign-in mails per quarter hour. */
+/**
+ * One administrator session per test file, opened through the real sign-in path.
+ *
+ * The module state resets with each file, so every file that needs the
+ * administrator signs in again — and an address may only request three sign-in
+ * mails per quarter hour, which three files hit exactly. The suite therefore
+ * sat on the boundary and went red whenever ordering or a retry tipped it over.
+ * Clearing this address's live links first removes the coupling without
+ * bypassing the sign-in this helper exists to exercise.
+ */
 let adminSession: Client | null = null;
 export async function adminClient(): Promise<Client> {
   if (adminSession) {
@@ -61,6 +70,7 @@ export async function adminClient(): Promise<Client> {
     if (me.body.user) return adminSession;
   }
   await invite('admin@example.org');
+  await env.DB.prepare(`DELETE FROM magic_links WHERE email = ?`).bind('admin@example.org').run();
   const c = new Client();
   const status = await c.signIn('admin@example.org');
   if (status !== 200) throw new Error(`admin sign-in failed: ${status}`);

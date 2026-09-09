@@ -75,6 +75,21 @@ describe('record patches, pass 2', () => {
     expect(patched.families.F!.childIds).toEqual([]);
     expect(patched.individuals.P!.partnerIn).toEqual(['F']);
   });
+
+  it('ignores a patch key that would rewrite the table itself rather than a record', () => {
+    // Built with JSON.parse, which is how an op actually arrives: `__proto__` in an object literal
+    // sets the prototype and creates no own property, so a literal here would test nothing.
+    // Parsed from the wire it *is* an own property, and `out[id] = value` then invokes the setter
+    // and leaves the table with a prototype of the caller's choosing — after which a lookup for an
+    // id that does not exist answers with a planted record.
+    const tree = parseGedcom('0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Anne /B/\n0 TRLR');
+    const hostile = JSON.parse(String.raw`{"t":"patchRecords","individuals":{"__proto__":{"id":"IX"}},"families":{},"media":{}}`);
+    const patched = applyRecordPatch(tree, hostile);
+    expect(Object.keys(patched.individuals)).toEqual(['I1']);
+    expect(Object.getPrototypeOf(patched.individuals)).toBe(Object.prototype);
+    // The phantom lookup the guard exists to prevent: any id at all used to answer with the plant.
+    expect(patched.individuals['nobody-at-all']).toBeUndefined();
+  });
 });
 
 function emptyTreeWith() {

@@ -71,9 +71,23 @@ export function isEmptyPatch(p: RecordPatch): boolean {
   );
 }
 
+/**
+ * Keys that are not record ids, whatever a patch says.
+ *
+ * A patch table comes from a client, and `out[id] = value` on a plain object
+ * invokes the `__proto__` setter rather than writing a property — which would
+ * leave the table with an attacker-chosen prototype, so a lookup for an id that
+ * does not exist could answer with a planted record. Object.prototype is never
+ * touched and serialisation only ever walks own properties, so the reachable
+ * harm is a corrupted document by someone who can already edit the tree. It is
+ * still not a key anyone means, and the guard costs nothing.
+ */
+const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function applyTable<T>(table: Record<string, T>, patch: Record<string, T | null>): Record<string, T> {
   const out = { ...table };
   for (const [id, value] of Object.entries(patch)) {
+    if (RESERVED_KEYS.has(id)) continue;
     if (value === null) delete out[id];
     else out[id] = value;
   }

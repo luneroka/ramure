@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
+import { app } from './index';
 import { adminClient, Client, invite } from './test/helpers';
 
 describe('closed door', () => {
@@ -127,5 +128,64 @@ describe('access requests', () => {
     expect(codes.slice(5)).toEqual([429, 429]);
     const rows = await env.DB.prepare(`SELECT COUNT(*) AS n FROM access_requests WHERE email LIKE 'flood%'`).first<{ n: number }>();
     expect(rows?.n).toBe(5);
+  });
+
+  it('moves the administrator role when ADMIN_EMAIL changes rather than handing out a second one', async () => {
+    // The flag was only ever set, never cleared, so changing the setting added an administrator
+    // and the old one kept the role for good.
+    const a = await adminClient();
+    const meBefore = await a.call<{ user: { id: string; isAdmin: boolean } }>('GET', '/api/auth/me');
+    expect(meBefore.body.user.isAdmin).toBe(true);
+    await invite('successor@example.org');
+    const successor = new Client();
+    expect(await successor.signIn('successor@example.org')).toBe(200);
+    expect((await successor.call<{ user: { isAdmin: boolean } }>('GET', '/api/auth/me')).body.user.isAdmin).toBe(false);
+    // The operator changes the setting and the new administrator signs in.
+    const asSuccessor = new Client();
+    await env.DB.prepare(`DELETE FROM magic_links WHERE email = ?`).bind('successor@example.org').run();
+    const r = await asSuccessor.call<{ code?: string }>('POST', '/api/auth/request', { email: 'successor@example.org' });
+    const verified = await app.request(
+      'http://localhost/api/auth/code',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'http://localhost',
+          Cookie: asSuccessor.cookie,
+          'cf-connecting-ip': asSuccessor.ip,
+        },
+        body: JSON.stringify({ email: 'successor@example.org', code: r.body.code }),
+      },
+      { ...env, ADMIN_EMAIL: 'successor@example.org' } as never,
+    );
+    expect(verified.status).toBe(200);
+    const flags = await env.DB.prepare(`SELECT email, is_admin FROM users WHERE email IN (?, ?)`)
+      .bind('admin@example.org', 'successor@example.org')
+      .all<{ email: string; is_admin: number }>();
+    expect(flags.results.find((u) => u.email === 'successor@example.org')?.is_admin).toBe(1);
+    expect(flags.results.find((u) => u.email === 'admin@example.org')?.is_admin).toBe(0);
+    // Put it back, so the shared administrator session the other files use still works.
+    await env.DB.prepare(`UPDATE users SET is_admin = 1 WHERE email = ?`).bind('admin@example.org').run();
+    await env.DB.prepare(`UPDATE users SET is_admin = 0 WHERE email = ?`).bind('successor@example.org').run();
+  });
+
+  it('keeps control characters out of the fields that end up in a mail subject', async () => {
+    await invite('control@example.org');
+    const c = new Client();
+    expect(await c.signIn('control@example.org')).toBe(200);
+    const named = await c.call<{ user: { name: string } }>('PATCH', '/api/auth/me', {
+      name: 'Bob\r\nBcc: victim@example.org\u0000',
+    });
+    expect(named.body.user.name).toBe('Bob Bcc: victim@example.org');
+    expect([...named.body.user.name].every((ch) => ch >= ' ')).toBe(true);
+    // An account name reaches a subject too — « rejoindre "X" ».
+    const acc = await c.call<{ name: string }>('POST', '/api/accounts', { name: 'Famille\nDupont' });
+    expect(acc.body.name).toBe('Famille Dupont');
+    // A multi-line field keeps its newlines and loses everything else.
+    expect((await c.call('POST', '/api/auth/deletion-request', { note: 'ligne un\nligne deux\u0007' })).status).toBe(200);
+    const note = await env.DB.prepare(`SELECT note FROM deletion_requests d JOIN users u ON u.id = d.user_id WHERE u.email = ?`)
+      .bind('control@example.org')
+      .first<{ note: string }>();
+    expect(note?.note).toBe('ligne un\nligne deux');
   });
 });

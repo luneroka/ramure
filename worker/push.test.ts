@@ -100,4 +100,25 @@ describe('destructive record patches', () => {
     expect((await e.call('POST', `/api/trees/${treeId}/ops`, { baseVersion: 29, ops: [many] })).status).toBe(403);
     expect((await c.call('POST', `/api/trees/${treeId}/ops`, { baseVersion: 29, ops: [many] })).status).toBe(200);
   });
+
+  it('refuses a batch nested past the cap instead of overflowing the stack', async () => {
+    // Flattening and replaying both recurse. Fifty thousand levels used to answer 500 with a
+    // RangeError; the same code runs in the browser, whose stack is smaller still.
+    const { c, treeId } = await owner('deep@example.org');
+    let deep: unknown = { t: 'createPerson', id: 'I9' };
+    for (let i = 0; i < 50_000; i++) deep = { t: 'batch', ops: [deep] };
+    const r = await c.call<{ code: string; max: number }>('POST', `/api/trees/${treeId}/ops`, {
+      baseVersion: 0,
+      ops: [env('deep1', deep)],
+    });
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe('op_too_deep');
+    expect(r.body.max).toBe(32);
+
+    // A batch of the depth the interface actually builds still goes through.
+    let shallow: unknown = { t: 'createPerson', id: 'I9' };
+    for (let i = 0; i < 3; i++) shallow = { t: 'batch', ops: [shallow] };
+    const ok = await c.call('POST', `/api/trees/${treeId}/ops`, { baseVersion: 0, ops: [env('shallow1', shallow)] });
+    expect(ok.status).toBe(200);
+  });
 });
