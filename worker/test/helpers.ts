@@ -53,6 +53,21 @@ export class Client {
   }
 }
 
+/** One administrator session for the whole run: an address may only request three sign-in mails per quarter hour. */
+let adminSession: Client | null = null;
+export async function adminClient(): Promise<Client> {
+  if (adminSession) {
+    const me = await adminSession.call<{ user: unknown }>('GET', '/api/auth/me');
+    if (me.body.user) return adminSession;
+  }
+  await invite('admin@example.org');
+  const c = new Client();
+  const status = await c.signIn('admin@example.org');
+  if (status !== 200) throw new Error(`admin sign-in failed: ${status}`);
+  adminSession = c;
+  return c;
+}
+
 /** Let an address in directly, the way the admin's invitation does, without going through mail. */
 export async function invite(email: string): Promise<void> {
   await env.DB.prepare(`INSERT INTO app_invites (id, email, created_by, created_at, expires_at) VALUES (?, ?, 'test', ?, ?)`)

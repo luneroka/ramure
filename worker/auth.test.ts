@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Client, invite } from './test/helpers';
+import { adminClient, Client, invite } from './test/helpers';
 
 describe('closed door', () => {
   it('refuses an address nobody invited, with no mail and no code', async () => {
@@ -43,13 +43,6 @@ describe('closed door', () => {
 });
 
 describe('administration', () => {
-  async function adminClient(): Promise<Client> {
-    await invite('admin@example.org');
-    const c = new Client();
-    await c.signIn('admin@example.org');
-    return c;
-  }
-
   it('is closed to ordinary users', async () => {
     await invite('plain@example.org');
     const c = new Client();
@@ -112,9 +105,7 @@ describe('access requests', () => {
     );
     // Still no way in.
     expect(await new Client().signIn('hopeful@example.org')).toBe(403);
-    await invite('admin@example.org');
-    const a = new Client();
-    await a.signIn('admin@example.org');
+    const a = await adminClient();
     const ov = await a.call<{ requests: Array<{ id: string; email: string; message: string | null }> }>('GET', '/api/admin/overview');
     const req = ov.body.requests.find((r) => r.email === 'hopeful@example.org');
     expect(req?.message).toBe('cousin de Yoann');
