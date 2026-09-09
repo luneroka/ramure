@@ -41,6 +41,19 @@ export function maskEmail(email: string): string {
   return `${email.charAt(0)}***${email.slice(at)}`;
 }
 
+/**
+ * The address a caller is allowed to see for someone else.
+ *
+ * Owners manage the roster and see real addresses; everyone else sees a masked
+ * one, their own excepted. Every surface that returns an address goes through
+ * here rather than repeating the condition — the rule was enforced on the
+ * member roster and quietly broken on the snapshot list, which is exactly what
+ * happens when the same decision is written twice.
+ */
+export function emailFor(email: string, seen: { isOwner: boolean; isSelf: boolean }): string {
+  return seen.isOwner || seen.isSelf ? email : maskEmail(email);
+}
+
 export const now = (): number => Date.now();
 
 /**
