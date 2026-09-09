@@ -1,6 +1,6 @@
 /** The few inline icons of the chrome, in one place. */
 
-import type { ThemeChoice } from '../../i18n';
+import type { ThemeChoice } from '@/i18n';
 
 const stroke = {
   width: 18,

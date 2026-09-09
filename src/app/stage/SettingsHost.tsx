@@ -1,11 +1,11 @@
 /** Wires the settings page to the accounts, the identity and the UI preferences. */
 
-import { t } from '../../i18n';
-import { Settings, type DefaultView } from '../Settings';
-import type { useAccounts } from '../hooks/useAccounts';
-import type { Route } from '../router';
-import { useUi } from '../ui/UiContext';
-import type { Auth } from '../useAuth';
+import { t } from '@/i18n';
+import { Settings, type DefaultView } from '@/app/screens/Settings';
+import type { useAccounts } from '@/app/hooks/useAccounts';
+import type { Route } from '@/app/state/router';
+import { useUi } from '@/app/ui/UiContext';
+import type { Auth } from '@/app/state/useAuth';
 
 interface Props {
   auth: Auth;

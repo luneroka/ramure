@@ -5,14 +5,14 @@
  * full cards, names only, dots.
  */
 
-import { approximateYear, formatDate, type GDate } from '../gedcom/dates';
-import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
-import { generationLabel, type Layout, type LayoutLink, type LayoutNode } from '../tree/layout';
-import { formatAge, t, tg, type Lang } from '../i18n';
-import { computeAge } from '../gedcom/age';
-import { drawMedallion } from '../media/portraits';
-import { portraitId } from '../tree/edit';
-import { isLiving } from '../gedcom/living';
+import { approximateYear, formatDate, type GDate } from '@/gedcom/dates';
+import { displayName, findEvent, type Individual, type Tree } from '@/gedcom/model';
+import { generationLabel, type Layout, type LayoutLink, type LayoutNode } from '@/tree/layout';
+import { formatAge, t, tg, type Lang } from '@/i18n';
+import { computeAge } from '@/gedcom/age';
+import { drawMedallion } from '@/media/portraits';
+import { portraitId } from '@/tree/edit';
+import { isLiving } from '@/gedcom/living';
 export { isLiving };
 
 export interface Camera {

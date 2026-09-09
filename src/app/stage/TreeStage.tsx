@@ -1,13 +1,13 @@
 /** The stage of an open tree: canvas, timeline or map, with the tools, hud, menus and banners over it. */
 
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { TreeCanvas, type TreeCanvasHandle } from '../../canvas/TreeCanvas';
-import type { DetailBand, HandleKind } from '../../canvas/renderer';
-import { tn } from '../../i18n';
-import { ops } from '../../tree/ops';
-import { Timeline } from '../Timeline';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { TreeCanvas, type TreeCanvasHandle } from '@/canvas/TreeCanvas';
+import type { DetailBand, HandleKind } from '@/canvas/renderer';
+import { tn } from '@/i18n';
+import { ops } from '@/tree/ops';
+import { Timeline } from '@/app/screens/Timeline';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 import { AddRelativeMenu } from './AddRelativeMenu';
 import { CanvasTools } from './CanvasTools';
 import { Hud } from './Hud';
@@ -15,7 +15,7 @@ import { KinshipBanner } from './KinshipBanner';
 import { ReportPanel } from './ReportPanel';
 
 // Leaflet and its stylesheet only load the first time the map is shown.
-const MapView = lazy(() => import('../MapView').then((m) => ({ default: m.MapView })));
+const MapView = lazy(() => import('@/app/screens/MapView').then((m) => ({ default: m.MapView })));
 
 export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string, at: { x: number; y: number }): void }) {
   const ui = useUi();
@@ -32,7 +32,7 @@ export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string,
   useEffect(() => {
     const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500));
     const cancel = window.cancelIdleCallback ?? window.clearTimeout;
-    const id = idle(() => void import('../MapView'));
+    const id = idle(() => void import('@/app/screens/MapView'));
     return () => cancel(id);
   }, []);
   // The canvas handle reaches the workspace (camera moves, zoom buttons) through a plain ref registered after mount.

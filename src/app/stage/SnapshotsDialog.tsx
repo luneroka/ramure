@@ -1,10 +1,10 @@
 /** The versions of the tree: automatic ones and those saved with a label. Owners can restore. */
 
-import { t } from '../../i18n';
-import { localeOf } from '../format';
-import type { SnapshotRow } from '../hooks/useSnapshots';
-import { useUi } from '../ui/UiContext';
-import { useDialog } from '../ui/useDialog';
+import { t } from '@/i18n';
+import { localeOf } from '@/app/lib/format';
+import type { SnapshotRow } from '@/app/hooks/useSnapshots';
+import { useUi } from '@/app/ui/UiContext';
+import { useDialog } from '@/app/ui/useDialog';
 
 interface Props {
   snapshots: SnapshotRow[];

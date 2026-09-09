@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { parseGedcom } from '../gedcom/parse';
-import { displayName } from '../gedcom/model';
+import { parseGedcom } from '@/gedcom/parse';
+import { displayName } from '@/gedcom/model';
 import { A4, renderChart } from './charts';
 
 const tree = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));

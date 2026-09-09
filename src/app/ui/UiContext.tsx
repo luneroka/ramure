@@ -6,8 +6,8 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { applyTheme, detectLang, loadTheme, saveLang, type Lang, type ThemeChoice } from '../../i18n';
-import { Modal, type AskSpec, type Pending } from '../Modal';
+import { applyTheme, detectLang, loadTheme, saveLang, type Lang, type ThemeChoice } from '@/i18n';
+import { Modal, type AskSpec, type Pending } from './Modal';
 
 export interface Ui {
   lang: Lang;

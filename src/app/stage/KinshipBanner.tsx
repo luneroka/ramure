@@ -1,9 +1,9 @@
 /** Above the canvas: the relationship being looked up, or the one found. */
 
-import { displayName } from '../../gedcom/model';
-import { t } from '../../i18n';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { displayName } from '@/gedcom/model';
+import { t } from '@/i18n';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function KinshipBanner() {
   const { lang } = useUi();

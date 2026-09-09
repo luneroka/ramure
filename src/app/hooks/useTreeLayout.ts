@@ -1,10 +1,10 @@
 /** The layout the canvas draws for the current view and focus, and the counts the hud shows. */
 
 import { useMemo } from 'react';
-import type { Tree } from '../../gedcom/model';
-import { DEFAULT_LAYOUT, layoutHourglass } from '../../tree/layout';
-import { layoutEverything } from '../../tree/layoutAll';
-import type { ViewMode } from '../editorState';
+import type { Tree } from '@/gedcom/model';
+import { DEFAULT_LAYOUT, layoutHourglass } from '@/tree/layout';
+import { layoutEverything } from '@/tree/layoutAll';
+import type { ViewMode } from '@/app/state/editorState';
 
 /** Pick a sensible first focus: the person with the most relatives on both sides. */
 export function defaultFocus(tree: Tree): string | undefined {

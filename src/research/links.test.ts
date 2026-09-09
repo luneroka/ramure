@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseDate } from '../gedcom/dates';
-import { newIndividual } from '../gedcom/model';
-import { blankEvent } from '../tree/edit';
+import { parseDate } from '@/gedcom/dates';
+import { newIndividual } from '@/gedcom/model';
+import { blankEvent } from '@/tree/edit';
 import { searchLinks, yearWindow } from './links';
 
 function person(given: string, surname: string, birth?: string, death?: string) {

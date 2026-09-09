@@ -1,13 +1,13 @@
 /** Trees as files: import, export, create, rename, delete. */
 
 import { useCallback, useState } from 'react';
-import { serializeGedcom } from '../../gedcom';
-import { decodeGedcom } from '../../gedcom/charset';
-import type { Tree } from '../../gedcom/model';
-import { t, type Lang } from '../../i18n';
-import { api, type Account, type Role, type TreeSummary } from '../../sync/api';
-import { newTree } from '../../tree/edit';
-import type { AskSpec } from '../Modal';
+import { serializeGedcom } from '@/gedcom';
+import { decodeGedcom } from '@/gedcom/charset';
+import type { Tree } from '@/gedcom/model';
+import { t, type Lang } from '@/i18n';
+import { api, type Account, type Role, type TreeSummary } from '@/sync/api';
+import { newTree } from '@/tree/edit';
+import type { AskSpec } from '@/app/ui/Modal';
 import type { Source } from './useTreeSession';
 
 interface Args {

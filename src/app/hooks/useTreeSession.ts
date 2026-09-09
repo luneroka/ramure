@@ -5,12 +5,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Tree } from '../../gedcom/model';
-import { CloudMediaStore } from '../../store/cloudMedia';
-import { setActiveMediaStore } from '../../store';
-import type { Role } from '../../sync/api';
-import { SyncEngine, type EngineEvent, type SyncStatus } from '../../sync/engine';
-import { setPendingEdits } from '../../sync/pendingEdits';
+import type { Tree } from '@/gedcom/model';
+import { CloudMediaStore } from '@/store/cloudMedia';
+import { setActiveMediaStore } from '@/store';
+import type { Role } from '@/sync/api';
+import { SyncEngine, type EngineEvent, type SyncStatus } from '@/sync/engine';
+import { setPendingEdits } from '@/sync/pendingEdits';
 
 /** The open tree. Every tree lives in the account; the device keeps a synced copy. */
 export interface Source {

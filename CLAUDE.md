@@ -107,9 +107,21 @@ version:
 | `migrations/` | D1 schema, forward-only.                                                     |
 | `docs/`       | Design brief, architecture, rules in force, plans.                           |
 
-**`src/tree/` and `src/gedcom/` are imported by the Worker.** They must stay
-free of DOM and React or the Worker build breaks. This is enforced by
-`worker/tsconfig.json`, which includes exactly those two directories.
+**`src/tree/`, `src/gedcom/` and `src/util/` are compiled into the Worker.**
+Two rules follow, and both are enforced by `npm run typecheck`:
+
+- They must stay free of DOM and React, or the Worker build breaks.
+- They must use **relative** imports. The Worker's build resolves no path
+  alias, so a `@/…` import there fails to compile.
+
+Everywhere else in `src/`, use `@/…` across directories and `./x` within one.
+No import should ever climb with `../../`.
+
+Inside `src/app/`: `screens/` is what a route renders, `person/` the panel and
+its editor, `stage/` what sits over the canvas, `ui/` cross-cutting primitives,
+`hooks/` the shell's state machines, `state/` what the shell knows, `lib/` pure
+helpers. `App.tsx` stays at the root; it belongs to no folder. A test lives
+beside its subject.
 
 ## Before you change behaviour
 

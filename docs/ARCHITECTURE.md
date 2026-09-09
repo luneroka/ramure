@@ -86,7 +86,7 @@ pixels out: the renderer knows nothing about React state.
 `types.ts` declares `TreeStore` and `MediaStore`; `local.ts` implements them
 over IndexedDB; `cloudMedia.ts` is the cache-through store used when a cloud
 tree is open. `index.ts` is the single swap point — components never reach
-past it. `src/db.ts` is the raw IndexedDB key-value layer underneath.
+past it. `idb.ts` is the raw IndexedDB key-value layer underneath.
 
 ### `src/app/` — the React shell
 
@@ -98,10 +98,28 @@ those; they do not thread props down.
 Routing is hash-based (`router.ts`) with French paths — `#/arbre/<id>`,
 `#/parametres`, `#/administration`.
 
-The `hooks/` directory holds the shell's own state machines, one concern each
-(`useBoot`, `useAccounts`, `useTreeSession`, `useEditing`, `useSnapshots`…).
-`stage/` holds the pieces that sit over the canvas. `ui/` holds
-cross-cutting primitives.
+Seven folders, never more than two deep, so a file's home is guessable from
+its name:
+
+| Folder     | What belongs here                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `screens/` | What a route renders: `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Leads`, `MapView`, `Timeline`, `PrintPage`. |
+| `person/`  | The person panel, its editor, the pickers that feed them, and `fields/` — the guided date, place and portrait inputs.              |
+| `stage/`   | Everything that sits over the canvas: the top bar, the HUD, search, the add-relative menu, the hosts that mount panels.            |
+| `ui/`      | Cross-cutting primitives with no domain knowledge: `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `icons`, `ErrorBoundary`.           |
+| `hooks/`   | The shell's state machines, one concern each (`useBoot`, `useAccounts`, `useTreeSession`, `useEditing`, `useSnapshots`…).          |
+| `state/`   | What the shell knows and how it changes: `Workspace` (the context), `history`, `editorState`, `router`, `useAuth`.                 |
+| `lib/`     | Pure helpers, no React: `format`, `report`, `mapPopup`, `errorText`.                                                               |
+
+`App.tsx` stays at the root — it is the entry point and belongs to no folder.
+Tests sit beside their subject.
+
+### Imports
+
+`@/…` across directories, `./x` within one, and never `../../`. The one
+exception is the shared core — `src/tree/`, `src/gedcom/`, `src/util/` — which
+uses relative imports because it is compiled into the Worker, whose build
+resolves no alias. `npm run typecheck` fails if that rule is broken.
 
 ### `worker/` — the API
 

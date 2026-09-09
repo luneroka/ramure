@@ -5,11 +5,11 @@
  */
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { displayName, type Tree } from '../gedcom/model';
-import { t } from '../i18n';
+import { displayName, type Tree } from '@/gedcom/model';
+import { t } from '@/i18n';
 import { neighbour, type Dir } from './navigate';
-import type { Lang } from '../i18n';
-import { DEFAULT_LAYOUT, type Layout } from '../tree/layout';
+import type { Lang } from '@/i18n';
+import { DEFAULT_LAYOUT, type Layout } from '@/tree/layout';
 import {
   clampZoom,
   computeHandles,
@@ -23,7 +23,7 @@ import {
   type HandleKind,
   type Theme,
 } from './renderer';
-import { PortraitCache } from '../media/portraits';
+import { PortraitCache } from '@/media/portraits';
 
 export interface TreeCanvasHandle {
   fit(animate?: boolean): void;

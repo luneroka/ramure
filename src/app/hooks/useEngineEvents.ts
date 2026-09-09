@@ -1,11 +1,11 @@
 /** What the sync engine reports while a tree is open: the tree after a pull, dropped or overwritten edits, a tree gone, a session lost. */
 
 import { useCallback, useRef, type Dispatch, type RefObject } from 'react';
-import { displayName } from '../../gedcom/model';
-import { t, tn, type Lang } from '../../i18n';
-import { describeOp } from '../../tree/ops';
-import type { EngineEvent, SyncEngine, SyncStatus } from '../../sync/engine';
-import type { HistoryAction } from '../history';
+import { displayName } from '@/gedcom/model';
+import { t, tn, type Lang } from '@/i18n';
+import { describeOp } from '@/tree/ops';
+import type { EngineEvent, SyncEngine, SyncStatus } from '@/sync/engine';
+import type { HistoryAction } from '@/app/state/history';
 
 interface Args {
   lang: Lang;

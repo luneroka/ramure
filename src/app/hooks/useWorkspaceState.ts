@@ -4,15 +4,15 @@
  */
 
 import { useCallback, useMemo, useReducer, useRef, type Dispatch, type RefObject } from 'react';
-import type { TreeCanvasHandle } from '../../canvas/TreeCanvas';
-import type { HandleKind } from '../../canvas/renderer';
-import { t, type Lang } from '../../i18n';
-import type { SyncEngine, SyncStatus } from '../../sync/engine';
-import { ops } from '../../tree/ops';
-import type { AskSpec } from '../Modal';
-import { editorReducer, initialEditor, type EditorAction, type EditorState } from '../editorState';
-import type { HistoryAction, HistoryState } from '../history';
-import type { Workspace } from '../session/Workspace';
+import type { TreeCanvasHandle } from '@/canvas/TreeCanvas';
+import type { HandleKind } from '@/canvas/renderer';
+import { t, type Lang } from '@/i18n';
+import type { SyncEngine, SyncStatus } from '@/sync/engine';
+import { ops } from '@/tree/ops';
+import type { AskSpec } from '@/app/ui/Modal';
+import { editorReducer, initialEditor, type EditorAction, type EditorState } from '@/app/state/editorState';
+import type { HistoryAction, HistoryState } from '@/app/state/history';
+import type { Workspace } from '@/app/state/Workspace';
 import { useCamera } from './useCamera';
 import { useDrafts } from './useDrafts';
 import { useEditing } from './useEditing';

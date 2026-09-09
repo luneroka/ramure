@@ -1,13 +1,13 @@
 /** The corner tools of the stage: view mode, then what the current mode needs (views and zoom, or the timeline scale). */
 
 import { useState } from 'react';
-import { t } from '../../i18n';
-import { Dropdown } from '../Menus';
-import { MAX_PPY, MIN_PPY } from '../Timeline';
-import type { ViewMode } from '../editorState';
-import { useWorkspace } from '../session/Workspace';
-import { ModeIcon, type StageMode } from '../ui/icons';
-import { useUi } from '../ui/UiContext';
+import { t } from '@/i18n';
+import { Dropdown } from '@/app/ui/Menus';
+import { MAX_PPY, MIN_PPY } from '@/app/screens/Timeline';
+import type { ViewMode } from '@/app/state/editorState';
+import { useWorkspace } from '@/app/state/Workspace';
+import { ModeIcon, type StageMode } from '@/app/ui/icons';
+import { useUi } from '@/app/ui/UiContext';
 
 const VIEWS: Array<{ id: ViewMode; key: 'viewAll' | 'viewHourglass' | 'viewAncestors' | 'viewDescendants' }> = [
   { id: 'all', key: 'viewAll' },

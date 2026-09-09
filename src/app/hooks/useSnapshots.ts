@@ -1,11 +1,11 @@
 /** Named and automatic versions of the open tree. */
 
 import { useCallback, useState, type RefObject } from 'react';
-import { t, type Lang } from '../../i18n';
-import { api } from '../../sync/api';
-import type { SyncEngine } from '../../sync/engine';
-import { ops, type Op } from '../../tree/ops';
-import type { AskSpec } from '../Modal';
+import { t, type Lang } from '@/i18n';
+import { api } from '@/sync/api';
+import type { SyncEngine } from '@/sync/engine';
+import { ops, type Op } from '@/tree/ops';
+import type { AskSpec } from '@/app/ui/Modal';
 import type { Source } from './useTreeSession';
 
 export interface SnapshotRow {

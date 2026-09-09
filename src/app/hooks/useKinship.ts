@@ -1,10 +1,10 @@
 /** The relationship being shown: recomputed live, its path lit on the canvas. */
 
 import { useMemo } from 'react';
-import type { Tree } from '../../gedcom/model';
-import type { Lang } from '../../i18n';
-import { describeKinship } from '../../tree/kinship';
-import type { Layout } from '../../tree/layout';
+import type { Tree } from '@/gedcom/model';
+import type { Lang } from '@/i18n';
+import { describeKinship } from '@/tree/kinship';
+import type { Layout } from '@/tree/layout';
 
 export function useKinship(tree: Tree | null, ids: { a: string; b: string } | null, lang: Lang) {
   const kinship = useMemo(() => {

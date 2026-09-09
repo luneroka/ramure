@@ -5,9 +5,9 @@
  * functions of the tree, so they are tested and printed alike.
  */
 
-import { approximateYear } from '../gedcom/dates';
-import { displayName, findEvent, type Individual, type Tree } from '../gedcom/model';
-import { ahnentafel, generationOf } from '../tree/ancestry';
+import { approximateYear } from '@/gedcom/dates';
+import { displayName, findEvent, type Individual, type Tree } from '@/gedcom/model';
+import { ahnentafel, generationOf } from '@/tree/ancestry';
 
 export type ChartKind = 'fan' | 'pedigree';
 

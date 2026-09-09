@@ -1,13 +1,13 @@
 /** Adding a relative: the card is previewed on the canvas and committed only on save. */
 
 import { useCallback, type Dispatch } from 'react';
-import type { Tree } from '../../gedcom/model';
-import { t, tg, type Lang } from '../../i18n';
-import { layoutHourglass, type LayoutOptions } from '../../tree/layout';
-import type { PersonPatch } from '../../tree/edit';
-import { applyOp, ops, opSubject, type Op } from '../../tree/ops';
-import type { AddKind, Draft, EditorAction, ViewMode } from '../editorState';
-import { errorText } from '../errorText';
+import type { Tree } from '@/gedcom/model';
+import { t, tg, type Lang } from '@/i18n';
+import { layoutHourglass, type LayoutOptions } from '@/tree/layout';
+import type { PersonPatch } from '@/tree/edit';
+import { applyOp, ops, opSubject, type Op } from '@/tree/ops';
+import type { AddKind, Draft, EditorAction, ViewMode } from '@/app/state/editorState';
+import { errorText } from '@/app/lib/errorText';
 
 function relativeOp(kind: AddKind, id: string, familyId?: string): Op {
   switch (kind) {

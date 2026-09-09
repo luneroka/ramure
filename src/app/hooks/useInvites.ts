@@ -1,10 +1,10 @@
 /** Sign-in links and family invitations arrive in the fragment; both are consumed here. */
 
 import { useEffect, useState } from 'react';
-import { t, type Lang } from '../../i18n';
-import { api } from '../../sync/api';
-import type { Auth } from '../useAuth';
-import { errorText } from '../errorText';
+import { t, type Lang } from '@/i18n';
+import { api } from '@/sync/api';
+import type { Auth } from '@/app/state/useAuth';
+import { errorText } from '@/app/lib/errorText';
 
 export const INVITE_KEY = 'ramure.invite';
 

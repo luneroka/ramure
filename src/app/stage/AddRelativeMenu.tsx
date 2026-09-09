@@ -1,8 +1,8 @@
 /** The menu under a card's « + » handle: which relative to add. */
 
-import { t } from '../../i18n';
-import { useWorkspace } from '../session/Workspace';
-import { useUi } from '../ui/UiContext';
+import { t } from '@/i18n';
+import { useWorkspace } from '@/app/state/Workspace';
+import { useUi } from '@/app/ui/UiContext';
 
 export function AddRelativeMenu() {
   const { lang } = useUi();

@@ -216,7 +216,10 @@ Adopt `ccig-app`'s convention: every expected error carries a stable
 keeps the parsed body, so this is additive — no route needs restructuring, and
 the two can coexist during migration.
 
-### `[ ]` H5. `src/app/` is half-organised
+### `[x]` H5. `src/app/` is half-organised
+
+_Done 2026-09-09, pass 4: 37 root files into seven folders, `App.tsx` alone at
+the root. Moves only — verified below._
 
 _Shape decided by Yoann on 2026-09-09: **by kind, shallow** — the layout below,
 not a feature-first tree. Feature-first (`features/tree/components/…`) was
@@ -263,7 +266,11 @@ src/app/
   lib/         format report mapPopup               (pure helpers)
 ```
 
-### `[ ]` H6. Two test files do not sit beside their subject
+### `[x]` H6. Two test files do not sit beside their subject
+
+_Done 2026-09-09, pass 4: `DateField.test.tsx` now sits in `person/fields/`
+beside its subject, and `links.test.ts` is `screens/Leads.test.ts` — named after
+what it actually tests, and no longer a second file called `links.test.ts`._
 
 The repo's rule is `foo.ts` → `foo.test.ts`, honoured everywhere except:
 
@@ -327,7 +334,15 @@ artifacts stay where they are for reading; the repo copy is what agents and
 
 ## Tier 3 — misleads the reader, changes nothing
 
-### `[ ]` H10. The `@/*` alias is configured and never used
+### `[x]` H10. The `@/*` alias is configured and never used
+
+_Done 2026-09-09, pass 4. Adopted: **352** aliased imports, and **zero**
+`../../` climbs remain (was 105). One deliberate exception — the shared core
+(`src/tree/`, `src/gedcom/`, `src/util/`) keeps relative imports, because it is
+compiled into the Worker and the Worker's build resolves no alias. That is not
+a convention anyone has to remember: `npm run typecheck` fails on a `@/…` there
+with `TS2307: Cannot find module`, which was tested by breaking it on purpose
+and watching it fail._
 
 Declared in [tsconfig.json](../tsconfig.json) _and_
 [vite.config.ts](../vite.config.ts), used **zero** times. Meanwhile 105 imports
@@ -351,7 +366,10 @@ Split by concern into `src/styles/` (`base`, `canvas`, `panel`, `forms`,
 mechanical; no cascade order changes if the import order matches today's file
 order.
 
-### `[ ]` H12. `src/db.ts` sits outside the abstraction that owns it
+### `[x]` H12. `src/db.ts` sits outside the abstraction that owns it
+
+_Done 2026-09-09, pass 4: it is `src/store/idb.ts`, inside the abstraction that
+is its only caller._
 
 `src/store/` exists precisely so that nothing reaches past it to raw storage —
 and `src/db.ts`, the IndexedDB layer it wraps, sits at the `src/` root beside

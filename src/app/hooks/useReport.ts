@@ -5,8 +5,8 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import type { Tree } from '../../gedcom/model';
-import { auditTree, noteKey, type CheckNote } from '../../tree/audit';
+import type { Tree } from '@/gedcom/model';
+import { auditTree, noteKey, type CheckNote } from '@/tree/audit';
 
 function readDismissed(key: string | null): Set<string> {
   if (!key) return new Set();
