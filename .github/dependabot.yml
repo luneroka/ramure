@@ -23,8 +23,13 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # Minor too, not just major: this package is 0.x, so npm treats 0.12 -> 0.22 as a
+      # minor bump, and it carries a peer dependency on the matching vitest major. On
+      # 9 September 2026 that produced a pull request that could not install at all —
+      # it asked for a release needing vitest 4 while vitest itself was held at 3 by
+      # the rule below. It moves when vitest moves, as one deliberate migration.
       - dependency-name: '@cloudflare/vitest-pool-workers'
-        update-types: ['version-update:semver-major']
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: react
         update-types: ['version-update:semver-major']
       - dependency-name: react-dom
