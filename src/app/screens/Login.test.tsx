@@ -41,6 +41,15 @@ describe('Login', () => {
     expect(auth.verifyCode).toHaveBeenCalledWith('cousin@example.org', '123456');
   });
 
+  it('signs in from the keyboard alone: Enter asks for the code, then Enter sends it', async () => {
+    const auth = fakeAuth();
+    render(<Login lang="fr" auth={auth} pendingInvite={null} toast={() => {}} />);
+    await userEvent.type(screen.getByLabelText('Adresse courriel'), 'me@example.org{Enter}');
+    expect(auth.requestLink).toHaveBeenCalledWith('me@example.org');
+    await userEvent.type(screen.getByLabelText('Code à six chiffres reçu par courriel'), '123456{Enter}');
+    expect(auth.verifyCode).toHaveBeenCalledWith('me@example.org', '123456');
+  });
+
   it('starts disabled without an address and enables once one is typed', async () => {
     render(<Login lang="fr" auth={fakeAuth()} pendingInvite={null} toast={() => {}} />);
     const send = screen.getByRole('button', { name: /Recevoir un lien/ });

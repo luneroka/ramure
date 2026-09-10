@@ -114,7 +114,8 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             className="signin"
             onSubmit={(e) => {
               e.preventDefault();
-              if (canCode) void submitCode(e);
+              // Enter does whichever step the form is on, which is what its primary button does too.
+              if (sent) void submitCode(e);
               else void request(e);
             }}
           >
@@ -137,11 +138,13 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             ) : (
               <p className="muted small">{t(lang, 'signinHint')}</p>
             )}
+            {/* The step's primary action is the form's submit button, so Enter in either field does what
+                clicking it does. The other button carries its own click and must not submit. */}
             <button
-              type="button"
+              type={sent ? 'button' : 'submit'}
               className={`btn ${sent ? '' : 'primary'}`}
               disabled={busy || !email.includes('@')}
-              onClick={(e) => void request(e)}
+              onClick={sent ? (e) => void request(e) : undefined}
             >
               {t(lang, sent ? 'sendAgain' : 'sendLink')}
             </button>
@@ -158,10 +161,10 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
               />
             </label>
             <button
-              type="button"
+              type={sent ? 'submit' : 'button'}
               className={`btn ${sent ? 'primary' : ''}`}
               disabled={busy || !canCode}
-              onClick={(e) => void submitCode(e)}
+              onClick={sent ? undefined : (e) => void submitCode(e)}
             >
               {t(lang, 'codeSubmit')}
             </button>
