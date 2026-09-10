@@ -280,6 +280,22 @@ meaning "in a month" should not be a surprise to anyone reading
 
 ## 7. The browser side
 
+**A reload never flashes the sign-in card.** The session lives in a cookie, so
+every load has to ask the Worker who is signed in, and for that round trip the
+browser knows nothing. `useAuth` answers `restoring`, `authenticated` or
+`unauthenticated` — three states, because "nobody is signed in" and "nobody has
+asked yet" are different answers, and the shell shows the door only for the
+settled one. While restoring it shows a single quiet line and no branding: a
+card that appears for 150 ms reads as being signed out, not as loading.
+
+**A slow answer falls back to the last known identity after 2.5 seconds.**
+`api.me()` gives up after twenty; being offline fails at once, but a stalled
+network sits between the two, and a device that already knows whose it is should
+open its copy of the tree rather than hold the session screen
+(`RESTORE_GRACE_MS`). The real answer still lands and corrects it. Only the
+first check waits behind that screen — a later `refresh()`, the sync engine
+reporting the session gone, must not put it back over a working app.
+
 **Every user-facing string goes through `t()`** with `fr` and `en`. French is
 the default; the switch is in Paramètres only. A test fails on a key missing a
 language.

@@ -105,9 +105,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             {t(lang, 'inviteFor')} <strong>{pendingInvite.accountName}</strong>. {t(lang, 'inviteSignIn')}
           </div>
         )}
-        {auth.loading ? (
-          <p className="muted">…</p>
-        ) : auth.unavailable ? (
+        {auth.unavailable ? (
           <p className="muted">{t(lang, 'apiUnavailable')}</p>
         ) : (
           <form
@@ -177,7 +175,7 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
             )}
           </form>
         )}
-        {!auth.loading && !auth.unavailable && (
+        {!auth.unavailable && (
           <div className="access-request">
             {asking ? (
               <form

@@ -223,6 +223,7 @@ const strings = {
     fr: 'Le service en ligne est injoignable. Les arbres de cet appareil restent utilisables.',
     en: 'The online service is unreachable. Trees on this device still work.',
   },
+  sessionLoading: { fr: 'Chargement de la session…', en: 'Loading your session…' },
   signinTitle: { fr: 'Connexion', en: 'Sign in' },
   signinSub: { fr: 'Ramure est réservé aux familles invitées.', en: 'Ramure is for invited families.' },
   noAccessYet: { fr: 'Pas encore d’accès ?', en: 'No access yet?' },

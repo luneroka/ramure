@@ -59,8 +59,16 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await expect(page.locator('.topbar')).toContainText('34 personnes');
   await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
 
-  // The edit survives a reload.
+  // The edit survives a reload — and the reload never flashes the sign-in card while the
+  // session is being checked. Holding /me open is what makes that observable rather than a race.
+  await page.route('**/api/auth/me', async (route) => {
+    await new Promise((r) => setTimeout(r, 800));
+    await route.continue();
+  });
   await page.reload();
+  await expect(page.getByText('Chargement de la session…')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connexion' })).toHaveCount(0);
+  await page.unroute('**/api/auth/me');
   await expect(page.locator('.topbar')).toContainText('34 personnes', { timeout: 20_000 });
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();

@@ -8,7 +8,7 @@ import type { Auth } from '@/app/state/useAuth';
 function fakeAuth(): Auth {
   return {
     user: null,
-    loading: false,
+    status: 'unauthenticated',
     unavailable: false,
     requestLink: vi.fn(async () => ({ code: '123456' })),
     verifyCode: vi.fn(async () => {}),
