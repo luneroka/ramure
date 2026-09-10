@@ -222,6 +222,17 @@ function Shell() {
   };
 
   // ---------- Gate: everything behind sign-in ----------
+  // The session cookie has to be checked with the Worker on every load. Until it answers,
+  // show neither the app nor the sign-in card: a reload while signed in must not flash the door.
+  if (auth.status === 'restoring') {
+    return (
+      <div className="app gate">
+        <div className="login">
+          <p className="muted">{t(lang, 'sessionLoading')}</p>
+        </div>
+      </div>
+    );
+  }
   if (!auth.user) {
     const nextTheme = ui.effectiveTheme === 'dark' ? 'light' : 'dark';
     const themeLabel = `${t(lang, 'theme')} : ${nextTheme === 'light' ? t(lang, 'themeLight') : t(lang, 'themeDark')}`;
