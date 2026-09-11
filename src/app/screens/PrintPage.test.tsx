@@ -116,4 +116,18 @@ describe('the printable charts screen', () => {
     fireEvent.click(screen.getByLabelText('Montrer les ancêtres manquants'));
     expect(sheet()).not.toContain('stroke-dasharray');
   });
+
+  it('draws the whole tree on several sheets, and stops asking who is at the centre', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('radio', { name: 'Arbre entier' }));
+    // Everybody, not one line of ancestors — and the sheets are numbered so they can be laid out.
+    expect(screen.getByText(/33 personnes sur 33/)).toBeTruthy();
+    expect(screen.getByText(/2 feuilles/)).toBeTruthy();
+    expect(document.querySelectorAll('.print-sheet')).toHaveLength(2);
+    expect(screen.queryByText(/Personne au centre/)).toBeNull();
+    // On one sheet instead: still everybody, on a single page.
+    fireEvent.change(screen.getByLabelText('Taille'), { target: { value: 'one' } });
+    expect(document.querySelectorAll('.print-sheet')).toHaveLength(1);
+    expect(screen.getByText(/33 personnes sur 33/)).toBeTruthy();
+  });
 });

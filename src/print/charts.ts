@@ -18,9 +18,9 @@
  *   so the screen can say so instead of leaving the reader to count rings.
  */
 
-import { approximateYear } from '@/gedcom/dates';
-import { displayName, findEvent, type Individual, type Tree } from '@/gedcom/model';
+import type { Individual, Tree } from '@/gedcom/model';
 import { ahnentafel, depthOf, generationOf, type Ahnentafel } from '@/tree/ancestry';
+import { lifeYears, nameParts } from './person';
 import { textWidth, truncate } from './text';
 
 export type ChartKind = 'fan' | 'pedigree';
@@ -70,19 +70,6 @@ const PAD = 3;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const rad = (deg: number) => (deg * Math.PI) / 180;
-
-function years(ind: Individual): string {
-  const b = approximateYear(findEvent(ind.events, 'birth')?.date ?? findEvent(ind.events, 'baptism')?.date);
-  const d = approximateYear(findEvent(ind.events, 'death')?.date ?? findEvent(ind.events, 'burial')?.date);
-  if (b === undefined && d === undefined) return '';
-  return `${b ?? '…'} – ${d ?? (findEvent(ind.events, 'death') ? '…' : '')}`.replace(/ – $/, '');
-}
-
-function nameLines(ind: Individual): [string, string] {
-  const n = ind.names[0];
-  if (!n) return [displayName(ind), ''];
-  return [n.given || '', n.surname.toUpperCase()];
-}
 
 export function renderChart(tree: Tree, rootId: string, opts: ChartOptions): Chart {
   const page = PAGES[opts.page];
@@ -190,8 +177,8 @@ interface RingPlan {
 
 /** What a person's label can say, fullest first. */
 function labelChoices(ind: Individual, dates: boolean): Line[][] {
-  const [given, surname] = nameLines(ind);
-  const life = dates ? years(ind) : '';
+  const [given, surname] = nameParts(ind);
+  const life = dates ? lifeYears(ind) : '';
   const initial = given ? `${[...given][0]}. ${surname}`.trim() : surname;
   const choices: Line[][] = [
     [
@@ -448,8 +435,8 @@ function pedigree(table: Ahnentafel, wanted: number, area: Area, opts: ChartOpti
       `<rect x="${bx}" y="${(cy - bh / 2).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${ind ? (sosa === 1 ? SUBJECT : sosa % 2 === 0 ? PATERNAL : MATERNAL) : '#ffffff'}" stroke="${LINE}" stroke-width="0.7"${ind ? '' : ' stroke-dasharray="2 2"'}/>`,
     );
     if (!ind) continue;
-    const [given, surname] = nameLines(ind);
-    const life = opts.dates ? years(ind) : '';
+    const [given, surname] = nameParts(ind);
+    const life = opts.dates ? lifeYears(ind) : '';
     const size = bh >= 40 ? 10 : bh >= 28 ? 8.5 : 7;
     const lh = size + 2;
     const room: Line[] =
