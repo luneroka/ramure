@@ -26,21 +26,26 @@ const longest = workerFiles.map((f) => ({ ...f, lines: f.text.split('\n').length
 const sqlCount = workerFiles.reduce((n, f) => n + (f.text.match(/\b(SELECT|INSERT|UPDATE|DELETE)\b/g) ?? []).length, 0);
 
 /**
- * Development advisories that could be fixed without a held major version.
+ * Development advisories that could be fixed without a held major version,
+ * counted in two piles because the answer differs.
  *
- * `npm audit` reports ten of these, six of them high, and every one lives under
- * wrangler / miniflare / @cloudflare/vitest-pool-workers. None of it ships: the
- * Worker bundle contains none of those packages and `npm audit --omit=dev` is
- * clean. They also cannot be fixed today — the fix wants a
- * @cloudflare/vitest-pool-workers major that needs vitest 4, which
- * .github/dependabot.yml holds at 3 on purpose after a pull request that could
- * not install at all.
+ * Every advisory here lives under wrangler / miniflare /
+ * @cloudflare/vitest-pool-workers, and none of it ships: the Worker bundle
+ * contains none of those packages and `npm audit --omit=dev` is clean. But
+ * *where* the vulnerable copy sits decides what to do about it.
  *
- * The hold is right. What was missing is anything noticing the day it stops
- * being necessary, so the tree would have stayed vulnerable by inertia rather
- * than by decision. npm marks each advisory with `fixAvailable`: `true` or an
- * object with `isSemVerMajor: false` means it can be fixed without a breaking
- * change — which is exactly "the hold is no longer what is blocking this".
+ * - **Ours**: a package this repository names in package.json. Nothing is
+ *   holding it; update it. On 11 September 2026 this is what fired — the
+ *   top-level wrangler had drifted into an advisory range and a routine bump
+ *   to 4.131.0 cleared it, with the held chain untouched.
+ * - **The held chain**: a copy nested inside @cloudflare/vitest-pool-workers'
+ *   own node_modules, reachable only by moving that package — which
+ *   .github/dependabot.yml holds because its next release needs vitest 4. A
+ *   non-major fix appearing here means the hold has stopped being the reason
+ *   anything is waiting.
+ *
+ * npm marks each advisory with `fixAvailable`: `true`, or an object with
+ * `isSemVerMajor: false`, means it can be fixed without a breaking change.
  *
  * Returns null when the audit could not run at all, so "did not check" is never
  * reported as "nothing found".
@@ -61,14 +66,18 @@ function fixableDevAdvisories() {
   }
   const vulns = Object.values(report.vulnerabilities ?? {});
   if (!vulns.length && !report.metadata) return null;
-  return vulns.filter(
+  const fixable = vulns.filter(
     (v) =>
       ['high', 'critical'].includes(v.severity) &&
       (v.fixAvailable === true || (typeof v.fixAvailable === 'object' && v.fixAvailable?.isSemVerMajor === false)),
-  ).length;
+  );
+  const HELD = 'node_modules/@cloudflare/vitest-pool-workers/node_modules/';
+  const inHeldChain = (v) => v.nodes?.length > 0 && v.nodes.every((n) => n.startsWith(HELD));
+  return { ours: fixable.filter((v) => !inHeldChain(v)).length, chain: fixable.filter(inHeldChain).length };
 }
 
 const fixableDev = fixableDevAdvisories();
+const auditRan = fixableDev !== null;
 
 /** Each check reports { tripped, detail }. Keep the measure cheap and obvious. */
 const checks = [
@@ -84,17 +93,25 @@ const checks = [
   },
   {
     id: 'dev-dependency-advisories',
-    what: 'Lift the hold on @cloudflare/vitest-pool-workers and clear the development advisories.',
-    why: 'They are unreachable from the deployed Worker and the fix needs a held major, so they wait — but only until the fix stops needing one.',
+    what: 'Update the development dependency that has a fix, or lift the hold on @cloudflare/vitest-pool-workers — the count below says which.',
+    why: 'None of it reaches the deployed Worker, so it waits. It stops waiting when a fix needs neither the held major nor a breaking change.',
     where: 'docs/DEFERRED.md § dev-dependency-advisories',
     trips: [
+      // null means the audit could not run; report 0 rather than tripping on a guess, and say so in
+      // the label so it is never mistaken for a clean result.
       {
-        name: 'high dev advisories fixable without a major',
-        // null means the audit could not run; report it as 0 rather than tripping on a guess,
-        // and say so in the label so it is never mistaken for a clean result.
-        value: fixableDev ?? 0,
+        name: 'ours, with a fix',
+        value: fixableDev?.ours ?? 0,
         limit: 0,
-        unit: fixableDev === null ? 'advisories (npm audit DID NOT RUN)' : 'advisories',
+        unit: auditRan ? 'advisories' : 'advisories (npm audit DID NOT RUN)',
+        extra: 'a package package.json names: nothing is holding these, update them',
+      },
+      {
+        name: 'in the held chain, clearable without a major',
+        value: fixableDev?.chain ?? 0,
+        limit: 0,
+        unit: auditRan ? 'advisories' : 'advisories (npm audit DID NOT RUN)',
+        extra: 'the hold has stopped being the reason anything is waiting',
       },
     ],
   },
