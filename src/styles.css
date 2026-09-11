@@ -3371,17 +3371,25 @@ textarea:focus {
   .print-page .settings-head {
     grid-column: 1 / -1;
   }
-  .print-page .print-sheet {
+  .print-page .print-sheets {
     grid-column: 2;
     grid-row: 2;
-    position: sticky;
-    top: 16px;
     margin: 0;
   }
+  /* A single sheet follows the options up and down; a poster's worth of them cannot, so it scrolls. */
+  .print-page .print-sheets.alone {
+    position: sticky;
+    top: 16px;
+  }
+}
+.print-sheets {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  margin: 16px 0 32px;
 }
 .print-sheet {
   max-width: 100%;
-  margin: 16px auto 32px;
   background: #fff;
   box-shadow: var(--shadow);
 }
@@ -3396,21 +3404,51 @@ textarea:focus {
   width: 100%;
   height: auto;
 }
+/*
+ * Printing. Everything but the sheets is taken out of the flow with `display: none` rather than
+ * hidden with `visibility`: a hidden box still takes its space, which was fine while a single sheet
+ * was pinned over the page with `position: fixed`, and produces blank pages the moment there are
+ * several. The sheets then print in flow, one page each.
+ */
 @media print {
-  body * {
-    visibility: hidden;
+  .topbar,
+  .panel,
+  .hud,
+  .canvas-tools,
+  .report,
+  .toast,
+  .print-page .settings-head,
+  .print-options {
+    display: none !important;
   }
-  .print-sheet,
-  .print-sheet * {
-    visibility: visible;
+  .app {
+    display: block;
+    height: auto;
+  }
+  .stage,
+  .stage.page {
+    overflow: visible;
+    height: auto;
+  }
+  .print-page {
+    display: block;
+    max-width: none;
+    padding: 0;
+  }
+  .print-sheets {
+    display: block;
+    margin: 0;
   }
   .print-sheet {
-    position: fixed;
-    inset: 0;
     width: 100% !important;
     max-width: none;
     margin: 0;
     box-shadow: none;
+    break-after: page;
+    break-inside: avoid;
+  }
+  .print-sheet:last-child {
+    break-after: auto;
   }
 }
 

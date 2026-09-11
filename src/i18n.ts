@@ -197,6 +197,21 @@ const strings = {
     fr: 'Cette feuille en tient {n} : essayez un format plus grand, une autre forme, ou moins de générations.',
     en: 'This sheet holds {n}: try a larger paper size, another shape, or fewer generations.',
   },
+  chartPoster: { fr: 'Arbre entier', en: 'Whole tree' },
+  posterOf: { fr: 'Arbre de', en: 'Tree of' },
+  posterHint: {
+    fr: 'Tout le monde, pas seulement une ligne d’ancêtres. Les feuilles se posent côte à côte dans l’ordre indiqué en bas de chacune.',
+    en: 'Everybody, not one line of ancestors. The sheets go side by side in the order printed at the foot of each.',
+  },
+  posterSize: { fr: 'Taille', en: 'Size' },
+  posterFitOne: { fr: 'Sur une feuille', en: 'On one sheet' },
+  posterFitReadable: { fr: 'Lisible, sur plusieurs', en: 'Readable, across several' },
+  posterSheets: { fr: '{n} feuille|{n} feuilles', en: '{n} sheet|{n} sheets' },
+  posterGrid: { fr: '{cols} × {rows}', en: '{cols} × {rows}' },
+  posterCapped: {
+    fr: 'Réduit pour ne pas dépasser {n} feuilles.',
+    en: 'Shrunk to keep it under {n} sheets.',
+  },
   printPdf: { fr: 'Imprimer ou enregistrer en PDF', en: 'Print or save as PDF' },
   exportPng: { fr: 'Enregistrer en PNG', en: 'Save as PNG' },
   printHint: {

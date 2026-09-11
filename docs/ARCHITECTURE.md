@@ -94,8 +94,17 @@ past it. `idb.ts` is the raw IndexedDB key-value layer underneath.
 pedigree chart. Pure, like `src/tree/`, so the same function is unit-tested and
 printed. It fits the drawing to the paper rather than the other way round — the
 radius follows the sweep, the rings taper outward, and a ring nobody is in is
-not drawn — and it reports back how much it managed to fit. `text.ts` is the
-measuring tape it needs to do that without a DOM.
+not drawn — and it reports back how much it managed to fit.
+
+`poster.ts` is the other half of the answer: both charts are built from a Sosa
+table and so can only ever show one person's direct ancestors. The poster takes
+`layoutEverything` — the same layout the canvas draws for « Vue d'ensemble » —
+and tiles it over as many sheets as a readable size needs, culling each sheet to
+what crosses it. `sheetPlan` is the arithmetic on its own, so the sheet limit can
+be tested on a wall-sized tree without building one.
+
+`text.ts` is the measuring tape both need to fit words without a DOM, and
+`person.ts` the short name-and-years form they both put on a card.
 
 ### `src/app/` — the React shell
 

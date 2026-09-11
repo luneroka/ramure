@@ -336,6 +336,26 @@ the people it fitted, and the screen says « Cette feuille en tient 6 » rather
 than leaving the reader to count rings
 ([src/print/charts.ts](../src/print/charts.ts)).
 
+**The poster is the only drawing that shows everybody.** The fan and the
+pedigree chart are built from a Sosa table, so a sibling, a second husband or a
+childless great-aunt can never appear on them — on the test fixture the best
+possible fan reaches 21 of 33 people. « Arbre entier » draws
+`layoutEverything`, the same layout as the canvas overview, and tiles it. Each
+card carries its person's id in the SVG, which is what makes "everyone is on
+here" a thing a test asserts rather than a claim.
+
+**A poster is capped at 60 sheets.** Past that it stops being a poster and
+becomes a ream, so the drawing shrinks instead — but never below what one sheet
+would have taken, and the screen says it happened. Each sheet holds only the
+cards and lines that cross it: the alternative, every sheet carrying the whole
+drawing behind a clip, is tens of megabytes on a large tree.
+
+**Printing hides the rest of the app with `display: none`, not
+`visibility`.** A hidden box still takes its space, which was harmless while a
+single sheet was pinned over the page with `position: fixed`, and prints blank
+pages the moment a poster has several sheets. The sheets print in flow, one page
+each, with `break-after: page`.
+
 **A ring is written one way, not per person.** Labels are planned for a whole
 ring — flat, along the arc, or along the radius, at one size and one level of
 detail — because a band where one name lies flat and the next stands on end
