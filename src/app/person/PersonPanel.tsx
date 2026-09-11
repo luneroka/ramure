@@ -458,7 +458,7 @@ export function PersonPanel(props: Props) {
   const openLeads = (person.leads ?? []).filter((l) => !l.done).length;
 
   return (
-    <aside className="panel" aria-label={name}>
+    <aside className={`panel ${editing ? 'editing' : ''}`} aria-label={name}>
       <header className="panel-hero">
         <button
           type="button"

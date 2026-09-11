@@ -142,15 +142,18 @@ textarea:focus {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* `minmax(0, 1fr)`, not `1fr`: a grid track's automatic minimum is the content's, so one row that
+   cannot shrink — the top bar on a phone — widens the whole app and scrolls the canvas sideways. */
 .app {
   height: 100%;
   display: grid;
   grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   position: relative;
 }
 .topbar {
   grid-column: 1 / -1;
+  min-width: 0;
 }
 
 /* ---------- Top bar ---------- */
@@ -284,10 +287,13 @@ textarea:focus {
 }
 
 /* ---------- Stage ---------- */
+/* A container, so what floats over the canvas answers to the canvas's own width: with the person
+   panel open, a 1 024 px window leaves the stage 560 and the tools crowd exactly as on a phone. */
 .stage {
   position: relative;
   overflow: hidden;
   background: var(--ground);
+  container: stage / inline-size;
 }
 .tree-canvas {
   display: block;
@@ -327,6 +333,70 @@ textarea:focus {
 }
 .hud-warn {
   color: var(--warn);
+}
+/* A narrow stage: the labels give way to their glyph, the view chooser takes its own line, and the
+   reading rules over the canvas move to the top so the two do not sit on each other. */
+@container stage (max-width: 560px) {
+  .canvas-tools {
+    max-width: calc(100cqw - 24px);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .canvas-tools .btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .canvas-tools .btn .long {
+    display: none;
+  }
+  .canvas-tools .btn .short {
+    display: inline;
+  }
+  .segmented {
+    order: -1;
+    width: 100%;
+    margin: 0 0 6px;
+  }
+  /* `min-width: 0` so a long label wraps inside its share of the row instead of pushing the chooser
+     wider than the stage; the labels stay whole and take two lines. */
+  .segmented button {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 6px;
+  }
+  .hud {
+    bottom: auto;
+    top: 12px;
+  }
+}
+/* Narrower still — a phone in portrait beside an open panel — and four labels cannot share a line at
+   any size worth reading. The chooser scrolls sideways instead, each name whole. */
+@container stage (max-width: 380px) {
+  .segmented {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .segmented button {
+    flex: 0 0 auto;
+  }
+}
+/* The editor is modal at every width: nothing that floats over the canvas may hover above it. The
+   checks list is not modal, but it is read rather than glanced at, and the tools were landing on it. */
+.app:has(.panel.editing) .canvas-tools,
+.app:has(.panel.editing) .hud,
+.stage:has(.report) .canvas-tools {
+  display: none;
+}
+@container stage (max-width: 560px) {
+  /* Alone over the canvas the list can have the room: the corner card it uses on a desktop leaves
+     three lines of a check visible on a phone. */
+  .report {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: calc(100% - 24px);
+  }
 }
 .report-toggle {
   position: absolute;
@@ -600,24 +670,41 @@ textarea:focus {
   :root {
     --topbar-h: 108px;
   }
+  /* Two rows on purpose. Brand, tree and state on the first; everything you press on the second.
+     Crammed onto one row the bar could not shrink below 423 px, which scrolled the whole app
+     sideways on a 390 px phone and squeezed undo, redo and the theme button down to nothing.
+     `relative` so the search field, which opens absolutely below, hangs from the bar rather than
+     from the page — it was landing under the canvas, results and all. */
   .topbar {
+    position: relative;
     flex-wrap: wrap;
     align-content: center;
-    gap: 8px;
+    gap: 6px;
     padding: 8px 10px;
   }
   .brand {
     order: 0;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .brand-name {
+    font-size: 19px;
   }
   .brand-file {
     display: none;
   }
-  .actions {
+  .resources-btn {
     order: 1;
     margin-left: auto;
   }
-  .search {
+  .actions {
     order: 2;
+  }
+  .actions .btn {
+    flex: 0 0 auto;
+  }
+  .search {
+    order: 3;
     flex-basis: 100%;
     max-width: none;
     margin: 0;
@@ -625,14 +712,8 @@ textarea:focus {
   .btn {
     padding: 6px 10px;
   }
-  .btn .long {
-    display: none;
-  }
-  .btn .short {
-    display: inline;
-  }
   .app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .panel {
     position: absolute;
@@ -647,9 +728,18 @@ textarea:focus {
     border-radius: 14px 14px 0 0;
     box-shadow: var(--shadow);
   }
-  .canvas-tools .btn {
-    min-width: 44px;
-    min-height: 44px;
+  /* Filling in a form through a 60 %-tall window means five fields at a time; the editor takes the
+     screen instead, and the canvas tools get out from under it — they were sitting over the fields. */
+  .panel.editing {
+    height: 100%;
+    border-radius: 0;
+  }
+  /* With the sheet open the tools ride above it rather than under it: they were drawn over the
+     panel's own content, and hiding them would take zoom and the view chooser away for as long as
+     anyone is reading about a person. (They go entirely while the editor has the screen — that rule
+     sits with the tools themselves, since it holds at every width.) */
+  .app:has(.panel) .canvas-tools {
+    bottom: calc(60% + 12px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -980,22 +1070,17 @@ label.check input {
   .grid2 {
     grid-template-columns: 1fr;
   }
-  .segmented {
-    order: -1;
-    width: 100%;
-    margin: 0 0 6px;
-  }
-  .segmented button {
-    flex: 1;
-  }
-  .canvas-tools {
+  /* A page heading is a back button, a title and the tree it belongs to. On a phone they take a line
+     each rather than a two-line title with the tree name folded into a column beside it. */
+  .settings-head {
     flex-wrap: wrap;
-    left: 12px;
   }
-  .hud {
-    bottom: auto;
-    top: 12px;
+  .settings-head h1 {
+    font-size: 25px;
   }
+  /* What floats over the canvas — the tools, the view chooser, the reading rules — is laid out by
+     the stage's own container query, not from here: the panel can leave it phone-narrow in a wide
+     window, and the two blocks disagreed about how the row should wrap. */
 }
 
 .hud .link {
@@ -1946,7 +2031,9 @@ label.check input {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
-@media (max-width: 640px) {
+/* The search behind its button earlier than the rest of the phone rules: the bar's other items need
+   about 520 px, so anything under this leaves the field too narrow to read what is typed into it. */
+@media (max-width: 780px) {
   .search {
     display: none;
   }
@@ -1957,11 +2044,14 @@ label.check input {
     right: 10px;
     top: 100%;
     margin-top: 6px;
-    z-index: 20;
+    /* Over the canvas HUD, which on a narrow screen sits in the same corner and showed through the field. */
+    z-index: 1100;
   }
   .search-toggle {
     display: inline-flex;
   }
+}
+@media (max-width: 640px) {
   .brand-file {
     display: none;
   }
@@ -1971,18 +2061,9 @@ label.check input {
   .rename-form input {
     width: 150px;
   }
-  :root {
-    --topbar-h: 56px;
-  }
-  .topbar {
-    flex-wrap: nowrap;
-    padding: 0 10px;
-    gap: 6px;
-  }
-  .actions .btn.icon.lang,
-  .actions .btn.icon:has(svg) {
-    display: none;
-  }
+  /* The bar itself is settled in the top-bar section above, and was settled twice: this block used
+     to force one row of 56 px and hide every icon button carrying an SVG, which on a phone meant no
+     undo, no redo and no theme — and the row still did not fit. One decision, made there. */
 }
 
 .modal {

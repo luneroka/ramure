@@ -308,6 +308,25 @@ worker uses `skipWaiting: false`; the update banner asks only when something is
 pending, and applies silently otherwise — an edit in progress is never cut
 short.
 
+**On a phone the top bar takes two rows, and loses nothing.** Brand, tree and
+state on the first; everything you press on the second. Crammed onto one row it
+could not shrink below 423 px, which scrolled the whole app sideways on a 390 px
+screen — and the rule that made it fit was hiding undo, redo and the theme
+button outright, which is not the same as fitting. The end-to-end journey
+finishes at 390 × 844 and fails if the page scrolls sideways or if undo is not
+on screen.
+
+**What floats over the canvas is sized by the canvas, not by the window.** The
+tools, the view chooser and the reading rules answer to a container query on
+`.stage`: with the person panel open, a 1 024 px window leaves the stage 560 px
+and they crowd exactly as they would on a phone. Two viewport media queries used
+to decide this and they disagreed with each other.
+
+**Nothing floats over the editor.** The editor is modal at every width, and the
+tools and the HUD sit at `z-index: 1001` against the dialog's 40, so they had to
+be told to stand down while it is open. The checks list is not modal but is read
+rather than glanced at, and takes the same treatment.
+
 **A printed chart never draws a ring nobody is in, and never writes smaller
 than 6 px.** Both charts trim themselves to the generations actually known, and
 the fan stops adding rings once the outermost could no longer hold a name at

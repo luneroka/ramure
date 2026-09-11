@@ -36,7 +36,7 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           onClick={() => setModeOpen((v) => !v)}
         >
           <ModeIcon mode={mode} />
-          {t(lang, MODE_KEY[mode])}
+          <span className="long">{t(lang, MODE_KEY[mode])}</span>
         </button>
         <Dropdown open={modeOpen} onClose={() => setModeOpen(false)} placement="up">
           {MODES.map((m) => (
@@ -68,13 +68,18 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           </button>
           <button
             className="btn"
+            aria-label={t(lang, 'fitYears')}
+            title={t(lang, 'fitYears')}
             onClick={() => {
               const el = document.querySelector('.frise');
               const years = Number(el?.getAttribute('data-years') ?? 0);
               if (el && years) onPxPerYear(Math.min(MAX_PPY, Math.max(MIN_PPY, (el.clientWidth - 170) / years)));
             }}
           >
-            {t(lang, 'fitYears')}
+            <span className="long">{t(lang, 'fitYears')}</span>
+            <span className="short" aria-hidden="true">
+              ⤢
+            </span>
           </button>
         </>
       ) : (
@@ -98,11 +103,24 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           <button className="btn" onClick={() => w.canvasRef.current?.zoomBy(1.3)} aria-label={t(lang, 'zoomIn')}>
             +
           </button>
-          <button className="btn" onClick={() => w.canvasRef.current?.fit(true)}>
-            {t(lang, 'fit')}
+          {/* On a phone the words are replaced by their glyph: five labelled buttons and the view
+              chooser do not fit across 390 px, and a third row of tools would cover the tree. */}
+          <button className="btn" onClick={() => w.canvasRef.current?.fit(true)} aria-label={t(lang, 'fit')} title={t(lang, 'fit')}>
+            <span className="long">{t(lang, 'fit')}</span>
+            <span className="short" aria-hidden="true">
+              ⤢
+            </span>
           </button>
-          <button className="btn" onClick={() => w.layout && w.canvasRef.current?.centerOn(w.layout.focusId, true)}>
-            {t(lang, 'recentre')}
+          <button
+            className="btn"
+            onClick={() => w.layout && w.canvasRef.current?.centerOn(w.layout.focusId, true)}
+            aria-label={t(lang, 'recentre')}
+            title={t(lang, 'recentre')}
+          >
+            <span className="long">{t(lang, 'recentre')}</span>
+            <span className="short" aria-hidden="true">
+              ◎
+            </span>
           </button>
         </>
       )}
