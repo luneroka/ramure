@@ -88,6 +88,15 @@ over IndexedDB; `cloudMedia.ts` is the cache-through store used when a cloud
 tree is open. `index.ts` is the single swap point — components never reach
 past it. `idb.ts` is the raw IndexedDB key-value layer underneath.
 
+### `src/print/` — paper
+
+`charts.ts` turns a tree and a subject into one sheet of SVG: the fan and the
+pedigree chart. Pure, like `src/tree/`, so the same function is unit-tested and
+printed. It fits the drawing to the paper rather than the other way round — the
+radius follows the sweep, the rings taper outward, and a ring nobody is in is
+not drawn — and it reports back how much it managed to fit. `text.ts` is the
+measuring tape it needs to do that without a DOM.
+
 ### `src/app/` — the React shell
 
 `App.tsx` is a wiring file: it decides who is signed in, which route, and

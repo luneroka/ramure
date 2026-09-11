@@ -362,7 +362,9 @@ function Shell() {
         )}
       </main>
 
-      {workspace && editor.selectedId && (
+      {/* The panel belongs to the canvas. On the other tree pages it only took half the screen away
+          from what they exist to show — the printable chart, most of all, which is a preview. */}
+      {workspace && editor.selectedId && route.name === 'tree' && (
         <WorkspaceProvider value={workspace}>
           <PersonPanelHost />
         </WorkspaceProvider>

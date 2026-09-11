@@ -204,7 +204,16 @@ Sequence agreed on 6 September 2026, each step shippable on its own. Nothing her
 
 6. **Map view.** _Shipped 9 September 2026 as « Carte » (Leaflet on OpenStreetMap tiles, dimmed in dark mode): one pin per place sized by its events, popup listing who was born, married or died there, the selected person's places in amber; « Localiser les lieux » geocodes the places lacking coordinates one at a time (French communes first, then Photon) and writes them back as an undoable, synced edit._ Places pinned, each listing who was born, married or died there. Requires a one-time, gentle geocoding of existing places, saved back into the tree.
 
-7. **Printable charts.** Added 6 September 2026. Two paper layouts of a person's ancestry, the way Geneanet offers them: an « Éventail » (fan chart, the person at the centre, parents in the first ring, then grandparents, up to five or six generations depending on the paper) and a classic grouped chart (boxes in rows, one generation per row). Both are laid out to fit one A4 sheet, portrait or landscape, with names and dates sized so they stay legible when printed. Previewed on screen first, then exported as PDF (vector, print quality) and as PNG for sharing. Options: number of generations, dates on or off, a title line with the tree name and date. Later, the same engine can tile a larger tree across several sheets.
+7. **Printable charts.** Added 6 September 2026. _Shipped 9 September 2026;
+   reworked 11 September 2026 after use — the fan was fixed to half the page
+   width, which left a portrait sheet nearly two thirds blank, and it stopped at
+   six generations. Now the radius is fitted to the sheet for a chosen sweep
+   (half, three quarters, whole circle) and centred, the rings taper outward,
+   labels are planned a ring at a time and shrink by dropping dates then the
+   given name, empty rings are never drawn, paper can be A4, A3 or US Letter,
+   the subject is chosen on the page instead of back on the canvas, and a line
+   under the options says how many people and generations the sheet actually
+   holds._ Two paper layouts of a person's ancestry, the way Geneanet offers them: an « Éventail » (fan chart, the person at the centre, parents in the first ring, then grandparents, up to five or six generations depending on the paper) and a classic grouped chart (boxes in rows, one generation per row). Both are laid out to fit one A4 sheet, portrait or landscape, with names and dates sized so they stay legible when printed. Previewed on screen first, then exported as PDF (vector, print quality) and as PNG for sharing. Options: number of generations, dates on or off, a title line with the tree name and date. Later, the same engine can tile a larger tree across several sheets.
 
 **Polish batch, 6 September 2026.** The person editor became a sectioned modal (Identité with a segmented sex control and the portrait, Parcours, Notes, Suivi) with one quiet control scale across the app and a thin accent focus ring instead of the browser's. Guided dates fit a narrow pane on one line. A person can be flagged « À vérifier » (custom tag `_UNSURE Y`): dashed amber card with a « ? » badge, hollow dot when zoomed out, tag in the panel. The portrait is set only from the medallion or the edit form; documents never become the face and the portrait is not listed among documents. The language switch left the bar (French by default, changeable in Paramètres) and the tree is renamed only from its menu.
 

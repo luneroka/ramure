@@ -106,6 +106,7 @@ version:
 | `src/gedcom/` | Parse, repair, serialise, dates. Pure, no React, no DOM.                     |
 | `src/tree/`   | The domain: layout, ops, kinship, audit, diff. Pure. Shared with the Worker. |
 | `src/canvas/` | Canvas 2D renderer and the gesture wrapper.                                  |
+| `src/print/`  | Paper charts as SVG, sized to a sheet. Pure, no React, no DOM.               |
 | `src/sync/`   | Op-log sync: rebase core, engine, API client.                                |
 | `src/store/`  | Storage interfaces and their IndexedDB implementations.                      |
 | `src/app/`    | React shell, screens, hooks, UI. The only place React lives.                 |

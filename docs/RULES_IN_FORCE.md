@@ -308,6 +308,25 @@ worker uses `skipWaiting: false`; the update banner asks only when something is
 pending, and applies silently otherwise — an edit in progress is never cut
 short.
 
+**A printed chart never draws a ring nobody is in, and never writes smaller
+than 6 px.** Both charts trim themselves to the generations actually known, and
+the fan stops adding rings once the outermost could no longer hold a name at
+that size — 6 px is 4.5 pt on paper, and below it a printer gives back a smudge.
+What was cut is not silent: `renderChart` returns the generations it drew and
+the people it fitted, and the screen says « Cette feuille en tient 6 » rather
+than leaving the reader to count rings
+([src/print/charts.ts](../src/print/charts.ts)).
+
+**A ring is written one way, not per person.** Labels are planned for a whole
+ring — flat, along the arc, or along the radius, at one size and one level of
+detail — because a band where one name lies flat and the next stands on end
+reads as a mistake. The consequence is deliberate: one long surname makes its
+whole ring drop to initials.
+
+**The person panel belongs to the canvas route.** It is not rendered over the
+printable charts, the resources page or settings, where it only took half the
+screen away from what those pages exist to show.
+
 **Dismissed audit checks travel with the tree.** They are `_DISMISS` keys in
 the document, so a dismissal holds for the whole family rather than one device.
 A viewer, who cannot write, keeps them locally instead.

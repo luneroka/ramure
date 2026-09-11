@@ -3228,6 +3228,76 @@ textarea:focus {
   width: 100%;
   margin: 0;
 }
+/* The options are grouped by what they change: the chart, the sheet, the writing. */
+.print-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.print-group.grow {
+  flex: 1;
+  min-width: 280px;
+}
+.print-group legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.print-subject {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.print-subject-name {
+  font-size: 14px;
+}
+/* The top bar hides its own search behind a toggle on a phone and floats it under the bar. Here the
+   field is part of the form and always belongs where it sits, so those rules are undone by name. */
+.print-subject .search,
+.print-subject .search.open {
+  display: block;
+  position: relative;
+  inset: auto;
+  margin: 0;
+  max-width: none;
+}
+.print-summary {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.print-limit {
+  color: var(--ink);
+}
+/* Wider than the other pages, and on a wide screen the sheet sits beside the options and stays
+   there while they change: a preview you have to scroll to is a preview you stop looking at. */
+.print-page {
+  max-width: 1180px;
+}
+@media (min-width: 1040px) {
+  .print-page {
+    grid-template-columns: minmax(360px, 440px) 1fr;
+    align-items: start;
+  }
+  .print-page .settings-head {
+    grid-column: 1 / -1;
+  }
+  .print-page .print-sheet {
+    grid-column: 2;
+    grid-row: 2;
+    position: sticky;
+    top: 16px;
+    margin: 0;
+  }
+}
 .print-sheet {
   max-width: 100%;
   margin: 16px auto 32px;
