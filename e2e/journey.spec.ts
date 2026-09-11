@@ -72,4 +72,19 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await expect(page.locator('.topbar')).toContainText('34 personnes', { timeout: 20_000 });
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
+
+  // On a phone: nothing scrolls sideways, the search is reachable from its button and its results can
+  // be tapped, and undo is on screen. All three were broken — the app was 423 px wide on a 390 px
+  // screen, the search field opened below the canvas with its results off the bottom of the page, and
+  // undo, redo and the theme button were hidden outright.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  const fits = async () => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
+  expect(await fits()).toBe(true);
+  await expect(page.getByRole('button', { name: 'Annuler' })).toBeVisible();
+  await page.locator('.search-toggle').click();
+  await page.getByPlaceholder('Rechercher une personne…').fill('marguerite');
+  await page.locator('.search-results button').first().click();
+  await expect(page.locator('.panel-name')).toContainText('Marguerite');
+  expect(await fits()).toBe(true);
 });

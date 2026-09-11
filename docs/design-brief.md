@@ -218,6 +218,14 @@ Sequence agreed on 6 September 2026, each step shippable on its own. Nothing her
 **Polish batch, 6 September 2026.** The person editor became a sectioned modal (Identité with a segmented sex control and the portrait, Parcours, Notes, Suivi) with one quiet control scale across the app and a thin accent focus ring instead of the browser's. Guided dates fit a narrow pane on one line. A person can be flagged « À vérifier » (custom tag `_UNSURE Y`): dashed amber card with a « ? » badge, hollow dot when zoomed out, tag in the panel. The portrait is set only from the medallion or the edit form; documents never become the face and the portrait is not listed among documents. The language switch left the bar (French by default, changeable in Paramètres) and the tree is renamed only from its menu.
 
 Parked: a shared, opt-in index of deceased people across Ramure accounts so families researching the same ancestors can find each other (only worth it once there are users; privacy design first). Dropped: Gramps and webtrees importers, since both export GEDCOM. Later, before calling the product finished: a responsiveness pass on phones.
+_Done 11 September 2026: the app no longer scrolls sideways at any width from
+320 px up; the top bar takes two rows on a phone and keeps undo, redo and the
+theme button, which it had been hiding; the search opens under the bar rather
+than below the canvas, where its results were off the bottom of the page; the
+person sheet gives the editor the whole screen and the floating tools move above
+it instead of sitting on its fields; and what floats over the canvas is laid out
+by a container query on the stage, so an open panel in a wide window gets the
+same treatment as a phone._
 
 ## Risks and open decisions
 
