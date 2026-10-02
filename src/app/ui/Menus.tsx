@@ -147,14 +147,14 @@ export function TreeMenu(p: TreeMenuProps) {
       </button>
       <Dropdown open={open} onClose={() => setOpen(false)}>
         <div className="dd-section">{t(lang, 'trees')}</div>
-        <button role="menuitem" className="dd-item current" disabled>
+        <button role="menuitem" className="dd-item dd-name current" disabled>
           ✓ {p.current.name}
         </button>
         {others.map((tr) => (
           <button
             key={tr.id}
             role="menuitem"
-            className="dd-item"
+            className="dd-item dd-name"
             onClick={() => {
               setOpen(false);
               p.onSwitch(tr);
