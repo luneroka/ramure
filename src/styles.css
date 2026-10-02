@@ -3404,6 +3404,433 @@ textarea:focus {
   width: 100%;
   height: auto;
 }
+
+/* ---------- The person sheet ---------- */
+/*
+ * Drawn in millimetres of paper. `--mm` is one millimetre of the sheet at whatever width the preview
+ * gives it, and exactly one millimetre in print, so the preview and the paper break their lines in
+ * the same places. `--fit` is how far the text was set down to keep the sheet on one page: the type
+ * and the space between rows shrink with it (`--u`, `--pt`), the margins and the columns do not.
+ *
+ * One column runs through the whole sheet: names to the left of 62 mm, what is known to the right.
+ * Siblings, children under their union and the events' details all start on that line.
+ *
+ * Space above a block is padding, never margin, so that a block's height is everything it takes;
+ * the first block on a page drops it, which is what the packing in src/print/pack.ts assumes.
+ * Colours are fixed like the charts': paper does not follow the screen's theme.
+ */
+.person-page,
+.ps-measure {
+  container-type: inline-size;
+}
+.print-sheet.person-page {
+  position: relative;
+  overflow: hidden;
+}
+.ps-measure {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+.ps-page {
+  --mm: calc(100cqw / var(--paper-w, 210));
+  --u: calc(var(--mm) * var(--fit, 1));
+  --pt: calc(var(--u) * 0.3528);
+  --ps-ink: #1f2328;
+  --ps-ink-2: #4b5158;
+  --ps-ink-3: #6b7178;
+  --ps-line: #dfe2dc;
+  --ps-rule: #8a9088;
+  --ps-accent: #2f7a6d;
+  --ps-paternal: #e9f0ec;
+  --ps-maternal: #f3ecec;
+  --ps-warn: #b4611f;
+  position: absolute;
+  inset: 0;
+  padding: calc(12 * var(--mm)) calc(14 * var(--mm)) calc(16 * var(--mm));
+  color: var(--ps-ink);
+  font: 400 calc(9 * var(--pt)) / 1.42 var(--body);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.ps-measure .ps-page {
+  position: static;
+  padding-block: 0;
+}
+.ps-flow > .ps-block:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.ps-page h2,
+.ps-page h3,
+.ps-page h4,
+.ps-page p {
+  margin: 0;
+}
+.ps-tag {
+  display: inline-block;
+  margin-left: calc(1.4 * var(--mm));
+  padding: 0 calc(1 * var(--mm));
+  border: calc(0.2 * var(--mm)) solid var(--ps-line);
+  border-radius: calc(0.8 * var(--mm));
+  font: 500 calc(6.2 * var(--pt)) / 1.5 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--ps-ink-3);
+  white-space: nowrap;
+  vertical-align: 0.1em;
+}
+.ps-tag.warn {
+  border-style: dashed;
+  border-color: var(--ps-warn);
+  color: var(--ps-warn);
+}
+
+/* The head: what the sheet is, then who. */
+.ps-kicker {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(4 * var(--mm));
+  padding-bottom: calc(2 * var(--u));
+  border-bottom: calc(0.25 * var(--mm)) solid var(--ps-line);
+  font: 500 calc(6.4 * var(--pt)) / 1.3 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ps-ink-3);
+}
+.ps-id {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(5 * var(--mm));
+  align-items: center;
+  padding-top: calc(5 * var(--u));
+}
+.ps-id.with-photo {
+  grid-template-columns: calc(19 * var(--mm)) minmax(0, 1fr);
+}
+.ps-portrait {
+  display: block;
+  width: calc(19 * var(--mm));
+  height: calc(24 * var(--mm));
+  overflow: hidden;
+  border-radius: 50%;
+  border: calc(0.3 * var(--mm)) solid var(--ps-line);
+}
+.ps-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+.ps-page .ps-fullname {
+  font: 500 calc(22 * var(--pt)) / 1.08 var(--display);
+  text-wrap: balance;
+}
+.ps-page .ps-occupation {
+  margin-top: calc(0.8 * var(--u));
+  font: italic 400 calc(10.5 * var(--pt)) / 1.3 var(--display);
+  color: var(--ps-ink-2);
+}
+.ps-life {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  margin-top: calc(2.2 * var(--u));
+  font-size: calc(9.2 * var(--pt));
+}
+.ps-quiet {
+  color: var(--ps-ink-2);
+}
+
+/* Section titles: the panel's bands, on paper. Borders rather than fills, which a browser may drop. */
+.ps-title {
+  padding: calc(6 * var(--u)) 0 calc(2.4 * var(--u));
+}
+.ps-h {
+  display: flex;
+  align-items: center;
+  gap: calc(2 * var(--mm));
+  font: 500 calc(6.8 * var(--pt)) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ps-ink-2);
+}
+.ps-h::before {
+  content: '';
+  height: calc(3 * var(--u));
+  border-left: calc(0.9 * var(--mm)) solid var(--ps-accent);
+}
+.ps-h::after {
+  content: '';
+  flex: 1;
+  border-top: calc(0.25 * var(--mm)) solid var(--ps-line);
+}
+
+.ps-parents + .ps-parents {
+  padding-top: calc(3 * var(--u));
+}
+.ps-couple {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(4 * var(--mm));
+}
+.ps-parent {
+  display: grid;
+  align-content: start;
+  gap: calc(0.3 * var(--u));
+  padding: calc(2.4 * var(--u)) calc(3 * var(--mm));
+  border: calc(0.25 * var(--mm)) solid var(--ps-line);
+  border-radius: calc(1.2 * var(--mm));
+}
+.ps-parent.paternal {
+  background: var(--ps-paternal);
+}
+.ps-parent.maternal {
+  background: var(--ps-maternal);
+}
+.ps-parent.unknown {
+  background: none;
+  border-style: dashed;
+}
+.ps-role {
+  font: 500 calc(6.2 * var(--pt)) / 1.2 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ps-ink-3);
+}
+.ps-who {
+  font-size: calc(9.6 * var(--pt));
+  font-weight: 600;
+}
+.ps-parent.unknown .ps-who {
+  font-weight: 400;
+  color: var(--ps-ink-3);
+}
+.ps-occ {
+  font-style: italic;
+  color: var(--ps-ink-2);
+}
+.ps-page .ps-couple-union {
+  margin-top: calc(1.6 * var(--u));
+  font-size: calc(8.2 * var(--pt));
+  color: var(--ps-ink-2);
+}
+
+/* A relative on a line: siblings, then children under their union, a step louder. */
+.ps-rel {
+  display: grid;
+  grid-template-columns: calc(62 * var(--mm)) minmax(0, 1fr);
+  padding: calc(1.1 * var(--u)) 0;
+  border-top: calc(0.2 * var(--mm)) solid var(--ps-line);
+}
+.ps-rel.first {
+  padding-top: 0;
+  border-top: 0;
+}
+.ps-rel .ps-name {
+  padding-right: calc(3 * var(--mm));
+}
+.ps-facts {
+  color: var(--ps-ink-2);
+}
+.ps-spouse {
+  color: var(--ps-ink-3);
+}
+.ps-next {
+  grid-column: 2;
+  margin-top: calc(0.4 * var(--u));
+}
+.ps-label {
+  margin-right: calc(1.6 * var(--mm));
+  font: 500 calc(6 * var(--pt)) / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ps-ink-3);
+}
+.ps-sib {
+  font-size: calc(8.4 * var(--pt));
+}
+.ps-sib .ps-name {
+  font-weight: 500;
+}
+.ps-sib.ps-self .ps-name,
+.ps-sib.ps-self .ps-facts {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--ps-ink-3);
+}
+.ps-sib .ps-next {
+  font-size: calc(7.4 * var(--pt));
+  color: var(--ps-ink-3);
+}
+.ps-kid {
+  grid-template-columns: calc(56 * var(--mm)) minmax(0, 1fr);
+  padding-left: calc(6 * var(--mm));
+}
+.ps-kid .ps-name {
+  font-weight: 600;
+}
+.ps-kid .ps-next {
+  font-size: calc(8 * var(--pt));
+}
+.ps-union {
+  display: grid;
+  grid-template-columns: calc(6 * var(--mm)) calc(56 * var(--mm)) minmax(0, 1fr);
+  align-items: baseline;
+  padding: calc(3.6 * var(--u)) 0 calc(1.2 * var(--u));
+  border-bottom: calc(0.25 * var(--mm)) solid var(--ps-rule);
+}
+.ps-union.first {
+  padding-top: 0;
+}
+.ps-n {
+  font: 500 calc(11 * var(--pt)) / 1 var(--display);
+  color: var(--ps-accent);
+}
+.ps-union .ps-name {
+  padding-right: calc(3 * var(--mm));
+  font-size: calc(9.2 * var(--pt));
+  font-weight: 600;
+}
+.ps-union .ps-name.unknown {
+  font-weight: 400;
+  color: var(--ps-ink-3);
+}
+.ps-union .ps-facts {
+  font-size: calc(8.6 * var(--pt));
+}
+.ps-uline {
+  grid-column: 2 / -1;
+  font-size: calc(8.2 * var(--pt));
+  color: var(--ps-ink-2);
+}
+
+/* Events: the date, what happened, then the details from the same 62 mm line as everyone's facts. */
+.ps-event {
+  display: grid;
+  grid-template-columns: calc(30 * var(--mm)) calc(32 * var(--mm)) minmax(0, 1fr);
+  padding: calc(1.2 * var(--u)) 0;
+  border-top: calc(0.2 * var(--mm)) solid var(--ps-line);
+  font-size: calc(8.6 * var(--pt));
+}
+.ps-event.first {
+  padding-top: 0;
+  border-top: 0;
+}
+.ps-date {
+  padding-right: calc(2 * var(--mm));
+  font-variant-numeric: tabular-nums;
+}
+.ps-what {
+  padding-right: calc(2 * var(--mm));
+  font-weight: 600;
+}
+.ps-detail {
+  display: grid;
+  white-space: pre-line;
+}
+.ps-detail .ps-more {
+  color: var(--ps-ink-2);
+}
+.ps-ref {
+  margin-left: 0.2em;
+  font-size: 0.72em;
+  font-weight: 600;
+  line-height: 0;
+  color: var(--ps-accent);
+}
+
+.ps-note {
+  padding-top: calc(1.8 * var(--u));
+}
+.ps-note.first {
+  padding-top: 0;
+}
+.ps-note p {
+  font: 400 calc(9.6 * var(--pt)) / 1.5 var(--display);
+  white-space: pre-line;
+}
+
+/* Sources, documents and leads: a mark in the 6 mm a child is indented by, the text after it. */
+.ps-subtitle {
+  padding: calc(2 * var(--u)) 0 calc(0.6 * var(--u));
+}
+.ps-subtitle.first {
+  padding-top: 0;
+}
+.ps-subtitle h4 {
+  font: 500 calc(6 * var(--pt)) / 1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ps-ink-3);
+}
+.ps-item {
+  display: grid;
+  grid-template-columns: calc(6 * var(--mm)) minmax(0, 1fr);
+  padding-top: calc(1 * var(--u));
+  font-size: calc(7.6 * var(--pt));
+  color: var(--ps-ink-2);
+}
+.ps-item.first {
+  padding-top: 0;
+}
+.ps-item strong {
+  font-weight: 600;
+  color: var(--ps-ink);
+}
+.ps-mark {
+  font-weight: 600;
+  color: var(--ps-accent);
+  font-variant-numeric: tabular-nums;
+}
+.ps-lead.ps-done strong {
+  font-weight: 400;
+  color: var(--ps-ink-2);
+}
+.ps-lead-note,
+.ps-lead a {
+  display: block;
+}
+.ps-lead-note {
+  white-space: pre-line;
+}
+.ps-lead a {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  color: var(--ps-accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+/* What every page carries: a running head after the first, the key and the page number at the foot. */
+.ps-running,
+.ps-foot {
+  position: absolute;
+  left: calc(14 * var(--mm));
+  right: calc(14 * var(--mm));
+  color: var(--ps-ink-3);
+}
+.ps-running {
+  top: calc(6 * var(--mm));
+  font: 500 calc(6.4 * var(--mm) * 0.3528) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.ps-foot {
+  bottom: calc(7 * var(--mm));
+  display: flex;
+  justify-content: space-between;
+  gap: calc(4 * var(--mm));
+  padding-top: calc(2 * var(--mm));
+  border-top: calc(0.25 * var(--mm)) solid var(--ps-line);
+  font-size: calc(6.4 * var(--mm) * 0.3528);
+  line-height: 1.4;
+}
+.ps-pageno {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 /*
  * Printing. Everything but the sheets is taken out of the flow with `display: none` rather than
  * hidden with `visibility`: a hidden box still takes its space, which was fine while a single sheet
@@ -3418,7 +3845,8 @@ textarea:focus {
   .report,
   .toast,
   .print-page .settings-head,
-  .print-options {
+  .print-options,
+  .ps-measure {
     display: none !important;
   }
   .app {

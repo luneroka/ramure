@@ -4,6 +4,7 @@
  *   #/arbre/<id>     a tree
  *   #/arbre/<id>/ressources   the tree's resources
  *   #/arbre/<id>/imprimer     printable charts of the tree
+ *   #/arbre/<id>/imprimer/fiche/<person>   the same page, open on a person's sheet
  *   #/parametres     settings
  *   #/administration the operator's page
  */
@@ -14,7 +15,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'tree'; id: string }
   | { name: 'resources'; id: string }
-  | { name: 'print'; id: string }
+  | { name: 'print'; id: string; sheet?: boolean; person?: string }
   | { name: 'settings' }
   | { name: 'admin' };
 
@@ -22,8 +23,12 @@ export function parseRoute(hash: string): Route {
   const h = hash.replace(/^#/, '');
   const res = /^\/arbre\/([^/?]+)\/ressources/.exec(h);
   if (res) return { name: 'resources', id: decodeURIComponent(res[1]!) };
-  const pr = /^\/arbre\/([^/?]+)\/imprimer/.exec(h);
-  if (pr) return { name: 'print', id: decodeURIComponent(pr[1]!) };
+  const pr = /^\/arbre\/([^/?]+)\/imprimer(\/fiche(?:\/([^/?]+))?)?/.exec(h);
+  if (pr) {
+    const id = decodeURIComponent(pr[1]!);
+    if (!pr[2]) return { name: 'print', id };
+    return pr[3] ? { name: 'print', id, sheet: true, person: decodeURIComponent(pr[3]) } : { name: 'print', id, sheet: true };
+  }
   const tree = /^\/arbre\/([^/?]+)/.exec(h);
   if (tree) return { name: 'tree', id: decodeURIComponent(tree[1]!) };
   if (/^\/parametres/.test(h) || /^\/settings/.test(h)) return { name: 'settings' };
@@ -39,8 +44,10 @@ export function routeHash(r: Route): string {
       return `#/arbre/${encodeURIComponent(r.id)}`;
     case 'resources':
       return `#/arbre/${encodeURIComponent(r.id)}/ressources`;
-    case 'print':
-      return `#/arbre/${encodeURIComponent(r.id)}/imprimer`;
+    case 'print': {
+      const sheet = r.sheet ? `/fiche${r.person ? `/${encodeURIComponent(r.person)}` : ''}` : '';
+      return `#/arbre/${encodeURIComponent(r.id)}/imprimer${sheet}`;
+    }
     case 'settings':
       return '#/parametres';
     case 'admin':

@@ -1,16 +1,19 @@
 /**
  * What Ramure puts on paper: one person's ancestry as a fan or a pedigree
- * chart, or the whole tree as a poster over as many sheets as it takes.
+ * chart, the whole tree as a poster over as many sheets as it takes, or one
+ * person's own sheet — who they were, their family, their life — to hand to a
+ * relative who is building their own tree.
  *
- * The options are grouped by what they change — the chart, the sheet, the
+ * The options are grouped by what they change — the document, the sheet, the
  * writing — and the line under them says what the drawing actually holds, so
  * that "why is my great-grandmother missing" is answered on the page rather
  * than by counting rings. The subject is chosen here too: it starts from
- * whoever is selected on the canvas, but going back to the tree to change it
- * was the first thing that made this screen tiresome.
+ * whoever is selected on the canvas, or whoever's panel the page was opened
+ * from, but going back to the tree to change it was the first thing that made
+ * this screen tiresome.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { displayName } from '@/gedcom/model';
 import { t, tf, tn } from '@/i18n';
 import {
@@ -24,21 +27,24 @@ import {
   type Sweep,
 } from '@/print/charts';
 import { MAX_SHEETS, renderPoster, type PosterFit } from '@/print/poster';
+import { personSheet } from '@/print/sheet';
 import { ahnentafel, depthOf } from '@/tree/ancestry';
 import { localeOf } from '@/app/lib/format';
+import { PersonSheetView, type SheetLayout, type SheetPaper } from '@/app/screens/PersonSheet';
 import { SearchBox } from '@/app/stage/SearchBox';
 import type { Route } from '@/app/state/router';
 import { useWorkspace } from '@/app/state/Workspace';
 import { useUi } from '@/app/ui/UiContext';
 
-/** The fan and the pedigree draw one person's ancestors; the poster draws everybody. */
-type Drawing = ChartKind | 'poster';
+/** The fan and the pedigree draw one person's ancestors; the poster draws everybody; the sheet is one person's own. */
+type Drawing = ChartKind | 'poster' | 'sheet';
 type Orientation = ChartOptions['orientation'];
 
-const KINDS: Array<[Drawing, 'chartFan' | 'chartPedigree' | 'chartPoster']> = [
+const KINDS: Array<[Drawing, 'chartFan' | 'chartPedigree' | 'chartPoster' | 'chartSheet']> = [
   ['fan', 'chartFan'],
   ['pedigree', 'chartPedigree'],
   ['poster', 'chartPoster'],
+  ['sheet', 'chartSheet'],
 ];
 const GENERATIONS = Array.from({ length: MAX_GENERATIONS - MIN_GENERATIONS + 1 }, (_, i) => MIN_GENERATIONS + i);
 const PAGE_SIZES: Array<[PageSize, 'paperA4' | 'paperA3' | 'paperLetter']> = [
@@ -46,6 +52,8 @@ const PAGE_SIZES: Array<[PageSize, 'paperA4' | 'paperA3' | 'paperLetter']> = [
   ['a3', 'paperA3'],
   ['letter', 'paperLetter'],
 ];
+/** A sheet of text set on A3 is A4 with wide margins: it is offered on the two papers a home printer takes. */
+const SHEET_SIZES = PAGE_SIZES.filter(([size]) => size !== 'a3');
 const FITS: Array<[PosterFit, 'posterFitOne' | 'posterFitReadable']> = [
   ['one', 'posterFitOne'],
   ['readable', 'posterFitReadable'],
@@ -54,24 +62,40 @@ const SHAPE_LABEL = { 180: 'shapeHalf', 270: 'shapeThreeQuarters', 360: 'shapeFu
 /** The names CSS knows these sheets by, which are not the keys the drawing uses. */
 const PAGE_CSS: Record<PageSize, string> = { a4: 'A4', a3: 'A3', letter: 'letter' };
 
-export function PrintPage({ navigate }: { navigate(r: Route): void }) {
+export function PrintPage({ navigate, route }: { navigate(r: Route): void; route?: Extract<Route, { name: 'print' }> }) {
   const { lang, toast } = useUi();
   const w = useWorkspace();
-  const [chosenSubject, setSubject] = useState<string | null>(null);
+  // Opened from a person's panel, the page starts on that person's sheet.
+  const [chosenSubject, setSubject] = useState<string | null>(route?.person ?? null);
   const fromCanvas = w.editor.selectedId && w.tree.individuals[w.editor.selectedId] ? w.editor.selectedId : w.effectiveFocus;
   const rootId = chosenSubject && w.tree.individuals[chosenSubject] ? chosenSubject : fromCanvas;
   const root = rootId ? w.tree.individuals[rootId] : undefined;
-  const [kind, setKind] = useState<Drawing>('fan');
+  const [kind, setKind] = useState<Drawing>(route?.sheet ? 'sheet' : 'fan');
+  const chartKind: ChartKind | null = kind === 'fan' || kind === 'pedigree' ? kind : null;
+  const isSheet = kind === 'sheet';
   const [sweep, setSweep] = useState<Sweep>(180);
   const [generations, setGenerations] = useState(5);
   const [fit, setFit] = useState<PosterFit>('readable');
   const [dates, setDates] = useState(true);
   const [empties, setEmpties] = useState(true);
   const [page, setPage] = useState<PageSize>('a4');
+  const sheetPaper: SheetPaper = page === 'letter' ? 'letter' : 'a4';
+  // What the person sheet carries besides the person and their family. Discretion is off unless asked for.
+  const [withNotes, setNotes] = useState(true);
+  const [withSources, setSources] = useState(true);
+  const [withLeads, setLeads] = useState(false);
+  const [discreet, setDiscreet] = useState(false);
+  const [sheetLayout, setSheetLayout] = useState<SheetLayout>({ pages: 1, fit: 1 });
+  const onSheetLayout = useCallback(
+    (l: SheetLayout) => setSheetLayout((prev) => (prev.pages === l.pages && prev.fit === l.fit ? prev : l)),
+    [],
+  );
   // A half fan is wide, a pedigree is tall, a whole tree is wider than anything: each has its
-  // natural sheet unless the person chooses.
+  // natural sheet unless the person chooses. A person's sheet is read like a letter, upright.
   const [chosenOrientation, setOrientation] = useState<Orientation | null>(null);
-  const orientation = chosenOrientation ?? (kind === 'pedigree' || (kind === 'fan' && sweep !== 180) ? 'portrait' : 'landscape');
+  const orientation: Orientation = isSheet
+    ? 'portrait'
+    : (chosenOrientation ?? (kind === 'pedigree' || (kind === 'fan' && sweep !== 180) ? 'portrait' : 'landscape'));
   const [title, setTitle] = useState<string | null>(null);
   const today = new Date().toLocaleDateString(localeOf(lang));
   const defaultTitle =
@@ -85,14 +109,21 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
   const known = useMemo(() => (root ? depthOf(ahnentafel(w.tree, root.id, MAX_GENERATIONS)) : 0), [w.tree, root]);
   const chart = useMemo(
     () =>
-      kind !== 'poster' && root
-        ? renderChart(w.tree, root.id, { kind, generations, dates, orientation, page, sweep, empties, title: shownTitle })
+      chartKind && root
+        ? renderChart(w.tree, root.id, { kind: chartKind, generations, dates, orientation, page, sweep, empties, title: shownTitle })
         : null,
-    [kind, w.tree, root, generations, dates, orientation, page, sweep, empties, shownTitle],
+    [chartKind, w.tree, root, generations, dates, orientation, page, sweep, empties, shownTitle],
   );
   const poster = useMemo(
     () => (kind === 'poster' ? renderPoster(w.tree, { page, orientation, dates, title: shownTitle, fit }) : null),
     [kind, w.tree, page, orientation, dates, shownTitle, fit],
+  );
+  const sheet = useMemo(
+    () =>
+      isSheet && root
+        ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources, leads: withLeads })
+        : null,
+    [isSheet, w.tree, root, lang, discreet, withNotes, withSources, withLeads],
   );
   const sheets = chart ? [chart.svg] : (poster?.sheets ?? []);
   const size = chart ?? poster;
@@ -131,9 +162,23 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
     }
   };
 
+  const sheetSummary = sheet
+    ? [
+        tn(lang, 'peopleCount', sheet.counts.people),
+        tn(lang, 'sheetEventsCount', sheet.counts.events),
+        sheet.counts.sources ? tn(lang, 'sheetSourcesCount', sheet.counts.sources) : '',
+        sheet.counts.leads ? tn(lang, 'sheetLeadsCount', sheet.counts.leads) : '',
+        sheet.counts.living ? tn(lang, discreet ? 'sheetLivingReduced' : 'sheetLivingCount', sheet.counts.living) : '',
+        sheet.counts.private ? tn(lang, 'sheetPrivateReduced', sheet.counts.private) : '',
+        tn(lang, 'sheetPages', sheetLayout.pages),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+
   return (
     <div className="settings print-page">
-      <style>{`@page { size: ${PAGE_CSS[page]} ${orientation}; margin: 0; }`}</style>
+      <style>{`@page { size: ${PAGE_CSS[isSheet ? sheetPaper : page]} ${orientation}; margin: 0; }`}</style>
       <div className="settings-head">
         <button className="btn subtle" onClick={() => navigate({ name: 'tree', id: w.source.id })}>
           ← {t(lang, 'backToTree')}
@@ -163,7 +208,7 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
               </select>
             </label>
           )}
-          {kind === 'poster' ? (
+          {kind === 'poster' && (
             <label className="field">
               {t(lang, 'posterSize')}
               <select value={fit} onChange={(e) => setFit(e.target.value as PosterFit)}>
@@ -174,7 +219,8 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
                 ))}
               </select>
             </label>
-          ) : (
+          )}
+          {chartKind && (
             <label className="field">
               {t(lang, 'generations')}
               <select value={generations} onChange={(e) => setGenerations(Number(e.target.value))}>
@@ -192,7 +238,7 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
         ) : (
           <div className="print-subject">
             <span className="print-subject-name">
-              {t(lang, 'chartSubject')} : <strong>{root ? displayName(root) : '—'}</strong>
+              {t(lang, isSheet ? 'sheetSubject' : 'chartSubject')} : <strong>{root ? displayName(root) : '—'}</strong>
             </span>
             <SearchBox tree={w.tree} lang={lang} open onOpenChange={() => undefined} onPick={setSubject} />
           </div>
@@ -201,37 +247,58 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
           <legend>{t(lang, 'chartGroupPaper')}</legend>
           <label className="field">
             {t(lang, 'paperSize')}
-            <select value={page} onChange={(e) => setPage(e.target.value as PageSize)}>
-              {PAGE_SIZES.map(([value, label]) => (
+            <select value={isSheet ? sheetPaper : page} onChange={(e) => setPage(e.target.value as PageSize)}>
+              {(isSheet ? SHEET_SIZES : PAGE_SIZES).map(([value, label]) => (
                 <option key={value} value={value}>
                   {t(lang, label)}
                 </option>
               ))}
             </select>
           </label>
-          <label className="field">
-            {t(lang, 'orientation')}
-            <select value={orientation} onChange={(e) => setOrientation(e.target.value as Orientation)}>
-              <option value="portrait">{t(lang, 'pagePortrait')}</option>
-              <option value="landscape">{t(lang, 'landscape')}</option>
-            </select>
-          </label>
-        </fieldset>
-        <fieldset className="print-group grow">
-          <legend>{t(lang, 'chartGroupText')}</legend>
-          <label className="check">
-            <input type="checkbox" checked={dates} onChange={(e) => setDates(e.target.checked)} /> {t(lang, 'showDates')}
-          </label>
-          {kind !== 'poster' && (
-            <label className="check">
-              <input type="checkbox" checked={empties} onChange={(e) => setEmpties(e.target.checked)} /> {t(lang, 'showEmpty')}
+          {!isSheet && (
+            <label className="field">
+              {t(lang, 'orientation')}
+              <select value={orientation} onChange={(e) => setOrientation(e.target.value as Orientation)}>
+                <option value="portrait">{t(lang, 'pagePortrait')}</option>
+                <option value="landscape">{t(lang, 'landscape')}</option>
+              </select>
             </label>
           )}
-          <label className="field grow">
-            {t(lang, 'chartTitle')}
-            <input value={shownTitle} onChange={(e) => setTitle(e.target.value)} />
-          </label>
         </fieldset>
+        {isSheet ? (
+          <fieldset className="print-group grow">
+            <legend>{t(lang, 'chartGroupText')}</legend>
+            <label className="check">
+              <input type="checkbox" checked={withNotes} onChange={(e) => setNotes(e.target.checked)} /> {t(lang, 'notes')}
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={withSources} onChange={(e) => setSources(e.target.checked)} /> {t(lang, 'sources')}
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={withLeads} onChange={(e) => setLeads(e.target.checked)} /> {t(lang, 'sheetLeads')}
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={discreet} onChange={(e) => setDiscreet(e.target.checked)} /> {t(lang, 'sheetDiscreet')}
+            </label>
+            <p className="muted small">{t(lang, 'sheetDiscreetHint')}</p>
+          </fieldset>
+        ) : (
+          <fieldset className="print-group grow">
+            <legend>{t(lang, 'chartGroupText')}</legend>
+            <label className="check">
+              <input type="checkbox" checked={dates} onChange={(e) => setDates(e.target.checked)} /> {t(lang, 'showDates')}
+            </label>
+            {kind !== 'poster' && (
+              <label className="check">
+                <input type="checkbox" checked={empties} onChange={(e) => setEmpties(e.target.checked)} /> {t(lang, 'showEmpty')}
+              </label>
+            )}
+            <label className="field grow">
+              {t(lang, 'chartTitle')}
+              <input value={shownTitle} onChange={(e) => setTitle(e.target.value)} />
+            </label>
+          </fieldset>
+        )}
         {poster && (
           <p className="print-summary">
             {tn(lang, 'chartShown', poster.people, { total: w.count })} · {tn(lang, 'posterSheets', poster.sheets.length)}
@@ -247,17 +314,40 @@ export function PrintPage({ navigate }: { navigate(r: Route): void }) {
             )}
           </p>
         )}
-        {!chart && !poster && <p className="print-summary">{t(lang, 'noPrintPerson')}</p>}
+        {sheet && (
+          <p className="print-summary">
+            {sheetSummary}
+            {sheetLayout.fit < 1 && (
+              <span className="print-limit"> · {tf(lang, 'sheetFitted', { pct: Math.round(sheetLayout.fit * 100) })}</span>
+            )}
+          </p>
+        )}
+        {!chart && !poster && !sheet && <p className="print-summary">{t(lang, 'noPrintPerson')}</p>}
         <div className="row print-actions">
-          <button className="btn primary" onClick={() => window.print()} disabled={!sheets.length}>
+          <button className="btn primary" onClick={() => window.print()} disabled={isSheet ? !sheet : !sheets.length}>
             {t(lang, 'printPdf')}
           </button>
-          <button className="btn" onClick={() => void savePng()} disabled={!sheets.length}>
-            {t(lang, 'exportPng')}
-          </button>
+          {!isSheet && (
+            <button className="btn" onClick={() => void savePng()} disabled={!sheets.length}>
+              {t(lang, 'exportPng')}
+            </button>
+          )}
         </div>
-        <p className="muted small">{t(lang, 'printHint')}</p>
+        <p className="muted small">{t(lang, isSheet ? 'sheetPrintHint' : 'printHint')}</p>
       </section>
+      {sheet && (
+        <div className={`print-sheets ${sheetLayout.pages === 1 ? 'alone' : ''}`}>
+          <PersonSheetView
+            sheet={sheet}
+            lang={lang}
+            paper={sheetPaper}
+            treeName={w.source.name}
+            date={new Date().toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'short', year: 'numeric' })}
+            discreet={discreet}
+            onLayout={onSheetLayout}
+          />
+        </div>
+      )}
       {size && sheets.length > 0 && (
         <div className={`print-sheets ${sheets.length === 1 ? 'alone' : ''}`}>
           {sheets.map((svg, i) => (

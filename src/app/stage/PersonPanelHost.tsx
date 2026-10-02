@@ -4,10 +4,11 @@ import { t } from '@/i18n';
 import { mediaStore } from '@/store';
 import { ops } from '@/tree/ops';
 import { PersonPanel } from '@/app/person/PersonPanel';
+import type { Route } from '@/app/state/router';
 import { useWorkspace } from '@/app/state/Workspace';
 import { useUi } from '@/app/ui/UiContext';
 
-export function PersonPanelHost() {
+export function PersonPanelHost({ navigate }: { navigate(r: Route): void }) {
   const { lang, toast } = useUi();
   const w = useWorkspace();
   const { tree, displayTree, editor, readOnly } = w;
@@ -67,6 +68,7 @@ export function PersonPanelHost() {
       onSaveLeads={(id, leads) => {
         if (!draft) saved(w.commit(ops.updatePerson(id, { leads })), 'saved');
       }}
+      onPrint={(id) => navigate({ name: 'print', id: w.source.id, sheet: true, person: id })}
       onNotice={toast}
     />
   );
