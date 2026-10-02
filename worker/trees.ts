@@ -235,6 +235,9 @@ trees.post('/:id/ops', async (c) => {
   const flat = (op: Op): Op[] => (op.t === 'batch' ? op.ops.flatMap(flat) : [op]);
   const all = fresh.flatMap((e) => flat(e.op));
   if (role !== 'owner' && all.some((o) => o.t === 'replaceTree')) throw new HttpError(403, 'restore_is_for_owners');
+  // Completing the tree from a file can write hundreds of records at once, and taking it back is a bulk removal
+  // only an owner may make: so is the graft itself.
+  if (role !== 'owner' && all.some((o) => o.t === 'graft')) throw new HttpError(403, 'import_is_for_owners');
 
   const tree = parseGedcom(row.doc);
   // Record patches (undo, redo) can rewrite or remove many records at once: past a few, they count as destructive too.
@@ -242,7 +245,7 @@ trees.post('/:id/ops', async (c) => {
     patchTouched = 0;
   for (const o of all) {
     if (o.t !== 'patchRecords') continue;
-    for (const table of [o.individuals, o.families, o.media]) {
+    for (const table of [o.individuals, o.families, o.media, o.sources, o.repositories]) {
       for (const v of Object.values(table ?? {})) {
         patchTouched++;
         if (v === null) patchRemovals++;
@@ -259,6 +262,8 @@ trees.post('/:id/ops', async (c) => {
       return o.t === 'deletePerson' ? `Avant suppression de ${who}` : `Avant fusion de ${who}`;
     })
     .slice(0, 2);
+  // A graft always leaves the version it started from, however little it adds.
+  for (const o of all) if (o.t === 'graft') labels.unshift(`Avant import de ${cleanText(o.file, 80) || 'GEDCOM'}`);
   if (patchRemovals >= PATCH_SNAPSHOT_REMOVALS || patchTouched >= PATCH_SNAPSHOT_TOUCHED) labels.unshift('Avant modification groupée');
   const guardLabel = labels.length ? labels.slice(0, 2).join(' · ') : null;
   const result = replayOps(tree, fresh);

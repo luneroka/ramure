@@ -55,6 +55,7 @@ export const ERROR_MESSAGES = {
   stale_base: 'stale base',
   restore_is_for_owners: 'restoring a version is for administrators',
   bulk_removal_is_for_owners: 'removing that many records at once is for administrators',
+  import_is_for_owners: 'completing a tree from a file is for administrators',
   snapshot_not_found: 'snapshot not found',
 
   // ---------- Media ----------

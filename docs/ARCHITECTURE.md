@@ -58,7 +58,10 @@ The rules of genealogy as this app understands them, again pure.
 - `replay.ts` — fold a sequence of ops onto a tree, separating domain
   refusals from bugs. Shared with the Worker.
 - `diff.ts` — the generic inverse of any edit, with record fingerprints; this
-  is how undo and redo work.
+  is how undo and redo work. It also applies a `graft`, which only ever sets.
+- `match.ts` / `graft.ts` — completing a tree from a GEDCOM file: recognise the
+  file's people by content and family, then plan the one op that adds what the
+  tree lacks, with what the file says differently listed rather than applied.
 - `layout.ts` / `layoutAll.ts` — the hourglass, ancestors and descendants
   layouts. The expensive part; worker-ready by design.
 - `kinship.ts`, `ancestry.ts`, `timeline.ts`, `places.ts`, `audit.ts` —

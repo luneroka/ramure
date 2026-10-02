@@ -1,11 +1,11 @@
 /** One person in a list of relatives: medallion, name, years and place. Tap selects, double tap focuses. */
 
 import { memo } from 'react';
-import { approximateYear } from '@/gedcom/dates';
 import { displayName, findEvent, placeText, type Tree } from '@/gedcom/model';
-import { t, tg, type Lang } from '@/i18n';
+import { t, type Lang } from '@/i18n';
 import { portraitId } from '@/tree/edit';
 import { Medallion } from '@/app/person/fields/Portrait';
+import { lifeYears } from '@/app/lib/format';
 
 interface Props {
   tree: Tree;
@@ -20,12 +20,8 @@ interface Props {
 export const PersonRow = memo(function PersonRow({ tree, id, lang, tag, onSelect, onFocus, onRemove }: Props) {
   const p = tree.individuals[id];
   if (!p) return null;
-  const b = findEvent(p.events, 'birth'),
-    d = findEvent(p.events, 'death');
-  const by = approximateYear(b?.date),
-    dy = approximateYear(d?.date);
-  const years = d ? `${by ?? '?'} – ${dy ?? '?'}` : by ? `${tg(lang, 'born', p.sex)} ${by}` : '';
-  const place = placeText(b?.place) || placeText(d?.place);
+  const years = lifeYears(lang, p);
+  const place = placeText(findEvent(p.events, 'birth')?.place) || placeText(findEvent(p.events, 'death')?.place);
   return (
     <li className="person-row">
       <button className="link-person" onClick={() => onSelect(id)} onDoubleClick={() => onFocus(id)}>

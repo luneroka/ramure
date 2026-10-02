@@ -381,9 +381,13 @@ textarea:focus {
   }
 }
 /* The editor is modal at every width: nothing that floats over the canvas may hover above it. The
-   checks list is not modal, but it is read rather than glanced at, and the tools were landing on it. */
+   checks list is not modal, but it is read rather than glanced at, and the tools were landing on it.
+   Any dialog likewise: the tools sit above the map's panes, so above a dialog's backdrop too, and on
+   a phone they covered the buttons at its foot. */
 .app:has(.panel.editing) .canvas-tools,
 .app:has(.panel.editing) .hud,
+.app:has(.dialog-backdrop) .canvas-tools,
+.app:has(.dialog-backdrop) .hud,
 .stage:has(.report) .canvas-tools {
   display: none;
 }
@@ -1050,6 +1054,40 @@ label.check input {
 }
 .snapshots li:last-child {
   border-bottom: 0;
+}
+/* Completing a tree from a GEDCOM file: what it would add, before anything is written. */
+.dialog.graft {
+  width: min(600px, 100%);
+}
+.graft-file {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.graft-section {
+  margin: 10px 0;
+}
+.graft-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.graft-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.graft-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+.graft-list li:last-child {
+  border-bottom: 0;
+}
+.graft-who {
+  font-weight: 500;
 }
 
 .toast {

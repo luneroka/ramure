@@ -40,6 +40,7 @@ interface Props {
   onNewTree(): void;
   onRename(): void;
   onExport(): void;
+  onGraft(): void;
   onSnapshots(): void;
   onSaveVersion(): void;
   onDeleteTree(): void;
@@ -72,6 +73,7 @@ export function TopBar(p: Props) {
               onNewTree={p.onNewTree}
               onRename={p.onRename}
               onExport={p.onExport}
+              onGraft={p.onGraft}
               onSnapshots={p.onSnapshots}
               onSaveVersion={p.onSaveVersion}
               readOnly={w.readOnly}

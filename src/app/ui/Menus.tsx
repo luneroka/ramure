@@ -104,6 +104,8 @@ interface TreeMenuProps {
   onNewTree(): void;
   onRename(): void;
   onExport(): void;
+  /** Complete this tree from a GEDCOM file: owners only, like restoring a version. */
+  onGraft(): void;
   onSnapshots(): void;
   onSaveVersion(): void;
   onReport(): void;
@@ -178,6 +180,7 @@ export function TreeMenu(p: TreeMenuProps) {
           {p.checkCount > 0 && <span className="dd-meta">{p.checkCount}</span>}
         </button>
         {p.owner && item(t(lang, 'renameTree'), p.onRename)}
+        {p.owner && !p.readOnly && item(t(lang, 'graftMenu'), p.onGraft)}
         <Group label={t(lang, 'exportMenu')}>
           {item(t(lang, 'export'), p.onExport)}
           {item(t(lang, 'print'), p.onPrint)}
