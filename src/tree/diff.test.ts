@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseGedcom } from '../gedcom/parse';
 import { applyRecordPatch, diffTrees, isEmptyPatch } from './diff';
+import { EditError } from './edit';
 import { applyOp, ops } from './ops';
 
 /** Stable serialisation: record maps may change key order after a delete and restore, which is not a difference. */
@@ -65,6 +66,26 @@ describe('record patches, pass 2', () => {
     // Refused once someone else touched the same person.
     const moved = applyOp(after, ops.updatePerson('I1', { sex: 'U' })).tree;
     expect(() => applyRecordPatch(moved, undo)).toThrow(EditError);
+  });
+
+  it('covers sources and repositories, so undoing a change takes them back out', () => {
+    const added = {
+      ...base,
+      sources: { ...base.sources, S9: { id: 'S9', title: 'Registre paroissial', repositoryId: 'R9', notes: [], mediaIds: [], extra: [] } },
+      repositories: { ...base.repositories, R9: { id: 'R9', name: 'Archives du Finistère', notes: [], extra: [] } },
+    };
+    const undo = diffTrees(added, base);
+    expect(undo.sources).toEqual({ S9: null });
+    expect(undo.repositories).toEqual({ R9: null });
+    expect(isEmptyPatch(undo)).toBe(false);
+    const back = applyRecordPatch(added, undo);
+    expect(Object.keys(back.sources).sort()).toEqual(Object.keys(base.sources).sort());
+    expect(back.repositories.R9).toBeUndefined();
+    // Refused once the source moved in the meantime.
+    const moved = { ...added, sources: { ...added.sources, S9: { ...added.sources.S9, title: 'Autre titre' } } };
+    expect(() => applyRecordPatch(moved, undo)).toThrow(EditError);
+    // A patch with nothing in them leaves them out entirely, as patches written before did.
+    expect(diffTrees(base, applyOp(base, ops.addChild('I1', { given: 'Paul' })).tree).sources).toBeUndefined();
   });
 
   it('never leaves a family pointing at a person the patch removed', () => {

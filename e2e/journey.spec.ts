@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const EMAIL = process.env.E2E_EMAIL ?? 'e2e@example.org';
@@ -68,10 +69,41 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.reload();
   await expect(page.getByText('Chargement de la session…')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connexion' })).toHaveCount(0);
-  await page.unroute('**/api/auth/me');
+  // Let the held request finish before letting go: unrouting under it makes its own `continue()` throw
+  // « Route is already handled », which ends the test as soon as anything runs past the delay.
+  await page.unrouteAll({ behavior: 'wait' });
   await expect(page.locator('.topbar')).toContainText('34 personnes', { timeout: 20_000 });
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
+
+  // Complete the tree from a file researched elsewhere: the same family plus one child. The file
+  // knows nothing of Testine, who must stay; only Jules is new, and the addition undoes like any edit.
+  await page.keyboard.press('Escape');
+  const researched = readFileSync(path.join(process.cwd(), 'fixtures/geneanet/input-fixture.ged'), 'utf8').replace(
+    /0 TRLR\s*$/,
+    '0 @I99@ INDI\n1 NAME Jules /FERRAND/\n1 SEX M\n1 BIRT\n2 DATE 2008\n1 FAMC @F11@\n0 TRLR\n',
+  );
+  await page.locator('.tree-name-btn').click();
+  const [graftChooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('menuitem', { name: 'Compléter depuis un GEDCOM…' }).click(),
+  ]);
+  await graftChooser.setFiles({ name: 'recherches.ged', mimeType: 'text/plain', buffer: Buffer.from(researched) });
+  const preview = page.getByRole('dialog', { name: 'Compléter l’arbre' });
+  await expect(preview).toContainText('33 personnes du fichier reconnues dans l’arbre.');
+  await expect(preview).toContainText('1 nouvelle personne');
+  await expect(preview).toContainText('Jules FERRAND');
+  // The canvas tools float above everything, so they step aside while a dialog is open.
+  await expect(page.locator('.canvas-tools')).toBeHidden();
+  await preview.getByRole('button', { name: 'Ajouter à l’arbre' }).click();
+  await expect(page.locator('.topbar')).toContainText('35 personnes');
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await page.locator('canvas.tree-canvas').click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press(`${mod}+z`);
+  await expect(page.locator('.topbar')).toContainText('34 personnes');
+  await page.keyboard.press(`${mod}+Shift+z`);
+  await expect(page.locator('.topbar')).toContainText('35 personnes');
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
 
   // On a phone: nothing scrolls sideways, the search is reachable from its button and its results can
   // be tapped, and undo is on screen. All three were broken — the app was 423 px wide on a 390 px

@@ -40,6 +40,29 @@ malformed lines; running it again on an already-repaired document could
 corrupt it. It is applied on the import path and nowhere else
 ([src/gedcom/geneweb.ts](../src/gedcom/geneweb.ts)).
 
+**A file completes a tree by what its records say, never by their ids.**
+« Compléter depuis un GEDCOM » recognises the file's people in the tree by
+name, sex and years, and above all through their families
+([src/tree/match.ts](../src/tree/match.ts)). The ids cannot be trusted: Geneanet
+renumbers families on every export and keeps person numbers only while their
+order happens to hold, and a stored tree keeps the ids of its own first import,
+so matching on them would attach new finds to the wrong people. Only Ramure's
+own random ids, coming home in an export, count as identity. A pair is accepted
+only when it is the one candidate on both sides: a miss costs a duplicate, which
+the checks flag and « Fusionner » repairs, while a wrong match would write a
+stranger's facts onto somebody's ancestor with nothing to say so.
+
+**A graft only adds, and the tree wins.** New people come in with their links;
+recognised people gain the facts they lack, and the blank date or place of an
+event the tree already knows is filled. Nothing is removed or replaced. Where
+the file disagrees — a name, a sex, the date or place of a birth, baptism,
+death, burial or marriage — the difference is listed in the preview and not
+applied. A family that would give somebody a second set of birth parents is left
+out, with the people only it connected, and the preview says how many
+([src/tree/graft.ts](../src/tree/graft.ts)). The planning is the browser's; what
+the Worker enforces is the op's shape — a `graft` sets records and is refused if
+it would remove one.
+
 **Free text loses its control characters.** Names, account and tree names and
 snapshot labels go through `cleanText`; several of them are interpolated into a
 mail subject, and a value that can carry a newline has no business being there.
@@ -106,7 +129,8 @@ labelled « Avant suppression de … » / « Avant fusion de … ». The snapsho
 the document _as it was before_ the push.
 
 **Bulk record patches count as destructive too.** Undo and redo travel as
-`patchRecords`, which can rewrite or remove many records at once. Past 3
+`patchRecords`, which can rewrite or remove many records at once — people,
+families, media, sources and repositories alike. Past 3
 removals or 20 touched records a guard snapshot is taken
 (`PATCH_SNAPSHOT_REMOVALS`, `PATCH_SNAPSHOT_TOUCHED`); past 20 removals only
 an owner may do it at all (`PATCH_OWNER_REMOVALS`).
@@ -114,6 +138,13 @@ an owner may do it at all (`PATCH_OWNER_REMOVALS`).
 **Restoring a version is for owners.** `replaceTree` rewrites the whole
 document, so an editor cannot issue one — checked after flattening `batch` ops,
 so it cannot be smuggled inside one.
+
+**Completing a tree from a file is for owners, and always leaves a version
+first.** A `graft` can write hundreds of records at once, and taking it back is
+a bulk removal only an owner may make, so an editor who could graft could not
+undo it (`import_is_for_owners`, checked after flattening like `replaceTree`).
+Whatever its size, the push keeps the document as it was, labelled « Avant
+import de … » with the file's name.
 
 **An automatic snapshot every 100 ops** (`SNAPSHOT_EVERY`), crossing the
 boundary rather than counting since the last one.
@@ -322,10 +353,11 @@ tools, the view chooser and the reading rules answer to a container query on
 and they crowd exactly as they would on a phone. Two viewport media queries used
 to decide this and they disagreed with each other.
 
-**Nothing floats over the editor.** The editor is modal at every width, and the
-tools and the HUD sit at `z-index: 1001` against the dialog's 40, so they had to
-be told to stand down while it is open. The checks list is not modal but is read
-rather than glanced at, and takes the same treatment.
+**Nothing floats over the editor or a dialog.** The editor is modal at every
+width, and the tools and the HUD sit at `z-index: 1001` against the dialog's 40,
+so they had to be told to stand down while it is open. The checks list is not
+modal but is read rather than glanced at, and takes the same treatment. So does
+every dialog: on a phone the tools covered the buttons at its foot.
 
 **A printed chart never draws a ring nobody is in, and never writes smaller
 than 6 px.** Both charts trim themselves to the generations actually known, and

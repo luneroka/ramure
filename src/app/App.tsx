@@ -16,6 +16,7 @@ import { useAccounts } from '@/app/hooks/useAccounts';
 import { useBoot } from '@/app/hooks/useBoot';
 import { useEngineEvents } from '@/app/hooks/useEngineEvents';
 import { useInvites } from '@/app/hooks/useInvites';
+import { useGraft } from '@/app/hooks/useGraft';
 import { useSnapshots } from '@/app/hooks/useSnapshots';
 import { useTreeFiles } from '@/app/hooks/useTreeFiles';
 import { useTreeSession } from '@/app/hooks/useTreeSession';
@@ -26,6 +27,7 @@ import { PersonPanelHost } from '@/app/stage/PersonPanelHost';
 import { PrintPage } from '@/app/screens/PrintPage';
 import { ResourcesHost } from '@/app/stage/ResourcesHost';
 import { SettingsHost } from '@/app/stage/SettingsHost';
+import { GraftDialog } from '@/app/stage/GraftDialog';
 import { SnapshotsDialog } from '@/app/stage/SnapshotsDialog';
 import { TopBar } from '@/app/stage/TopBar';
 import { TreeStage } from '@/app/stage/TreeStage';
@@ -68,6 +70,7 @@ function Shell() {
     localStorage.setItem(DEFAULT_VIEW_KEY, v);
   };
   const fileInput = useRef<HTMLInputElement>(null);
+  const graftInput = useRef<HTMLInputElement>(null);
 
   // Promises nobody awaited still deserve a message rather than silence.
   useEffect(() => {
@@ -203,6 +206,12 @@ function Shell() {
     commit: (op, opts) => workspace?.commit(op, opts) ?? false,
     onRestored: () => dispatch({ type: 'select', id: undefined }),
   });
+  const graft = useGraft({
+    lang,
+    tree: history.tree,
+    toast,
+    commit: (op, opts) => workspace?.commit(op, opts) ?? false,
+  });
   const openSnapshots = () => {
     setSnapshotsOpen(true);
     void snaps.openSnapshots();
@@ -269,6 +278,17 @@ function Shell() {
           e.target.value = '';
         }}
       />
+      <input
+        ref={graftInput}
+        type="file"
+        accept=".ged,.gedcom,text/plain"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void graft.pick(f);
+          e.target.value = '';
+        }}
+      />
       <TopBar
         workspace={workspace}
         user={auth.user}
@@ -281,6 +301,7 @@ function Shell() {
         onNewTree={() => void files.startNewTree()}
         onRename={() => void files.renameTree()}
         onExport={files.exportGedcom}
+        onGraft={() => graftInput.current?.click()}
         onSnapshots={openSnapshots}
         onSaveVersion={() => void snaps.saveVersion()}
         onDeleteTree={() =>
@@ -346,6 +367,9 @@ function Shell() {
             unavailable={accounts.unavailable}
             onRetry={() => void accounts.load()}
           />
+        )}
+        {graft.preview && workspace && (
+          <GraftDialog file={graft.preview.file} plan={graft.preview.plan} onApply={graft.apply} onClose={graft.cancel} />
         )}
         {snapshotsOpen && snaps.snapshots && workspace && (
           <SnapshotsDialog

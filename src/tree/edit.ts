@@ -131,6 +131,7 @@ export const EDIT_ERROR_MESSAGES = {
   unknown_family: 'unknown family',
   duplicate_id: 'duplicate id',
   record_changed: 'record changed since',
+  graft_removes: 'a graft only adds records',
   unknown_op: 'unknown op',
 } as const;
 

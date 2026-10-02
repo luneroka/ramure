@@ -6,9 +6,12 @@
  * The result is a `patchRecords` op that turns `after` back into `before`:
  * a generic, replayable inverse for any edit, which is how undo and redo
  * become ordinary ops that sync like everything else.
+ *
+ * A graft (records brought in from a GEDCOM file, see graft.ts) travels the
+ * same way, as the records it sets, with one difference: it never removes.
  */
 
-import type { Family, Individual, Lead, MediaObject, Tree } from '../gedcom/model';
+import type { Family, Individual, Lead, MediaObject, Repository, Source, Tree } from '../gedcom/model';
 import { EditError } from './edit';
 
 export interface RecordPatch {
@@ -17,6 +20,9 @@ export interface RecordPatch {
   individuals: Record<string, Individual | null>;
   families: Record<string, Family | null>;
   media: Record<string, MediaObject | null>;
+  /** Sources and repositories, when they changed. Absent from patches written before they were covered. */
+  sources?: Record<string, Source | null>;
+  repositories?: Record<string, Repository | null>;
   /** Tree-wide resources, when they changed. */
   resources?: Lead[];
   documentIds?: string[];
@@ -46,15 +52,21 @@ export function diffTrees(from: Tree, to: Tree): RecordPatch {
   const individuals = diffTable(from.individuals, to.individuals);
   const families = diffTable(from.families, to.families);
   const media = diffTable(from.media, to.media);
+  const sources = diffTable(from.sources, to.sources);
+  const repositories = diffTable(from.repositories, to.repositories);
   const expect: Record<string, string> = {};
   for (const id of Object.keys(individuals)) expect[`I:${id}`] = fingerprint(from.individuals[id] ?? null);
   for (const id of Object.keys(families)) expect[`F:${id}`] = fingerprint(from.families[id] ?? null);
   for (const id of Object.keys(media)) expect[`M:${id}`] = fingerprint(from.media[id] ?? null);
+  for (const id of Object.keys(sources)) expect[`S:${id}`] = fingerprint(from.sources[id] ?? null);
+  for (const id of Object.keys(repositories)) expect[`R:${id}`] = fingerprint(from.repositories[id] ?? null);
   return {
     t: 'patchRecords',
     individuals,
     families,
     media,
+    ...(Object.keys(sources).length ? { sources } : {}),
+    ...(Object.keys(repositories).length ? { repositories } : {}),
     expect,
     ...(from.resources !== to.resources ? { resources: to.resources } : {}),
     ...(from.documentIds !== to.documentIds ? { documentIds: to.documentIds } : {}),
@@ -66,6 +78,8 @@ export function isEmptyPatch(p: RecordPatch): boolean {
     Object.keys(p.individuals).length === 0 &&
     Object.keys(p.families).length === 0 &&
     Object.keys(p.media).length === 0 &&
+    Object.keys(p.sources ?? {}).length === 0 &&
+    Object.keys(p.repositories ?? {}).length === 0 &&
     p.resources === undefined &&
     p.documentIds === undefined
   );
@@ -94,11 +108,24 @@ function applyTable<T>(table: Record<string, T>, patch: Record<string, T | null>
   return out;
 }
 
+/** The table an `expect` key points into: I, F, S, R, and media for the rest (M). */
+function tableFor(tree: Tree, kind: string): Record<string, unknown> {
+  return kind === 'I'
+    ? tree.individuals
+    : kind === 'F'
+      ? tree.families
+      : kind === 'S'
+        ? tree.sources
+        : kind === 'R'
+          ? tree.repositories
+          : tree.media;
+}
+
 export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
   if (p.expect) {
     for (const [key, fp] of Object.entries(p.expect)) {
       const [kind, id] = [key.slice(0, 1), key.slice(2)];
-      const current = kind === 'I' ? tree.individuals[id] : kind === 'F' ? tree.families[id] : tree.media[id];
+      const current = tableFor(tree, kind)[id];
       if (fingerprint(current ?? null) !== fp) throw new EditError('record_changed', id);
     }
   }
@@ -107,8 +134,44 @@ export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
     individuals: applyTable(tree.individuals, p.individuals),
     families: applyTable(tree.families, p.families),
     media: applyTable(tree.media, p.media),
+    ...(p.sources ? { sources: applyTable(tree.sources, p.sources) } : {}),
+    ...(p.repositories ? { repositories: applyTable(tree.repositories, p.repositories) } : {}),
     ...(p.resources ? { resources: p.resources } : {}),
     ...(p.documentIds ? { documentIds: p.documentIds } : {}),
+  });
+}
+
+/** Records brought in from a GEDCOM file (graft.ts): new ones, and known ones with what they lacked. Never a removal. */
+export interface GraftRecords {
+  t: 'graft';
+  /** The file's name, for the history and for the version kept before it. */
+  file: string;
+  individuals: Record<string, Individual>;
+  families: Record<string, Family>;
+  sources: Record<string, Source>;
+  repositories: Record<string, Repository>;
+  media: Record<string, MediaObject>;
+  /** Each record it sets, as it was when the graft was planned; the graft is refused if any moved since. */
+  expect: Record<string, string>;
+}
+
+export function applyGraft(tree: Tree, g: GraftRecords): Tree {
+  const tables = [g.individuals, g.families, g.sources, g.repositories, g.media];
+  for (const table of tables) {
+    if (!table || typeof table !== 'object') throw new EditError('graft_removes');
+    for (const [id, record] of Object.entries(table)) {
+      // A graft only adds: a null here would be a removal, and a record filed under another id a dangling one.
+      if (!record || typeof record !== 'object' || (record as { id?: unknown }).id !== id) throw new EditError('graft_removes', id);
+    }
+  }
+  return applyRecordPatch(tree, {
+    t: 'patchRecords',
+    individuals: g.individuals,
+    families: g.families,
+    media: g.media,
+    sources: g.sources,
+    repositories: g.repositories,
+    expect: g.expect,
   });
 }
 
