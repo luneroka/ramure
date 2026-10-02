@@ -1837,9 +1837,12 @@ label.check input {
   display: block;
   margin-top: 1px;
 }
+/* `max-content`, because an absolute box shrinks to the width of what it hangs from: under a short
+   tree name that left the menu at its 240 px minimum, and « Compléter depuis un GEDCOM… » wrapped. */
 .dropdown {
   position: absolute;
   top: calc(100% + 6px);
+  width: max-content;
   min-width: 240px;
   max-width: 320px;
   padding: 6px;
@@ -1892,6 +1895,11 @@ label.check input {
   cursor: pointer;
   font-size: 14px;
   color: var(--ink);
+}
+/* A tree's name wraps inside the menu rather than widening it: the actions set the width, so a long
+   name cannot push the menu off the side of a phone. */
+.dd-name {
+  contain: inline-size;
 }
 .dd-item:hover:not(:disabled) {
   background: var(--surface-2);
