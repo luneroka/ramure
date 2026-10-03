@@ -3471,7 +3471,68 @@ textarea:focus {
  * Space above a block is padding, never margin, so that a block's height is everything it takes;
  * the first block on a page drops it, which is what the packing in src/print/pack.ts assumes.
  * Colours are fixed like the charts': paper does not follow the screen's theme.
+ *
+ * The sheet has its own copies of the app's three faces, static files served from /fonts/sheet,
+ * because the PDF embeds those same files (src/app/screens/sheetPdf.ts): a line the browser breaks
+ * at one width must be drawn at that width. Kerning, ligatures and synthesised styles are off for
+ * the same reason — the PDF draws plain advances.
  */
+@font-face {
+  font-family: 'Ramure Sheet Sans';
+  src: url('/fonts/sheet/PublicSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Sans';
+  src: url('/fonts/sheet/PublicSans-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Sans';
+  src: url('/fonts/sheet/PublicSans-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Sans';
+  src: url('/fonts/sheet/PublicSans-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Serif';
+  src: url('/fonts/sheet/Newsreader-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Serif';
+  src: url('/fonts/sheet/Newsreader-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Serif';
+  src: url('/fonts/sheet/Newsreader-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ramure Sheet Mono';
+  src: url('/fonts/sheet/IBMPlexMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
 .person-page,
 .ps-measure {
   container-type: inline-size;
@@ -3503,10 +3564,38 @@ textarea:focus {
   position: absolute;
   inset: 0;
   padding: calc(12 * var(--mm)) calc(14 * var(--mm)) calc(16 * var(--mm));
+  --body: 'Ramure Sheet Sans', 'Public Sans', 'Helvetica Neue', Arial, sans-serif;
+  --display: 'Ramure Sheet Serif', 'Newsreader', Georgia, serif;
+  --mono: 'Ramure Sheet Mono', 'IBM Plex Mono', Menlo, monospace;
   color: var(--ps-ink);
   font: 400 calc(9 * var(--pt)) / 1.42 var(--body);
+  font-kerning: none;
+  font-variant-ligatures: none;
+  font-feature-settings:
+    'kern' 0,
+    'liga' 0,
+    'calt' 0;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+}
+/* The pages stay items of the sheets' grid: the wrapper only gives the PDF something to hold. */
+.ps-pages {
+  display: contents;
+}
+/* A copy of the pages at the paper's real size, laid out for the PDF and then removed. */
+.ps-export {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  pointer-events: none;
+}
+.ps-export .print-sheet {
+  width: 100% !important;
+  max-width: none;
+  margin: 0;
+  box-shadow: none;
 }
 .ps-measure .ps-page {
   position: static;
@@ -3600,7 +3689,9 @@ textarea:focus {
 .ps-title {
   padding: calc(6 * var(--u)) 0 calc(2.4 * var(--u));
 }
-.ps-h {
+/* Under the page's class, or the print screen's own `.settings h3` outranks it on screen while the
+   PDF, made from a copy outside that screen, keeps it: the preview and the file would differ. */
+.ps-page .ps-h {
   display: flex;
   align-items: center;
   gap: calc(2 * var(--mm));
@@ -3609,13 +3700,12 @@ textarea:focus {
   text-transform: uppercase;
   color: var(--ps-ink-2);
 }
-.ps-h::before {
-  content: '';
+.ps-h-bar {
+  flex: none;
   height: calc(3 * var(--u));
   border-left: calc(0.9 * var(--mm)) solid var(--ps-accent);
 }
-.ps-h::after {
-  content: '';
+.ps-h-rule {
   flex: 1;
   border-top: calc(0.25 * var(--mm)) solid var(--ps-line);
 }
@@ -3859,6 +3949,7 @@ textarea:focus {
 }
 .ps-lead a {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 0.92em;
   color: var(--ps-accent);
   text-decoration: none;

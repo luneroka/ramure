@@ -13,7 +13,7 @@
  * this screen tiresome.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { displayName } from '@/gedcom/model';
 import { t, tf, tn } from '@/i18n';
 import {
@@ -30,7 +30,9 @@ import { MAX_SHEETS, renderPoster, type PosterFit } from '@/print/poster';
 import { personSheet } from '@/print/sheet';
 import { ahnentafel, depthOf } from '@/tree/ancestry';
 import { localeOf } from '@/app/lib/format';
-import { PersonSheetView, type SheetLayout, type SheetPaper } from '@/app/screens/PersonSheet';
+import { usePortraitUrl } from '@/app/person/fields/Portrait';
+import { PersonSheetView, SHEET_PAPER, type SheetLayout, type SheetPaper } from '@/app/screens/PersonSheet';
+import { sheetPdf } from '@/app/screens/sheetPdf';
 import { SearchBox } from '@/app/stage/SearchBox';
 import type { Route } from '@/app/state/router';
 import { useWorkspace } from '@/app/state/Workspace';
@@ -81,6 +83,7 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
   const [page, setPage] = useState<PageSize>('a4');
   const sheetPaper: SheetPaper = page === 'letter' ? 'letter' : 'a4';
   // What the person sheet carries besides the person and their family. Discretion is off unless asked for.
+  const [withPhoto, setPhoto] = useState(true);
   const [withNotes, setNotes] = useState(true);
   const [withSources, setSources] = useState(true);
   const [withLeads, setLeads] = useState(false);
@@ -123,8 +126,32 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
       isSheet && root ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources, leads: withLeads }) : null,
     [isSheet, w.tree, root, lang, discreet, withNotes, withSources, withLeads],
   );
+  // The photo is offered only when there is one to show: an imported file often names pictures it does not carry.
+  const portrait = usePortraitUrl(sheet?.subject.portrait);
   const sheets = chart ? [chart.svg] : (poster?.sheets ?? []);
   const size = chart ?? poster;
+
+  // The person sheet is a file to keep or send, not a print job: it downloads as a PDF, and printing it is the reader's business.
+  const sheetPages = useRef<HTMLDivElement>(null);
+  const [making, setMaking] = useState(false);
+  const downloadSheet = async () => {
+    const pages = Array.from(sheetPages.current?.querySelectorAll<HTMLElement>('.person-page') ?? []);
+    if (!root || !pages.length) return;
+    setMaking(true);
+    try {
+      const name = displayName(root);
+      const blob = await sheetPdf(pages, SHEET_PAPER[sheetPaper], { title: `${t(lang, 'chartSheet')} · ${name}`, lang });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name.replace(/[^\p{L}\p{N}]+/gu, '-')}-fiche.pdf`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    } catch {
+      toast(t(lang, 'sheetPdfFailed'));
+    } finally {
+      setMaking(false);
+    }
+  };
 
   const savePng = async () => {
     const image = poster ? poster.whole() : chart ? { svg: chart.svg, width: chart.width, height: chart.height } : null;
@@ -265,7 +292,12 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
         </fieldset>
         {isSheet ? (
           <fieldset className="print-group grow">
-            <legend>{t(lang, 'chartGroupText')}</legend>
+            <legend>{t(lang, 'sheetGroupShown')}</legend>
+            {portrait && (
+              <label className="check">
+                <input type="checkbox" checked={withPhoto} onChange={(e) => setPhoto(e.target.checked)} /> {t(lang, 'sheetPhoto')}
+              </label>
+            )}
             <label className="check">
               <input type="checkbox" checked={withNotes} onChange={(e) => setNotes(e.target.checked)} /> {t(lang, 'notes')}
             </label>
@@ -321,17 +353,25 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
           </p>
         )}
         {!chart && !poster && !sheet && <p className="print-summary">{t(lang, 'noPrintPerson')}</p>}
-        <div className="row print-actions">
-          <button className="btn primary" onClick={() => window.print()} disabled={isSheet ? !sheet : !sheets.length}>
-            {t(lang, 'printPdf')}
-          </button>
-          {!isSheet && (
-            <button className="btn" onClick={() => void savePng()} disabled={!sheets.length}>
-              {t(lang, 'exportPng')}
+        {isSheet ? (
+          <div className="row print-actions">
+            <button className="btn primary" onClick={() => void downloadSheet()} disabled={!sheet || making}>
+              {t(lang, making ? 'sheetPreparing' : 'sheetDownload')}
             </button>
-          )}
-        </div>
-        <p className="muted small">{t(lang, isSheet ? 'sheetPrintHint' : 'printHint')}</p>
+          </div>
+        ) : (
+          <>
+            <div className="row print-actions">
+              <button className="btn primary" onClick={() => window.print()} disabled={!sheets.length}>
+                {t(lang, 'printPdf')}
+              </button>
+              <button className="btn" onClick={() => void savePng()} disabled={!sheets.length}>
+                {t(lang, 'exportPng')}
+              </button>
+            </div>
+            <p className="muted small">{t(lang, 'printHint')}</p>
+          </>
+        )}
       </section>
       {sheet && (
         <div className={`print-sheets ${sheetLayout.pages === 1 ? 'alone' : ''}`}>
@@ -340,9 +380,11 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
             lang={lang}
             paper={sheetPaper}
             treeName={w.source.name}
+            photo={withPhoto ? portrait : undefined}
             date={new Date().toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'short', year: 'numeric' })}
             discreet={discreet}
             onLayout={onSheetLayout}
+            pagesRef={sheetPages}
           />
         </div>
       )}
