@@ -76,12 +76,51 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
 
-  // The panel's « Imprimer » opens the print page on that person's sheet, on paper-sized pages.
+  // The panel's « Imprimer » opens the print page on that person's sheet, which downloads as a PDF file
+  // made in the browser: no print dialog, and one page of PDF per page on screen.
   await page.getByRole('button', { name: /Testine/ }).click();
   await page.locator('.panel-actions').getByRole('button', { name: 'Imprimer' }).click();
   await expect(page.getByRole('radio', { name: 'Fiche individuelle' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.person-page').first()).toContainText('Testine');
   await expect(page.locator('.person-page').first()).toContainText('Marguerite');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Télécharger le PDF' }).click()]);
+  expect(download.suggestedFilename()).toBe('Testine-AUBRY-fiche.pdf');
+  const pdf = readFileSync((await download.path())!, 'latin1');
+  expect(pdf.startsWith('%PDF-')).toBe(true);
+  expect(pdf.match(/\/Type \/Page\b/g)).toHaveLength(await page.locator('.person-page').count());
+  // The PDF is drawn from a copy of the pages laid out outside this screen, so no style of the screen's
+  // may reach the sheet: a copy made the same way must compute, element by element, as the page on screen.
+  const leaks = await page.evaluate(() => {
+    const props = [
+      'font-size',
+      'font-family',
+      'font-weight',
+      'font-style',
+      'letter-spacing',
+      'line-height',
+      'color',
+      'margin-top',
+      'padding-top',
+    ];
+    const found: string[] = [];
+    for (const shown of document.querySelectorAll<HTMLElement>('.person-page')) {
+      const holder = document.createElement('div');
+      holder.className = 'ps-export';
+      holder.style.width = `${shown.getBoundingClientRect().width}px`;
+      const copy = shown.cloneNode(true) as HTMLElement;
+      holder.append(copy);
+      document.body.append(holder);
+      const copied = [copy, ...copy.querySelectorAll('*')];
+      [shown, ...shown.querySelectorAll('*')].forEach((el, i) => {
+        const a = getComputedStyle(el);
+        const b = getComputedStyle(copied[i]!);
+        for (const p of props) if (a.getPropertyValue(p) !== b.getPropertyValue(p)) found.push(`${el.className}: ${p}`);
+      });
+      holder.remove();
+    }
+    return [...new Set(found)];
+  });
+  expect(leaks).toEqual([]);
   await page.getByRole('button', { name: /← Arbre/ }).click();
   await expect(page.locator('canvas.tree-canvas')).toBeVisible();
 
