@@ -292,7 +292,10 @@ const strings = {
     fr: 'Dans la boîte d’impression, choisissez « Enregistrer au format PDF » pour obtenir un fichier à envoyer\u00a0: le texte y reste sélectionnable et les liens cliquables.',
     en: 'In the print dialog choose “Save as PDF” for a file to send: its text stays selectable and its links clickable.',
   },
-  sheetTree: { fr: 'Arbre « {name} »', en: 'Tree “{name}”' },
+  sheetTreeDated: { fr: 'Arbre « {name} », {date}', en: 'Tree “{name}”, {date}' },
+  sheetUnknownDatePlace: { fr: 'date et lieu inconnus', en: 'date and place unknown' },
+  sheetFreeUnion: { fr: 'Union libre', en: 'Unmarried' },
+  sheetCivilUnion: { fr: 'PACS ou union civile', en: 'Civil union' },
   sheetUnions: { fr: 'Unions et enfants', en: 'Partners and children' },
   sheetGrandchildren: { fr: 'Petits-enfants', en: 'Grandchildren' },
   sheetSelf: { fr: 'cette fiche', en: 'this sheet' },
@@ -312,10 +315,6 @@ const strings = {
   sheetOfVowel: { fr: 'd’{name}', en: '{name}' },
   sheetFiliationOne: { fr: '{rel} {a}', en: '{rel} of {a}' },
   sheetFiliationTwo: { fr: '{rel} {a} et {b}', en: '{rel} of {a} and {b}' },
-  sheetKeyBirth: { fr: '° naissance', en: '° birth' },
-  sheetKeyBaptism: { fr: '~ baptême', en: '~ baptism' },
-  sheetKeyDeath: { fr: '† décès', en: '† death' },
-  sheetKeyMarriage: { fr: 'x union', en: 'x union' },
   sheetFootDiscreet: { fr: 'Personnes vivantes\u00a0: année de naissance seule.', en: 'Living people: birth year only.' },
   sheetFootPrivate: { fr: 'Personnes marquées privées\u00a0: année de naissance seule.', en: 'People marked private: birth year only.' },
   sheetMadeWith: { fr: 'Établie avec Ramure', en: 'Made with Ramure' },
@@ -974,7 +973,27 @@ const gendered = {
   sheetBaptised: { fr: { M: 'Baptisé', F: 'Baptisée', U: 'Baptisé·e' }, en: { M: 'Baptised', F: 'Baptised', U: 'Baptised' } },
   sheetDied: { fr: { M: 'Décédé', F: 'Décédée', U: 'Décédé·e' }, en: { M: 'Died', F: 'Died', U: 'Died' } },
   sheetBuried: { fr: { M: 'Inhumé', F: 'Inhumée', U: 'Inhumé·e' }, en: { M: 'Buried', F: 'Buried', U: 'Buried' } },
-  sheetBornIn: { fr: { M: 'né en', F: 'née en', U: 'né·e en' }, en: { M: 'born', F: 'born', U: 'born' } },
+  /** The same words inside a sentence, for a grandchild named in passing: « Claire AUBRY (née en 1976) ». */
+  sheetBornWord: { fr: { M: 'né', F: 'née', U: 'né·e' }, en: { M: 'born', F: 'born', U: 'born' } },
+  sheetBaptisedWord: { fr: { M: 'baptisé', F: 'baptisée', U: 'baptisé·e' }, en: { M: 'baptised', F: 'baptised', U: 'baptised' } },
+  sheetDiedWord: { fr: { M: 'décédé', F: 'décédée', U: 'décédé·e' }, en: { M: 'died', F: 'died', U: 'died' } },
+  /** A couple, in the plural: « Mariés le … », « Mariées » for two women. */
+  sheetMarried: { fr: { M: 'Mariés', F: 'Mariées', U: 'Mariés' }, en: { M: 'Married', F: 'Married', U: 'Married' } },
+  sheetDivorced: { fr: { M: 'Divorcés', F: 'Divorcées', U: 'Divorcés' }, en: { M: 'Divorced', F: 'Divorced', U: 'Divorced' } },
+  /** One person's union, seen from them: « Mariée à Michel AUBRY ». */
+  sheetMarriedTo: { fr: { M: 'Marié à', F: 'Mariée à', U: 'Marié·e à' }, en: { M: 'Married to', F: 'Married to', U: 'Married to' } },
+  sheetCivilWith: {
+    fr: { M: 'Pacsé avec', F: 'Pacsée avec', U: 'Pacsé·e avec' },
+    en: { M: 'In a civil union with', F: 'In a civil union with', U: 'In a civil union with' },
+  },
+  sheetFreeUnionWith: {
+    fr: { M: 'En union libre avec', F: 'En union libre avec', U: 'En union libre avec' },
+    en: { M: 'Unmarried partner of', F: 'Unmarried partner of', U: 'Unmarried partner of' },
+  },
+  sheetCoupleWith: {
+    fr: { M: 'En couple avec', F: 'En couple avec', U: 'En couple avec' },
+    en: { M: 'Partner of', F: 'Partner of', U: 'Partner of' },
+  },
   sheetChildOf: { fr: { M: 'Fils', F: 'Fille', U: 'Enfant' }, en: { M: 'Son', F: 'Daughter', U: 'Child' } },
   sheetHalfByFather: {
     fr: { M: 'demi-frère par le père', F: 'demi-sœur par le père', U: 'demi-frère ou sœur par le père' },

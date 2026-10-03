@@ -3684,14 +3684,19 @@ textarea:focus {
 .ps-rel .ps-name {
   padding-right: calc(3 * var(--mm));
 }
+/* What is known about someone, one sentence a line: their birth, their death, their unions, their children. */
 .ps-facts {
+  display: grid;
+  align-content: start;
   color: var(--ps-ink-2);
+}
+.ps-line {
+  display: block;
 }
 .ps-spouse {
   color: var(--ps-ink-3);
 }
 .ps-next {
-  grid-column: 2;
   margin-top: calc(0.4 * var(--u));
 }
 .ps-label {
@@ -3726,6 +3731,7 @@ textarea:focus {
 }
 .ps-kid .ps-next {
   font-size: calc(8 * var(--pt));
+  color: var(--ps-ink);
 }
 .ps-union {
   display: grid;
@@ -3741,8 +3747,13 @@ textarea:focus {
   font: 500 calc(11 * var(--pt)) / 1 var(--display);
   color: var(--ps-accent);
 }
-.ps-union .ps-name {
+/* The partner's name with the couple's own lines right under it; the partner's dates sit on the 62 mm line. */
+.ps-partner {
+  display: grid;
+  align-content: start;
   padding-right: calc(3 * var(--mm));
+}
+.ps-union .ps-name {
   font-size: calc(9.2 * var(--pt));
   font-weight: 600;
 }
@@ -3754,7 +3765,6 @@ textarea:focus {
   font-size: calc(8.6 * var(--pt));
 }
 .ps-uline {
-  grid-column: 2 / -1;
   font-size: calc(8.2 * var(--pt));
   color: var(--ps-ink-2);
 }

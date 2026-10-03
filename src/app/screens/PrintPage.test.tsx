@@ -148,11 +148,11 @@ describe('the printable charts screen', () => {
   it('holds the living back only when discretion is ticked', () => {
     renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I1' });
     const page = () => document.querySelector('.person-page')!.textContent!;
-    expect(page()).toContain('° 30 mai 1944');
+    expect(page()).toContain('Né le 30 mai 1944');
     expect(screen.getByText(/proches vivants/)).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Discrétion pour les vivants'));
-    expect(page()).not.toContain('° 30 mai 1944');
-    expect(page()).toContain('né en 1944');
+    expect(page()).not.toContain('Né le 30 mai 1944');
+    expect(page()).toContain('Né en 1944');
     expect(screen.getByText(/proches vivants, année de naissance seule/)).toBeTruthy();
   });
 
