@@ -77,10 +77,13 @@ export function Login({ lang, auth, pendingInvite, toast }: Props) {
 
   const submitCode = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!sent) return;
+    // The address typed here when this browser did not ask for the mail (the link opened elsewhere, or a
+    // phone reloaded the page on the way back from the mail app): the code works from any browser.
+    const address = sent?.email ?? email.trim();
+    if (!address.includes('@')) return;
     setBusy(true);
     try {
-      await auth.verifyCode(sent.email, code);
+      await auth.verifyCode(address, code);
       setSent(null);
       toast(t(lang, 'signedIn'));
     } catch {

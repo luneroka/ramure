@@ -21,7 +21,6 @@ const API_TEXT: Record<string, StringKey> = {
   sign_in_required: 'errSignInRequired',
   invitation_required: 'errInvitationRequired',
   administrator_only: 'errAdministratorOnly',
-  other_device: 'signinOtherDevice',
   link_expired: 'signinExpired',
   code_expired: 'signinExpired',
   wrong_code: 'errWrongCode',

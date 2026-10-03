@@ -50,6 +50,16 @@ describe('Login', () => {
     expect(auth.verifyCode).toHaveBeenCalledWith('me@example.org', '123456');
   });
 
+  it('signs in with a code in a browser that never asked for one, as on a phone the mail sent elsewhere', async () => {
+    const auth = fakeAuth();
+    render(<Login lang="fr" auth={auth} pendingInvite={null} toast={() => {}} />);
+    await userEvent.type(screen.getByLabelText('Adresse courriel'), 'me@example.org');
+    await userEvent.type(screen.getByLabelText('Code à six chiffres reçu par courriel'), '123 456');
+    await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
+    expect(auth.requestLink).not.toHaveBeenCalled();
+    expect(auth.verifyCode).toHaveBeenCalledWith('me@example.org', '123 456');
+  });
+
   it('starts disabled without an address and enables once one is typed', async () => {
     render(<Login lang="fr" auth={fakeAuth()} pendingInvite={null} toast={() => {}} />);
     const send = screen.getByRole('button', { name: /Recevoir un lien/ });

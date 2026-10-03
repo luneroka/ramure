@@ -3,35 +3,42 @@ import { env } from 'cloudflare:test';
 import { app } from './index';
 import { Client, invite } from './test/helpers';
 
-describe('sign-in bound to the browser that asked', () => {
-  it('mails a fragment link; the app posts it from the same browser and gets a session', async () => {
+describe('sign-in by link or code', () => {
+  it('mails a fragment link; the app posts it and gets a session', async () => {
     await invite('link@example.org');
     const c = new Client();
     const r = await c.call<{ link: string }>('POST', '/api/auth/request', { email: 'link@example.org' });
     expect(r.status).toBe(200);
     expect(r.body.link).toMatch(/^http:\/\/localhost\/#signin=/);
-    expect(c.jar.has('ramure_signin')).toBe(true);
     const token = decodeURIComponent(r.body.link.split('#signin=')[1]!);
     // Opening the page does nothing by itself: only the POST signs in.
     expect((await c.call('GET', '/api/auth/me')).body).toEqual({ user: null });
     expect((await c.call('POST', '/api/auth/verify', { token })).status).toBe(200);
     expect(c.jar.has('ramure_session')).toBe(true);
-    expect(c.jar.has('ramure_signin')).toBe(false);
     expect((await c.call<{ user: { email: string } }>('GET', '/api/auth/me')).body.user.email).toBe('link@example.org');
     // Single use.
     expect((await c.call('POST', '/api/auth/verify', { token })).status).toBe(400);
   });
 
-  it('refuses the link and the code from a browser that did not ask', async () => {
-    await invite('bound@example.org');
+  it('honours the link in a browser that did not ask, as a mail app on a phone opens it', async () => {
+    await invite('phone-link@example.org');
     const asker = new Client();
-    const r = await asker.call<{ link: string; code: string }>('POST', '/api/auth/request', { email: 'bound@example.org' });
+    const r = await asker.call<{ link: string }>('POST', '/api/auth/request', { email: 'phone-link@example.org' });
     const token = decodeURIComponent(r.body.link.split('#signin=')[1]!);
+    const mailApp = new Client();
+    expect((await mailApp.call('POST', '/api/auth/verify', { token })).status).toBe(200);
+    expect((await mailApp.call<{ user: { email: string } }>('GET', '/api/auth/me')).body.user.email).toBe('phone-link@example.org');
+    // Still single use, wherever it was used.
+    expect((await asker.call('POST', '/api/auth/verify', { token })).status).toBe(400);
+  });
+
+  it('honours the code in a browser that did not ask, and only once', async () => {
+    await invite('phone-code@example.org');
+    const asker = new Client();
+    const r = await asker.call<{ code: string }>('POST', '/api/auth/request', { email: 'phone-code@example.org' });
     const other = new Client();
-    expect((await other.call('POST', '/api/auth/verify', { token })).status).toBe(403);
-    expect((await other.call('POST', '/api/auth/code', { email: 'bound@example.org', code: r.body.code })).status).toBe(403);
-    // The asker still can, with the code.
-    expect((await asker.call('POST', '/api/auth/code', { email: 'bound@example.org', code: r.body.code })).status).toBe(200);
+    expect((await other.call('POST', '/api/auth/code', { email: 'phone-code@example.org', code: r.body.code })).status).toBe(200);
+    expect((await asker.call('POST', '/api/auth/code', { email: 'phone-code@example.org', code: r.body.code })).status).toBe(400);
   });
 
   it('sends an old-style link into the fragment flow', async () => {

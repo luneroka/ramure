@@ -240,10 +240,14 @@ out sessions, and a six-digit code cannot be brute-forced offline from one.
 `CODE_PEPPER` is set in production; without it `hmac` degrades to a plain hash,
 which is acceptable in development and **not** in production.
 
-**A link works only in the browser that asked for it.** Requesting a sign-in
-sets a nonce cookie; the link and the code are refused elsewhere
-(`browser_hash`). This is why a link opened on a phone after being requested on
-a laptop says "other device" rather than signing you in.
+**A link or a code signs in whichever browser uses it.** Holding the mail is the
+proof, as with any sign-in link. Until October 2026 both were bound to the
+browser that asked (a nonce cookie, `browser_hash`), which refused nearly every
+link opened on a phone: the mail app opens it in its own browser, or in Safari
+when the request came from the home-screen app. What still holds: a link and a
+code are single use, last 15 minutes, and the failed-code limits below apply
+per address. The `browser_hash` column stays, unused, because migrations are
+forward-only.
 
 **The token travels in the URL fragment**, and the app posts it. A fragment
 never reaches a server or a log, and merely opening the page does nothing.

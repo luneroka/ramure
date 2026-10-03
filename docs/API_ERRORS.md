@@ -11,8 +11,9 @@ anyone reading the API directly.
 ## Why codes, and not status
 
 Status is not enough to tell a person what went wrong. The sign-in path alone
-answers **403 for three unrelated reasons** — the link belongs to another
-browser, the address has no invitation, the request came cross-site. Before
+answered **403 for three unrelated reasons** — the link belonged to another
+browser (a check since removed), the address has no invitation, the request
+came cross-site. Before
 this convention the browser guessed from the status:
 
 ```ts

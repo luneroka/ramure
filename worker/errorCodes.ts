@@ -17,8 +17,6 @@ export const ERROR_MESSAGES = {
   invitation_required: 'invitation required',
   administrator_only: 'administrator only',
   cross_site_request: 'cross-site request',
-  /** The link or code was issued to a different browser than the one using it. */
-  other_device: 'other device',
   link_expired: 'link expired',
   code_expired: 'code expired',
   wrong_code: 'wrong code',

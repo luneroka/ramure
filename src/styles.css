@@ -1599,17 +1599,19 @@ label.check input {
 }
 
 /* ---------- Login and account home ---------- */
+/* Centred by auto margins rather than `place-items`: a card taller than the screen (a phone, the
+   keyboard up) then starts at the top and scrolls, where centring pushed its head out of reach. */
 .login {
   min-height: 100%;
   box-sizing: border-box;
   display: grid;
-  place-items: center;
   padding: 24px;
 }
 .app.gate {
   overflow: auto;
 }
 .login-card {
+  margin: auto;
   width: min(420px, 100%);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1708,6 +1710,15 @@ label.check input {
   right: 12px;
   display: flex;
   gap: 6px;
+}
+/* On a phone the card is as wide as the screen and the theme button sat on its corner. */
+@media (max-width: 640px) {
+  .login {
+    padding: 64px 12px 24px;
+  }
+  .login-card {
+    padding: 24px 18px 20px;
+  }
 }
 
 /* ---------- Person panel: hero, bands, timeline ---------- */
