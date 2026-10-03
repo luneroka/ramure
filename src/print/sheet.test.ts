@@ -47,27 +47,27 @@ describe('the person sheet', () => {
       ['Père', 'Auguste LENOIR'],
       ['Mère', 'Marie BRÉHIER'],
     ]);
-    expect(couple!.slots[0].person!.facts).toEqual(['° 1889, Plouguerneau, Finistère', '† 1954, Plouguerneau, Finistère']);
+    expect(couple!.slots[0].person!.facts).toEqual(['Né en 1889 à Plouguerneau, Finistère', 'Décédé en 1954 à Plouguerneau, Finistère']);
     expect(couple!.slots[0].person!.occupation).toBe('Cultivateur');
-    expect(couple!.union).toBe('x 1919, Plouguerneau, Finistère');
+    expect(couple!.union).toEqual(['Mariés en 1919 à Plouguerneau, Finistère']);
   });
 
   it('lists each union in date order, its children oldest first, their spouses and the grandchildren', () => {
     const unions = sheetOf('I2').unions;
     expect(unions.map((u) => [u.partner?.name, u.union])).toEqual([
-      ['Yvonne KERGOAT', 'x 1943, Brest, Finistère'],
-      ['Jeanne MARCHAL', 'x 12 juin 1948, Quimper, Finistère'],
+      ['Yvonne KERGOAT', ['Mariés en 1943 à Brest, Finistère']],
+      ['Jeanne MARCHAL', ['Mariés le 12 juin 1948 à Quimper, Finistère']],
     ]);
     expect(unions[1]!.partner!.occupation).toBe('Couturière');
     const kids = unions[1]!.children;
     expect(kids.map((k) => k.name)).toEqual(['LENOIR', 'Marguerite «\u00a0Margot\u00a0» LENOIR', 'Yvonne LENOIR', 'Yves LENOIR']);
     const marguerite = kids[1]!;
-    expect(marguerite.facts).toEqual(['° 12 mars 1952, Quimper, Finistère']);
-    expect(marguerite.spouses.map((m) => m.name)).toEqual(['Michel AUBRY']);
-    expect(marguerite.children.map((m) => `${m.name} (${m.years})`)).toEqual([
-      'Claire AUBRY (1976)',
-      'Thomas AUBRY (1979)',
-      'Sophie AUBRY (1984)',
+    expect(marguerite.facts).toEqual(['Née le 12 mars 1952 à Quimper, Finistère']);
+    expect(marguerite.unions).toEqual(['Mariée à Michel AUBRY']);
+    expect(marguerite.children.map((m) => `${m.name} (${m.life})`)).toEqual([
+      'Claire AUBRY (née en 1976)',
+      'Thomas AUBRY (né en 1979)',
+      'Sophie AUBRY (née en 1984)',
     ]);
   });
 
@@ -104,26 +104,27 @@ describe('the person sheet', () => {
 
   it('names nephews and nieces under the sibling they belong to', () => {
     const thomas = sheetOf('I25').siblings.find((s) => s.name === 'Thomas AUBRY')!;
-    expect(thomas.children.map((m) => `${m.name} (${m.years})`)).toEqual(['Inès AUBRY (2010)']);
+    expect(thomas.children.map((m) => `${m.name} (${m.life})`)).toEqual(['Inès AUBRY (née en 2010)']);
   });
 
   it('keeps the living to a name and a birth year with discretion, and never the subject', () => {
     const s = sheetOf('I1', { discreet: true });
     expect(s.subject.lines).toEqual(['Née le 12 mars 1952 à Quimper, Finistère']);
     const robert = s.siblings[0]!;
-    expect(robert).toMatchObject({ facts: ['né en 1944'], reduced: true });
-    // The stillborn child is not living: nothing is held back.
-    expect(s.siblings[1]!.facts).toEqual(['° 2 oct. 1949, Quimper, Finistère', '† 2 oct. 1949, Quimper, Finistère']);
+    expect(robert).toMatchObject({ facts: ['Né en 1944'], reduced: true });
+    // The stillborn child is not living: nothing is held back. Their sex is unknown, and the words say so.
+    expect(s.siblings[1]!.facts).toEqual(['Né·e le 2 oct. 1949 à Quimper, Finistère', 'Décédé·e le 2 oct. 1949 à Quimper, Finistère']);
     const claire = s.unions[0]!.children[0]!;
-    expect(claire).toMatchObject({ facts: ['née en 1976'], occupation: undefined });
+    expect(claire).toMatchObject({ facts: ['Née en 1976'], occupation: undefined });
     expect(s.counts.living).toBeGreaterThan(0);
   });
 
   it('shows everything without discretion, except who the file marks private', () => {
     const s = sheetOf('I1');
-    expect(s.siblings[0]!.facts).toEqual(['° 30 mai 1944, Brest, Finistère']);
+    expect(s.siblings[0]!.facts).toEqual(['Né le 30 mai 1944 à Brest, Finistère']);
     // Michel AUBRY carries RESN privacy in the file.
-    expect(s.unions[0]!.partner).toMatchObject({ name: 'Michel AUBRY', facts: ['né en 1949'], reduced: true });
+    expect(s.unions[0]!.partner).toMatchObject({ name: 'Michel AUBRY', facts: ['Né en 1949'], reduced: true });
+    expect(s.unions[0]!.union).toEqual(['Mariés le 6 juil. 1974 à Brest, Finistère', 'Divorcés en 1990 à Brest, Finistère']);
     expect(s.counts.private).toBe(1);
     expect(s.unions[0]!.children.find((k) => k.name === 'Sophie AUBRY')!.tag).toBe('adoptée');
   });
@@ -136,7 +137,38 @@ describe('the person sheet', () => {
     expect(s.events[3]!.refs).toEqual([2]);
     expect(s.sources.map((x) => x.about)).toEqual([['Naissance'], ['Mariage']]);
     expect(s.events[4]!.lines).toContain('Cause : Insuffisance cardiaque');
-    expect(s.symbols).toEqual(['birth', 'death', 'marriage']);
+  });
+
+  it('writes words, never the genealogist’s signs or a dash standing for nothing', () => {
+    // ° † ~ and a lone x read as mistakes to the relatives the sheet is for; so did the dash of an undated event.
+    for (const id of ['I1', 'I2', 'I25']) {
+      const s = sheetOf(id, { discreet: id === 'I25' });
+      const written = JSON.stringify([s.subject.lines, s.parents, s.siblings, s.unions, s.events.map((e) => e.date)]);
+      expect(written).not.toMatch(/[°†~—–]|(^|[\s"])x\s/);
+    }
+  });
+
+  it('says a marriage happened even when nothing else about it is known', () => {
+    const t = load();
+    const marriage = t.families.F3!.events.find((e) => e.type === 'marriage')!;
+    delete marriage.date;
+    delete marriage.place;
+    expect(sheetOf('I2', {}, t).parents[0]!.union).toEqual(['Mariés, date et lieu inconnus']);
+  });
+
+  it('leaves the date of an undated event empty', () => {
+    const t = load();
+    t.individuals.I2!.events.push({
+      type: 'religion',
+      tag: 'RELI',
+      value: 'Catholique',
+      notes: [],
+      citations: [],
+      mediaIds: [],
+      extra: [],
+    });
+    const religion = sheetOf('I2', {}, t).events.find((e) => e.label === 'Religion')!;
+    expect(religion.date).toBe('');
   });
 
   it('leaves out what is not asked for', () => {
@@ -167,7 +199,7 @@ describe('the person sheet', () => {
     const s = sheetOf('I2', { leads: true }, t);
     expect(s.leads.open.map((l) => l.title)).toEqual(['Registre matricule']);
     expect(s.leads.done.map((l) => l.title)).toEqual(['Recensement 1926']);
-    expect(s.documents).toEqual([{ id: 'M9', title: 'Acte de naissance d’Henri', detail: 'Acte de naissance · 5 févr. 1921' }]);
+    expect(s.documents).toEqual([{ id: 'M9', title: 'Acte de naissance d’Henri', detail: 'Acte de naissance, 5 févr. 1921' }]);
     expect(s.counts.leads).toBe(2);
   });
 
@@ -180,8 +212,12 @@ describe('the person sheet', () => {
     expect(personSheet(t, 'nobody', opts())).toBeNull();
   });
 
-  it('writes a place short: the first two parts', () => {
+  it('writes a place short: the first two named parts, without a postal or INSEE code', () => {
     expect(shortPlace({ text: 'x', parts: ['', 'Brest', 'Finistère', 'Bretagne', 'France'] })).toBe('Brest, Finistère');
+    expect(shortPlace({ text: 'x', parts: ['Rive-de-Gier', '42186', 'Loire', 'Auvergne-Rhône-Alpes', 'France'] })).toBe(
+      'Rive-de-Gier, Loire',
+    );
+    expect(shortPlace({ text: 'x', parts: ['Ajaccio', '2A004', 'Corse-du-Sud'] })).toBe('Ajaccio, Corse-du-Sud');
     expect(shortPlace(undefined)).toBe('');
   });
 });

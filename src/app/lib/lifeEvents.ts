@@ -28,7 +28,8 @@ export interface LifeRow {
 
 const UNION_EVENTS = new Set<EventType>(['marriage', 'divorce', 'engagement', 'separation', 'annulment']);
 
-export function eventRows(tree: Tree, person: Individual, lang: Lang): LifeRow[] {
+/** `nameOf` writes the partner in a union event: the panel uses the file's spelling, the printed sheet its capitals. */
+export function eventRows(tree: Tree, person: Individual, lang: Lang, nameOf: (ind: Individual) => string = displayName): LifeRow[] {
   const birth = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
   // An undated, unplaced occupation is the subtitle of the hero, not a timeline row.
   const rows: LifeRow[] = person.events
@@ -68,7 +69,7 @@ export function eventRows(tree: Tree, person: Individual, lang: Lang): LifeRow[]
     for (const e of f.events) {
       if (!UNION_EVENTS.has(e.type)) continue;
       const lines: string[] = [];
-      if (partner) lines.push(`${t(lang, 'with')} ${displayName(partner)}`);
+      if (partner) lines.push(`${t(lang, 'with')} ${nameOf(partner)}`);
       if (e.place) lines.push(placeText(e.place));
       lines.push(...e.notes);
       rows.push({

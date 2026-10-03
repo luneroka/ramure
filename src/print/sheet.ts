@@ -2,7 +2,7 @@
  * One person on paper: the Fiche and Famille tabs of the panel as a single
  * document, for a relative who is building their own tree of the same family.
  *
- * This decides what the sheet says and leaves the drawing to the screen. Three
+ * This decides what the sheet says and leaves the drawing to the screen. Four
  * decisions are made here rather than there, because they are the ones worth a
  * test:
  *
@@ -12,9 +12,13 @@
  *   with its children; each child's spouse, so a grandchild's surname is
  *   explained; the grandchildren, and the nephews and nieces, named in passing.
  * - **How much of each.** The subject in full. Parents, siblings, partners and
- *   children get a line of dates and places, written short (« Brest,
- *   Finistère ») because the subject's own events carry the long form.
- *   Grandchildren, nephews and nieces get a name and their years, spouses a name.
+ *   children get a line for their birth and one for their death, with places
+ *   written short (« Brest, Finistère ») because the subject's own events carry
+ *   the long form. Grandchildren, nephews and nieces get a name and their years.
+ * - **In words.** « Né le 4 févr. 1921 à Brest », « Mariés en 1919 », « née en
+ *   1976 »: never the genealogist's ° † x. The sheet is read by relatives, and
+ *   the first printing showed a lone « x » under a husband's name that read as a
+ *   mistake to the person it was made for.
  * - **What is held back.** With discretion, a living relative keeps a name and a
  *   birth year and loses the day, the place and the occupation; a relative the
  *   file marks private (RESN privacy or confidential) always does. The subject
@@ -36,12 +40,13 @@ import {
   type Lead,
   type MediaKind,
   type Place,
+  type Sex,
   type Tree,
 } from '@/gedcom/model';
-import { eventLabel, formatAge, t, tf, tg, type Lang, type StringKey } from '@/i18n';
+import { formatAge, t, tf, tg, type GenderedKey, type Lang, type StringKey } from '@/i18n';
 import { portraitId } from '@/tree/edit';
 import { citationText, eventRows } from '@/app/lib/lifeEvents';
-import { lifeYears, nameParts } from './person';
+import { nameParts } from './person';
 
 export interface SheetOptions {
   lang: Lang;
@@ -56,7 +61,7 @@ export interface SheetOptions {
 export interface Relative {
   id: string;
   name: string;
-  /** What is known, in reading order: birth, then death. Empty when nothing is. */
+  /** What is known, one sentence a line: « Né le 2 août 1913 à San Vito al Tagliamento », then the death. */
   facts: string[];
   occupation?: string;
   /** Adoption, or the side a half-sibling is on. */
@@ -66,22 +71,23 @@ export interface Relative {
   reduced: boolean;
 }
 
-/** Someone named in passing: a spouse, a nephew, a grandchild. */
+/** Someone named in passing: a nephew, a grandchild. */
 export interface Mention {
   id: string;
   name: string;
-  /** « 1950 », « 1891 – 1915 », or nothing: spouses are named without. */
-  years: string;
+  /** « née en 1976 », « né en 1891, décédé en 1915 », or nothing when no year is known. */
+  life: string;
 }
 
 export interface SiblingRow extends Relative {
   self: boolean;
-  spouses: Mention[];
+  /** One line per union: « Mariée à Michel AUBRY », « En couple avec … ». */
+  unions: string[];
   children: Mention[];
 }
 
 export interface ChildRow extends Relative {
-  spouses: Mention[];
+  unions: string[];
   children: Mention[];
 }
 
@@ -95,19 +101,21 @@ export interface ParentSlot {
 export interface ParentCouple {
   familyId: string;
   slots: [ParentSlot, ParentSlot];
-  union: string;
+  /** « Mariés en 1919 à Plouguerneau, Finistère », then a divorce if there was one. */
+  union: string[];
 }
 
 export interface UnionBlock {
   familyId: string;
   partner?: Relative;
   unknownPartner?: string;
-  union: string;
+  union: string[];
   children: ChildRow[];
 }
 
 export interface SheetEvent {
   key: string;
+  /** Empty when the event is undated: a dash said nothing more and read as a mark. */
   date: string;
   label: string;
   lines: string[];
@@ -135,9 +143,6 @@ export interface SheetLead {
   url?: string;
 }
 
-/** The symbols the relatives' lines use, so the key at the foot lists those and no others. */
-export type SheetSymbol = 'birth' | 'baptism' | 'death' | 'marriage';
-
 export interface PersonSheet {
   subject: {
     id: string;
@@ -162,7 +167,6 @@ export interface PersonSheet {
   sources: SheetSource[];
   documents: SheetDocument[];
   leads: { open: SheetLead[]; done: SheetLead[] };
-  symbols: SheetSymbol[];
   counts: {
     /** Everyone on the sheet, the subject included. */
     people: number;
@@ -178,7 +182,8 @@ export interface PersonSheet {
 
 /** GEDCOM's RESN values that mean "do not show". `locked` is about editing and does not. */
 const PRIVATE = /privacy|confidential/i;
-const SYMBOL_ORDER: SheetSymbol[] = ['birth', 'baptism', 'death', 'marriage'];
+/** A postal or INSEE code, which Geneanet writes as a part of the place (« Rive-de-Gier, 42186, Loire »). */
+const PLACE_CODE = /^(\d{4,5}|\d[AB]\d{3})$/i;
 const DOCUMENT_KIND: Record<MediaKind, StringKey> = {
   birth: 'docKindBirth',
   marriage: 'docKindMarriage',
@@ -192,13 +197,12 @@ interface Context {
   lang: Lang;
   discreet: boolean;
   people: Set<string>;
-  symbols: Set<SheetSymbol>;
 }
 
-/** Where, in the short form a relative's line can afford: the first two parts, « Brest, Finistère ». */
+/** Where, in the short form a relative's line can afford: the first two named parts, « Brest, Finistère ». */
 export function shortPlace(p: Place | undefined): string {
   if (!p) return '';
-  const parts = p.parts.map((s) => s.trim()).filter((s) => s.length);
+  const parts = p.parts.map((s) => s.trim()).filter((s) => s.length && !PLACE_CODE.test(s));
   return parts.length ? parts.slice(0, 2).join(', ') : p.text.trim();
 }
 
@@ -249,41 +253,48 @@ function when(d: GDate | undefined, lang: Lang): string {
   return tf(lang, d.date?.day !== undefined ? 'sheetOnDay' : 'sheetInPeriod', { date: s });
 }
 
-/** « ° 4 févr. 1921, Kerguelen, Plouguerneau »: a symbol, then the date and the short place, whichever are known. */
-function fact(symbol: string, e: Event, lang: Lang): string {
-  const what = [e.date ? formatDate(e.date, lang) : '', shortPlace(e.place)].filter(Boolean).join(', ');
-  return what ? `${symbol} ${what}` : symbol;
+/** The same date to the year: « en 1976 », « vers 1920 », « entre 1857 et 1859 ». */
+function whenYear(d: GDate, lang: Lang): string {
+  const year = (x: GDate['date']) => x && { ...x, day: undefined, month: undefined };
+  return when({ ...d, raw: '', date: year(d.date), date2: year(d.date2) }, lang);
+}
+
+/**
+ * « Né le 4 févr. 1921 à Kerguelen, Plouguerneau »: one sentence about one event, or nothing when the
+ * event says nothing. With `always`, an event known to have happened and nothing else still gets its
+ * line — « Décédé, date et lieu inconnus » — because that it happened is itself the fact.
+ */
+function lifeLine(lead: string, e: Event | undefined, lang: Lang, tail = '', always = false): string | undefined {
+  if (!e) return undefined;
+  const date = when(e.date, lang);
+  const place = shortPlace(e.place);
+  if (!date && !place) return always ? `${lead}, ${t(lang, 'sheetUnknownDatePlace')}${tail}` : undefined;
+  return [lead, date, place ? tf(lang, 'sheetAtPlace', { place }) : ''].filter(Boolean).join(' ') + tail;
+}
+
+/** A relative's own lines: when and where they were born, then when and where they died. */
+function facts(ind: Individual, lang: Lang): string[] {
+  const birth = findEvent(ind.events, 'birth');
+  const born = birth
+    ? lifeLine(tg(lang, 'sheetBorn', ind.sex), birth, lang)
+    : lifeLine(tg(lang, 'sheetBaptised', ind.sex), findEvent(ind.events, 'baptism'), lang);
+  const death = findEvent(ind.events, 'death');
+  const gone = death
+    ? lifeLine(tg(lang, 'sheetDied', ind.sex), death, lang, '', true)
+    : lifeLine(tg(lang, 'sheetBuried', ind.sex), findEvent(ind.events, 'burial'), lang);
+  return [born, gone].filter((l): l is string => !!l);
 }
 
 const held = (ind: Individual, c: Context) => (c.discreet && isLiving(ind)) || PRIVATE.test(ind.restriction ?? '');
 
-function facts(ind: Individual, c: Context): string[] {
-  const out: string[] = [];
-  const birth = findEvent(ind.events, 'birth');
-  const born = birth ?? findEvent(ind.events, 'baptism');
-  if (born && (born.date || born.place)) {
-    c.symbols.add(birth ? 'birth' : 'baptism');
-    out.push(fact(birth ? '°' : '~', born, c.lang));
-  }
-  const death = findEvent(ind.events, 'death');
-  const burial = findEvent(ind.events, 'burial');
-  if (death) {
-    c.symbols.add('death');
-    out.push(fact('†', death, c.lang));
-  } else if (burial && (burial.date || burial.place)) {
-    out.push(fact(eventLabel(c.lang, 'burial'), burial, c.lang));
-  }
-  return out;
-}
-
 function relative(ind: Individual, c: Context, tag?: string): Relative {
   c.people.add(ind.id);
   const reduced = held(ind, c);
-  const year = birthYear(ind);
+  const born = birthOf(ind)?.date;
   return {
     id: ind.id,
     name: nameOf(ind, c.lang, true),
-    facts: reduced ? (year === undefined ? [] : [`${tg(c.lang, 'sheetBornIn', ind.sex)} ${year}`]) : facts(ind, c),
+    facts: reduced ? (born ? [`${tg(c.lang, 'sheetBorn', ind.sex)} ${whenYear(born, c.lang)}`] : []) : facts(ind, c.lang),
     occupation: reduced ? undefined : ind.events.find((e) => e.type === 'occupation' && e.value)?.value,
     tag,
     unsure: !!ind.unsure,
@@ -291,22 +302,38 @@ function relative(ind: Individual, c: Context, tag?: string): Relative {
   };
 }
 
-function mention(ind: Individual, c: Context, withYears: boolean): Mention {
+/** A grandchild or a nephew in passing: their name, and the years in words. */
+function mention(ind: Individual, c: Context): Mention {
   c.people.add(ind.id);
-  const year = birthYear(ind);
-  const years = !withYears ? '' : held(ind, c) ? (year === undefined ? '' : String(year)) : lifeYears(ind);
-  return { id: ind.id, name: nameOf(ind, c.lang), years };
+  const birth = findEvent(ind.events, 'birth');
+  const baptism = findEvent(ind.events, 'baptism');
+  const death = findEvent(ind.events, 'death');
+  const life: string[] = [];
+  if (birth?.date) life.push(`${tg(c.lang, 'sheetBornWord', ind.sex)} ${whenYear(birth.date, c.lang)}`);
+  else if (baptism?.date) life.push(`${tg(c.lang, 'sheetBaptisedWord', ind.sex)} ${whenYear(baptism.date, c.lang)}`);
+  if (death?.date && !held(ind, c)) life.push(`${tg(c.lang, 'sheetDiedWord', ind.sex)} ${whenYear(death.date, c.lang)}`);
+  return { id: ind.id, name: nameOf(ind, c.lang), life: life.join(', ') };
 }
 
-/** Who someone was with, named: the partners of each of their unions, oldest union first. */
-function spousesOf(ind: Individual, c: Context): Mention[] {
-  const out: Mention[] = [];
+const UNION_WITH: Record<Family['unionType'], GenderedKey> = {
+  married: 'sheetMarriedTo',
+  civil: 'sheetCivilWith',
+  unmarried: 'sheetFreeUnionWith',
+  unknown: 'sheetCoupleWith',
+};
+
+/** Who someone was with, a line a union, oldest first: « Mariée à Michel AUBRY ». */
+function unionsOf(ind: Individual, c: Context): string[] {
+  const out: string[] = [];
   for (const f of byUnion(c.tree, familiesOf(c.tree, ind.partnerIn))) {
     const id = f.husbandId === ind.id ? f.wifeId : f.husbandId;
     const partner = id ? c.tree.individuals[id] : undefined;
-    if (partner && !out.some((m) => m.id === partner.id)) out.push(mention(partner, c, false));
+    if (!partner) continue;
+    c.people.add(partner.id);
+    // A recorded marriage says more than the union's type, which files often leave unset.
+    const kind = findEvent(f.events, 'marriage') ? 'married' : f.unionType;
+    out.push(`${tg(c.lang, UNION_WITH[kind], ind.sex)} ${nameOf(partner, c.lang)}`);
   }
-  if (out.length) c.symbols.add('marriage');
   return out;
 }
 
@@ -323,25 +350,28 @@ function childrenOf(ind: Individual, c: Context): Mention[] {
       }
     }
   }
-  return byBirth(kids, (k) => k).map((k) => mention(k, c, true));
+  return byBirth(kids, (k) => k).map((k) => mention(k, c));
 }
 
-/** « x 12 juin 1948, Quimper, Finistère · Divorce 1990 », or the kind of union when there was no marriage. */
-function unionLine(f: Family, c: Context): string {
-  const parts: string[] = [];
+/**
+ * A couple's own lines: « Mariés le 12 juin 1948 à Quimper, Finistère », « Divorcés en 1990 », or the
+ * kind of union when there was no marriage. The plural agrees with the couple: two women are « mariées ».
+ */
+function coupleLines(f: Family, c: Context): string[] {
+  const sexes = [f.husbandId, f.wifeId].map((id) => (id ? c.tree.individuals[id]?.sex : undefined));
+  const plural: Sex = sexes.every((s) => s === 'F') ? 'F' : 'M';
   const marriage = findEvent(f.events, 'marriage');
   const divorce = findEvent(f.events, 'divorce');
-  if (marriage) {
-    c.symbols.add('marriage');
-    parts.push(fact('x', marriage, c.lang));
-  }
-  if (divorce) parts.push([eventLabel(c.lang, 'divorce'), divorce.date ? formatDate(divorce.date, c.lang) : ''].filter(Boolean).join(' '));
-  if (f.unionType === 'unmarried') parts.push(t(c.lang, 'unmarried'));
-  if (f.unionType === 'civil') parts.push(t(c.lang, 'civil'));
-  return parts.join(' · ');
+  const lines = [
+    lifeLine(tg(c.lang, 'sheetMarried', plural), marriage, c.lang, '', true),
+    lifeLine(tg(c.lang, 'sheetDivorced', plural), divorce, c.lang, '', true),
+  ].filter((l): l is string => !!l);
+  if (!marriage && f.unionType === 'unmarried') lines.push(t(c.lang, 'sheetFreeUnion'));
+  if (!marriage && f.unionType === 'civil') lines.push(t(c.lang, 'sheetCivilUnion'));
+  return lines;
 }
 
-const roleOf = (sex: Individual['sex']): StringKey => (sex === 'M' ? 'sheetFather' : sex === 'F' ? 'sheetMother' : 'sheetParent');
+const roleOf = (sex: Sex): StringKey => (sex === 'M' ? 'sheetFather' : sex === 'F' ? 'sheetMother' : 'sheetParent');
 
 function parents(person: Individual, c: Context): ParentCouple[] {
   return person.childOf.flatMap((link) => {
@@ -354,7 +384,7 @@ function parents(person: Individual, c: Context): ParentCouple[] {
         ? { role: t(c.lang, roleOf(ind.sex)), person: relative(ind, c, tag) }
         : { role: t(c.lang, roleOf(usual)), unknown: tg(c.lang, 'unknownPerson', usual) };
     };
-    return [{ familyId: f.id, slots: [slot(f.husbandId, 'M'), slot(f.wifeId, 'F')], union: unionLine(f, c) }];
+    return [{ familyId: f.id, slots: [slot(f.husbandId, 'M'), slot(f.wifeId, 'F')], union: coupleLines(f, c) }];
   });
 }
 
@@ -396,12 +426,12 @@ function siblings(person: Individual, c: Context): SiblingRow[] {
         unsure: false,
         reduced: false,
         self: true,
-        spouses: [],
+        unions: [],
         children: [],
       };
     }
     const tag = side ? tg(lang, side === 'father' ? 'sheetHalfByFather' : 'sheetHalfByMother', ind.sex) : undefined;
-    return { ...relative(ind, c, tag), self: false, spouses: spousesOf(ind, c), children: childrenOf(ind, c) };
+    return { ...relative(ind, c, tag), self: false, unions: unionsOf(ind, c), children: childrenOf(ind, c) };
   });
 }
 
@@ -415,7 +445,7 @@ function unions(person: Individual, c: Context): UnionBlock[] {
       const adopted = child.childOf.find((l) => l.familyId === f.id)?.pedigree === 'adopted';
       return {
         ...relative(child, c, adopted ? tg(lang, 'adopted', child.sex) : undefined),
-        spouses: spousesOf(child, c),
+        unions: unionsOf(child, c),
         children: childrenOf(child, c),
       };
     });
@@ -424,19 +454,10 @@ function unions(person: Individual, c: Context): UnionBlock[] {
       familyId: f.id,
       partner: partner ? relative(partner, c) : undefined,
       unknownPartner: partner ? undefined : tg(lang, 'unknownPerson', opposite),
-      union: unionLine(f, c),
+      union: coupleLines(f, c),
       children,
     };
   });
-}
-
-/** « Né le 4 févr. 1921 à Kerguelen, Plouguerneau »: one of the subject's own lines, or nothing when the event says nothing. */
-function lifeLine(lead: string, e: Event | undefined, lang: Lang, tail = '', bare = false): string | undefined {
-  if (!e) return undefined;
-  const date = when(e.date, lang);
-  const place = shortPlace(e.place);
-  if (!date && !place && !bare) return undefined;
-  return [lead, date, place ? tf(lang, 'sheetAtPlace', { place }) : ''].filter(Boolean).join(' ') + tail;
 }
 
 /** « Fils d’Auguste LENOIR et de Marie BRÉHIER », from the family the subject was born into. */
@@ -459,9 +480,9 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
   const person = tree.individuals[id];
   if (!person) return null;
   const { lang } = opts;
-  const c: Context = { tree, lang, discreet: opts.discreet, people: new Set([person.id]), symbols: new Set() };
+  const c: Context = { tree, lang, discreet: opts.discreet, people: new Set([person.id]) };
 
-  const rows = eventRows(tree, person, lang);
+  const rows = eventRows(tree, person, lang, (ind) => nameOf(ind, lang));
   const [given, surname] = nameParts(person);
   const birth = findEvent(person.events, 'birth');
   const baptism = findEvent(person.events, 'baptism');
@@ -506,7 +527,7 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
   if (opts.sources) cite(t(lang, 'identity'), person.citations);
   const events: SheetEvent[] = rows.map((r) => ({
     key: r.key,
-    date: r.date ?? '—',
+    date: r.date ?? '',
     label: r.label,
     lines: [
       ...r.lines,
@@ -525,7 +546,7 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
           const media = tree.media[m]!;
           const kind = t(lang, DOCUMENT_KIND[media.kind ?? 'photo']);
           const date = media.date ? formatDate(media.date, lang) : '';
-          return { id: m, title: media.title?.trim() || kind, detail: [media.title?.trim() ? kind : '', date].filter(Boolean).join(' · ') };
+          return { id: m, title: media.title?.trim() || kind, detail: [media.title?.trim() ? kind : '', date].filter(Boolean).join(', ') };
         });
 
   const leads = person.leads ?? [];
@@ -560,7 +581,6 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
     leads: opts.leads
       ? { open: leads.filter((l) => !l.done).map(lead), done: leads.filter((l) => l.done).map(lead) }
       : { open: [], done: [] },
-    symbols: SYMBOL_ORDER.filter((s) => c.symbols.has(s)),
     counts: {
       people: c.people.size,
       living: relatives.filter(isLiving).length,

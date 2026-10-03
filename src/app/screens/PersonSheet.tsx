@@ -16,19 +16,10 @@
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { t, tf, type Lang, type StringKey } from '@/i18n';
+import { t, tf, type Lang } from '@/i18n';
+import { localeOf } from '@/app/lib/format';
 import { fitScale, packPages, type MeasuredBlock } from '@/print/pack';
-import type {
-  ChildRow,
-  Mention,
-  ParentCouple,
-  PersonSheet,
-  SheetEvent,
-  SheetLead,
-  SheetSymbol,
-  SiblingRow,
-  UnionBlock,
-} from '@/print/sheet';
+import type { ChildRow, Mention, ParentCouple, PersonSheet, SheetEvent, SheetLead, SiblingRow, UnionBlock } from '@/print/sheet';
 import { usePortraitUrl } from '@/app/person/fields/Portrait';
 import { safeHref } from '@/app/screens/Leads';
 
@@ -49,13 +40,6 @@ const TOP = 12;
 const BOTTOM = 16;
 /** Left free at the foot of every page, so that a line breaking a little differently in print cannot push a block off it. */
 const SPARE = 2;
-
-const KEY: Record<SheetSymbol, StringKey> = {
-  birth: 'sheetKeyBirth',
-  baptism: 'sheetKeyBaptism',
-  death: 'sheetKeyDeath',
-  marriage: 'sheetKeyMarriage',
-};
 
 interface Block {
   key: string;
@@ -108,7 +92,7 @@ export function PersonSheetView({ sheet, lang, paper, treeName, date, discreet, 
 
   const name = fullName(sheet, lang);
   const notices = [discreet ? t(lang, 'sheetFootDiscreet') : '', sheet.counts.private ? t(lang, 'sheetFootPrivate') : ''];
-  const foot = [t(lang, 'sheetMadeWith'), ...sheet.symbols.map((s) => t(lang, KEY[s])), ...notices].filter(Boolean).join(' · ');
+  const foot = [`${t(lang, 'sheetMadeWith')}.`, ...notices].filter(Boolean).join(' ');
   const total = current.pages.length;
 
   return (
@@ -241,10 +225,10 @@ function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName:
           `document-${d.id}`,
           ['item', 'document'],
           <>
-            <span className="ps-mark">·</span>
+            <span className="ps-mark" />
             <span>
               <strong>{d.title}</strong>
-              {d.detail && ` · ${d.detail}`}
+              {d.detail && `, ${d.detail}`}
             </span>
           </>,
           false,
@@ -259,9 +243,7 @@ function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName:
     const group = (key: string, heading: string, leads: SheetLead[], finished: boolean, first: boolean) => {
       if (!leads.length) return;
       add(`leads-${key}`, ['subtitle'], <h4>{heading}</h4>, true, first);
-      leads.forEach((l, i) =>
-        add(`lead-${l.id}`, ['item', 'lead', ...(finished ? ['done'] : [])], <LeadRow l={l} done={finished} />, false, i === 0),
-      );
+      leads.forEach((l, i) => add(`lead-${l.id}`, ['item', 'lead', ...(finished ? ['done'] : [])], <LeadRow l={l} />, false, i === 0));
     };
     group('open', t(lang, 'sheetToFind'), open, false, true);
     group('done', t(lang, 'sheetFound'), done, true, !open.length);
@@ -275,9 +257,7 @@ function Head({ sheet, lang, photo, treeName, date }: { sheet: PersonSheet; lang
     <header>
       <div className="ps-kicker">
         <span>{t(lang, 'chartSheet')}</span>
-        <span>
-          {tf(lang, 'sheetTree', { name: treeName })} · {date}
-        </span>
+        <span>{tf(lang, 'sheetTreeDated', { name: treeName, date })}</span>
       </div>
       <div className={`ps-id${photo ? ' with-photo' : ''}`}>
         {photo && (
@@ -336,16 +316,36 @@ function Parents({ couple, lang }: { couple: ParentCouple; lang: Lang }) {
           </div>
         ))}
       </div>
-      {couple.union && <p className="ps-couple-union">{couple.union}</p>}
+      {couple.union.map((line) => (
+        <p key={line} className="ps-couple-union">
+          {line}
+        </p>
+      ))}
     </>
   );
 }
 
-const named = (m: Mention) => (m.years ? `${m.name} (${m.years})` : m.name);
+/** « Claire AUBRY (née en 1976), Thomas AUBRY (né en 1979) et Sophie AUBRY (née en 1984) ». */
+function people(list: Mention[], lang: Lang): string {
+  const names = list.map((m) => (m.life ? `${m.name} (${m.life})` : m.name));
+  return new Intl.ListFormat(localeOf(lang), { style: 'long', type: 'conjunction' }).format(names);
+}
 
-/** A sibling or a child: the name, what is known, the spouses, then the next generation on one line. */
+/** One sentence a line, so that nothing has to stand between them. */
+function Lines({ lines, className }: { lines: string[]; className?: string }) {
+  return (
+    <>
+      {lines.map((line, i) => (
+        <span key={i} className={className ? `ps-line ${className}` : 'ps-line'}>
+          {line}
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** A sibling or a child: the name, then their dates, their unions and the next generation, a line each. */
 function Row({ r, lang, next }: { r: SiblingRow | ChildRow; lang: Lang; next: string }) {
-  const spouses = r.spouses.map((m) => m.name).join(', ');
   return (
     <>
       <span className="ps-name">
@@ -353,30 +353,34 @@ function Row({ r, lang, next }: { r: SiblingRow | ChildRow; lang: Lang; next: st
         <Tags tag={r.tag} unsure={r.unsure} lang={lang} />
       </span>
       <span className="ps-facts">
-        {r.facts.join(' · ')}
-        {spouses && <span className="ps-spouse">{`${r.facts.length ? ' · ' : ''}x ${spouses}`}</span>}
+        <Lines lines={r.facts} />
+        <Lines lines={r.unions} className="ps-spouse" />
+        {r.children.length > 0 && (
+          <span className="ps-line ps-next">
+            <span className="ps-label">{next}</span>
+            {people(r.children, lang)}
+          </span>
+        )}
       </span>
-      {r.children.length > 0 && (
-        <span className="ps-next">
-          <span className="ps-label">{next}</span>
-          {r.children.map(named).join(' · ')}
-        </span>
-      )}
     </>
   );
 }
 
 function UnionHead({ u, n, lang }: { u: UnionBlock; n?: number; lang: Lang }) {
-  const known = [u.partner?.occupation, ...(u.partner?.facts ?? [])].filter(Boolean).join(' · ');
+  const known = [u.partner?.occupation, ...(u.partner?.facts ?? [])].filter((l): l is string => !!l);
   return (
     <>
       <span className="ps-n">{n ?? ''}</span>
-      <span className={`ps-name${u.partner ? '' : ' unknown'}`}>
-        {u.partner ? u.partner.name : u.unknownPartner}
-        {u.partner && <Tags tag={u.partner.tag} unsure={u.partner.unsure} lang={lang} />}
+      <span className="ps-partner">
+        <span className={`ps-name${u.partner ? '' : ' unknown'}`}>
+          {u.partner ? u.partner.name : u.unknownPartner}
+          {u.partner && <Tags tag={u.partner.tag} unsure={u.partner.unsure} lang={lang} />}
+        </span>
+        <Lines lines={u.union} className="ps-uline" />
       </span>
-      <span className="ps-facts">{known}</span>
-      {u.union && <span className="ps-uline">{u.union}</span>}
+      <span className="ps-facts">
+        <Lines lines={known} />
+      </span>
     </>
   );
 }
@@ -402,11 +406,11 @@ function EventRow({ e }: { e: SheetEvent }) {
   );
 }
 
-function LeadRow({ l, done }: { l: SheetLead; done: boolean }) {
+function LeadRow({ l }: { l: SheetLead }) {
   const href = safeHref(l.url);
   return (
     <>
-      <span className="ps-mark">{done ? '✓' : '☐'}</span>
+      <span className="ps-mark" />
       <span>
         <strong>{l.title}</strong>
         {l.note && <span className="ps-lead-note">{l.note}</span>}

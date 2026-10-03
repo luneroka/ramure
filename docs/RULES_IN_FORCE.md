@@ -411,6 +411,16 @@ the sheet is about is always printed in full — they were chosen. A relative th
 file marks private (`RESN privacy` or `confidential`) is held back whatever the
 box says, because that mark was made on purpose by whoever entered them.
 
+**The person sheet is written in words, never in genealogical signs.**
+« Né le 4 févr. 1921 à Brest », « Mariés en 1919 », « Claire AUBRY (née en 1976) »: no °, †, ~ or x, no dash for a missing date. The sheet is read by
+relatives, not genealogists, and the first version printed a lone « x » under a
+husband's name that read as a mistake to the person it was made for. A marriage
+known to have happened and nothing else says so — « Mariés, date et lieu
+inconnus ». A test fails if a sign comes back
+([src/print/sheet.test.ts](../src/print/sheet.test.ts)). Places on a relative's
+line are written short and without the postal or INSEE code Geneanet puts in
+them; the subject's events keep the place as the file has it.
+
 **The Fiche tab and the printed sheet list the same events.** Both read
 `eventRows` ([src/app/lib/lifeEvents.ts](../src/app/lib/lifeEvents.ts)): the
 same rows, union events included, birth first, then by year, undated last.
