@@ -48,7 +48,7 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByLabel('Prénom(s)').fill('Testine');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.locator('.topbar')).toContainText('34 personnes');
-  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('aria-label', 'À jour', { timeout: 15_000 });
 
   // Undo removes her, redo brings her back; both sync like any edit.
   await page.keyboard.press('Escape');
@@ -58,7 +58,7 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await expect(page.locator('.topbar')).toContainText('33 personnes');
   await page.keyboard.press(`${mod}+Shift+z`);
   await expect(page.locator('.topbar')).toContainText('34 personnes');
-  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('aria-label', 'À jour', { timeout: 15_000 });
 
   // The edit survives a reload — and the reload never flashes the sign-in card while the
   // session is being checked. Holding /me open is what makes that observable rather than a race.
@@ -84,7 +84,7 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByLabel('Lien (facultatif)').fill('https://archives.example.org/ark:/12345/a1b2c3d4e5f6a7b8c9d0/daogrp/0/3E210_12');
   await page.getByRole('button', { name: 'Ajouter une source' }).click();
   await expect(page.locator('.source').filter({ hasText: 'Acte de naissance' })).toContainText('archives.example.org/…/3E210_12');
-  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('aria-label', 'À jour', { timeout: 15_000 });
 
   // The panel's « Imprimer » opens the print page on that person's sheet, which downloads as a PDF file
   // made in the browser: no print dialog, and one page of PDF per page on screen.
@@ -155,13 +155,13 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await expect(page.locator('.canvas-tools')).toBeHidden();
   await preview.getByRole('button', { name: 'Ajouter à l’arbre' }).click();
   await expect(page.locator('.topbar')).toContainText('35 personnes');
-  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('aria-label', 'À jour', { timeout: 15_000 });
   await page.locator('canvas.tree-canvas').click({ position: { x: 20, y: 20 } });
   await page.keyboard.press(`${mod}+z`);
   await expect(page.locator('.topbar')).toContainText('34 personnes');
   await page.keyboard.press(`${mod}+Shift+z`);
   await expect(page.locator('.topbar')).toContainText('35 personnes');
-  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('aria-label', 'À jour', { timeout: 15_000 });
 
   // On a phone: nothing scrolls sideways, the search is reachable from its button and its results can
   // be tapped, and undo is on screen. All three were broken — the app was 423 px wide on a 390 px
