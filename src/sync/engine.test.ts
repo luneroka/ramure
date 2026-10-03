@@ -133,6 +133,45 @@ describe('SyncEngine', () => {
     expect(h.srv.version).toBe(5);
   });
 
+  it('replaces a copy kept before leads became sources with the server’s document, once, keeping pending edits', async () => {
+    const h = harness({ version: 7 });
+    // A base kept by the previous version, behind the server, with an edit waiting.
+    h.store.set('cloud:T', { schema: 2, version: 5, baseGedcom: doc });
+    h.store.set('outbox:T', [rename('I1', 'Margot')]);
+    const eng = new SyncEngine('T', false, h.deps);
+    await eng.open();
+    await eng.sync();
+    // No replay of ops recorded in the old shape: the document itself, then our edit on top.
+    expect(h.calls.slice(0, 2)).toEqual(['getTree', 'push@7:1']);
+    expect(eng.current!.individuals.I1!.names[0]!.given).toBe('Margot');
+    await flush();
+    expect((h.store.get('cloud:T') as { schema: number }).schema).toBe(3);
+    await eng.sync();
+    expect(h.calls.filter((c) => c === 'getTree')).toHaveLength(1);
+  });
+
+  it('keeps fetching the server’s document until it has it, even across a reopen', async () => {
+    const h = harness({ version: 2 });
+    h.store.set('cloud:T', { schema: 2, version: 2, baseGedcom: doc });
+    const getTree = h.deps.api.getTree;
+    h.deps.api.getTree = async () => {
+      throw new TypeError('offline');
+    };
+    const first = new SyncEngine('T', false, h.deps);
+    await first.open();
+    await first.sync();
+    await flush();
+    first.dispose();
+    expect((h.store.get('cloud:T') as { schema: number }).schema).toBe(2);
+    h.deps.api.getTree = getTree;
+    const again = new SyncEngine('T', false, h.deps);
+    await again.open();
+    await again.sync();
+    expect(h.calls).toContain('getTree');
+    await flush();
+    expect((h.store.get('cloud:T') as { schema: number }).schema).toBe(3);
+  });
+
   it('names the failure: signed out, forbidden, gone, offline', async () => {
     for (const [code, status] of [
       [401, 'signedout'],

@@ -132,8 +132,6 @@ export interface Individual {
   restriction?: string;
   /** Marked as needing another look: identity or facts not established (custom tag _UNSURE). */
   unsure?: boolean;
-  /** Research leads about this person. */
-  leads: Lead[];
   extra: GedcomRecord[];
 }
 
@@ -197,7 +195,7 @@ export interface MediaObject {
   extra: GedcomRecord[];
 }
 
-/** A research lead or resource: a link worth coming back to (custom tag _LINK). */
+/** A link the whole tree shares on the Ressources page (custom tag _LINK under HEAD). */
 export interface Lead {
   id: string;
   url: string;
@@ -264,7 +262,7 @@ export function newEvent(type: EventType, tag: string): Event {
 }
 
 export function newIndividual(id: string): Individual {
-  return { id, names: [], sex: 'U', events: [], notes: [], citations: [], mediaIds: [], childOf: [], partnerIn: [], leads: [], extra: [] };
+  return { id, names: [], sex: 'U', events: [], notes: [], citations: [], mediaIds: [], childOf: [], partnerIn: [], extra: [] };
 }
 
 export function newFamily(id: string): Family {
@@ -289,4 +287,35 @@ export function displayName(ind: Individual): string {
   if (!n) return '?';
   const parts = [n.given, n.surname].filter((s) => s && s.length);
   return parts.length ? parts.join(' ') : '?';
+}
+
+/** A whole-line web or mail address, the only kind a written source carries as its link. */
+const LINK_LINE = /^(https?:\/\/|mailto:)\S+$/i;
+
+/**
+ * A source written by hand: what it is on the citation's own line and the link
+ * on the next (GEDCOM CONT), so any genealogy program shows both as the
+ * source's description. Either may be empty, not both.
+ */
+export function writtenSource(text: string, url: string, notes: string[] = []): Citation {
+  return { flat: [text.trim(), url.trim()].filter(Boolean).join('\n'), notes };
+}
+
+/** The text and the link of a written source, as the add/edit form holds them. */
+export function sourceParts(c: Citation): { text: string; url: string } {
+  const lines = (c.flat ?? '').split('\n');
+  const last = lines[lines.length - 1]?.trim() ?? '';
+  return LINK_LINE.test(last) ? { text: lines.slice(0, -1).join('\n').trim(), url: last } : { text: (c.flat ?? '').trim(), url: '' };
+}
+
+/**
+ * What a person's research lead (a _LINK under INDI, written before leads
+ * were folded into sources) becomes: a written source with its title, its link
+ * and its note. The done mark has no equivalent and is dropped. Parsing and
+ * replaying old ops both go through here, so the two always agree.
+ */
+export function leadCitation(l: { title?: string; url?: string; note?: string }): Citation {
+  const url = (l.url ?? '').trim();
+  const title = (l.title ?? '').trim();
+  return writtenSource(title === url ? '' : title, url, l.note?.trim() ? [l.note.trim()] : []);
 }

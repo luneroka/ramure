@@ -23,7 +23,6 @@ const FACTS: Record<Exclude<Fact['kind'], 'event'>, StringKey> = {
   source: 'factSource',
   media: 'factMedia',
   restriction: 'factRestriction',
-  lead: 'factLead',
   parents: 'factParents',
   partner: 'factPartner',
   child: 'factChild',

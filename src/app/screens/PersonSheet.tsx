@@ -12,15 +12,14 @@
  * take, each page a box of its own like the poster's sheets.
  *
  * Everything written comes from the tree and goes through React as text, never as
- * markup: notes, places and leads arrive in files imported from elsewhere.
+ * markup: notes, places and sources arrive in files imported from elsewhere.
  */
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { t, tf, type Lang } from '@/i18n';
 import { localeOf } from '@/app/lib/format';
 import { fitScale, packPages, type MeasuredBlock } from '@/print/pack';
-import type { ChildRow, Mention, ParentCouple, PersonSheet, SheetEvent, SheetLead, SiblingRow, UnionBlock } from '@/print/sheet';
-import { safeHref } from '@/app/screens/Leads';
+import type { ChildRow, Mention, ParentCouple, PersonSheet, SheetEvent, SiblingRow, UnionBlock } from '@/print/sheet';
 
 export type SheetPaper = 'a4' | 'letter';
 export interface SheetLayout {
@@ -251,17 +250,6 @@ function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName:
       );
     }
   }
-  const { open, done } = sheet.leads;
-  if (open.length || done.length) {
-    title('leads', t(lang, 'sheetLeads'));
-    const group = (key: string, heading: string, leads: SheetLead[], finished: boolean, first: boolean) => {
-      if (!leads.length) return;
-      add(`leads-${key}`, ['subtitle'], <h4>{heading}</h4>, true, first);
-      leads.forEach((l, i) => add(`lead-${l.id}`, ['item', 'lead', ...(finished ? ['done'] : [])], <LeadRow l={l} />, false, i === 0));
-    };
-    group('open', t(lang, 'sheetToFind'), open, false, true);
-    group('done', t(lang, 'sheetFound'), done, true, !open.length);
-  }
   return out;
 }
 
@@ -415,24 +403,6 @@ function EventRow({ e }: { e: SheetEvent }) {
             {i === 0 && refs}
           </span>
         ))}
-      </span>
-    </>
-  );
-}
-
-function LeadRow({ l }: { l: SheetLead }) {
-  const href = safeHref(l.url);
-  return (
-    <>
-      <span className="ps-mark" />
-      <span>
-        <strong>{l.title}</strong>
-        {l.note && <span className="ps-lead-note">{l.note}</span>}
-        {href && (
-          <a href={href} target="_blank" rel="noopener noreferrer">
-            {href.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-          </a>
-        )}
       </span>
     </>
   );

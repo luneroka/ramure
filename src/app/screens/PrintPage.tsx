@@ -86,7 +86,6 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
   const [withPhoto, setPhoto] = useState(true);
   const [withNotes, setNotes] = useState(true);
   const [withSources, setSources] = useState(true);
-  const [withLeads, setLeads] = useState(false);
   const [discreet, setDiscreet] = useState(false);
   const [sheetLayout, setSheetLayout] = useState<SheetLayout>({ pages: 1, fit: 1 });
   const onSheetLayout = useCallback(
@@ -122,9 +121,8 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
     [kind, w.tree, page, orientation, dates, shownTitle, fit],
   );
   const sheet = useMemo(
-    () =>
-      isSheet && root ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources, leads: withLeads }) : null,
-    [isSheet, w.tree, root, lang, discreet, withNotes, withSources, withLeads],
+    () => (isSheet && root ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources }) : null),
+    [isSheet, w.tree, root, lang, discreet, withNotes, withSources],
   );
   // The photo is offered only when there is one to show: an imported file often names pictures it does not carry.
   const portrait = usePortraitUrl(sheet?.subject.portrait);
@@ -192,7 +190,6 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
         tn(lang, 'peopleCount', sheet.counts.people),
         tn(lang, 'sheetEventsCount', sheet.counts.events),
         sheet.counts.sources ? tn(lang, 'sheetSourcesCount', sheet.counts.sources) : '',
-        sheet.counts.leads ? tn(lang, 'sheetLeadsCount', sheet.counts.leads) : '',
         sheet.counts.living ? tn(lang, discreet ? 'sheetLivingReduced' : 'sheetLivingCount', sheet.counts.living) : '',
         sheet.counts.private ? tn(lang, 'sheetPrivateReduced', sheet.counts.private) : '',
         tn(lang, 'sheetPages', sheetLayout.pages),
@@ -303,9 +300,6 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
             </label>
             <label className="check">
               <input type="checkbox" checked={withSources} onChange={(e) => setSources(e.target.checked)} /> {t(lang, 'sources')}
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={withLeads} onChange={(e) => setLeads(e.target.checked)} /> {t(lang, 'sheetLeads')}
             </label>
             <label className="check">
               <input type="checkbox" checked={discreet} onChange={(e) => setDiscreet(e.target.checked)} /> {t(lang, 'sheetDiscreet')}

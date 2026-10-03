@@ -35,6 +35,21 @@ is parsed and re-serialised before it is ever stored
 ([worker/trees.ts](../worker/trees.ts), `trees.post('/')`), so no imported
 quirk survives into storage.
 
+**A person's research lead is read as a source.** Leads (« Pistes ») were
+folded into sources on 3 October 2026. An old `_LINK` under an INDI — in a
+stored document, a backup, a version or an op recorded before then — reads as a
+written source after the person's own (title, then the link on a `CONT` line,
+the note as its `NOTE`; the done mark is dropped). Parsing and replaying old ops
+share `leadCitation` in [src/gedcom/model.ts](../src/gedcom/model.ts), so a
+device that replays such an op ends where the server's document reads. Only
+`_LINK` under HEAD — the Ressources page — is still written.
+
+**A source written in the panel is a plain GEDCOM citation**: `1 SOUR <text>`
+with the link on a `CONT` line, so every genealogy program shows both. It can
+be edited only while it is that (no pointer): a register record (`@S…@`) is
+shared by everyone it is cited for, so one person's list only removes its
+citation.
+
 **GeneWeb repairs run at import only.** The Geneanet repair pass rewrites
 malformed lines; running it again on an already-repaired document could
 corrupt it. It is applied on the import path and nowhere else
@@ -115,6 +130,14 @@ set `hasMore` (`PAGE`).
 
 **Re-pushing an op is safe.** Ops already stored under the same `op_id` are
 skipped, so a retry after a lost response applies nothing twice.
+
+**A local copy kept before 3 October 2026 is replaced, not caught up.** That
+change removed `leads` from every person record and so changed every record's
+fingerprint: replaying the ops recorded since would refuse every undo among
+them and leave the device quietly showing another tree. A base stored under
+schema 2 opens the tree, then is swapped for the server's document at the first
+sync, pending edits replayed on top (`SCHEMA` in
+[src/sync/engine.ts](../src/sync/engine.ts)).
 
 **The version guard on the UPDATE is the real lock.** D1 batches are
 transactional, and `UPDATE … WHERE id = ? AND version = ?` catches a second
@@ -469,7 +492,7 @@ the document, so a dismissal holds for the whole family rather than one device.
 A viewer, who cannot write, keeps them locally instead.
 
 **Link schemes are allow-listed** before anything is rendered as an anchor
-(`safeHref` in [src/app/Leads.tsx](../src/app/Leads.tsx)), and map popups are
+(`safeHref` in [src/app/lib/urls.ts](../src/app/lib/urls.ts)), and map popups are
 escaped by hand — Leaflet takes HTML.
 
 **One writing tab per tree.** The engine takes an exclusive lock per tree; a

@@ -17,6 +17,7 @@ import {
   type Family,
   type Individual,
   type Lead,
+  leadCitation,
   type MediaKind,
   type MediaObject,
   type Name,
@@ -224,7 +225,7 @@ function parseHeader(ctx: Ctx, r: GedcomRecord): void {
     .filter((id): id is string => !!id);
 }
 
-/** _LINK <url> / 2 TITL / 2 NOTE / 2 _DONE Y : a research lead or resource. */
+/** _LINK <url> / 2 TITL / 2 NOTE / 2 _DONE Y : a tree resource, or a person's former research lead. */
 function leadsOf(r: GedcomRecord): Lead[] {
   return children(r, '_LINK').map((l, i) => ({
     id: childValue(l, '_ID') ?? `L${i + 1}`,
@@ -451,7 +452,8 @@ function parseIndividual(ctx: Ctx, id: string, r: GedcomRecord): Individual {
   ind.notes = notesOf(ctx, r);
   ind.citations = citationsOf(ctx, r);
   ind.mediaIds = mediaOf(ctx, r);
-  ind.leads = leadsOf(r);
+  // Research leads were folded into sources: an old _LINK reads as one.
+  ind.citations.push(...leadsOf(r).map(leadCitation));
   return ind;
 }
 

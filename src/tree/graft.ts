@@ -30,7 +30,6 @@ import {
   type EventType,
   type Family,
   type Individual,
-  type Lead,
   type MediaObject,
   type Name,
   type Pedigree,
@@ -49,7 +48,7 @@ import { matchTrees, surnameKey, words, yearSpan, type Matches } from './match';
 /** Something a recognised person or family gained. */
 export type Fact =
   | { kind: 'event'; event: EventType; customType?: string }
-  | { kind: 'name' | 'sex' | 'note' | 'source' | 'media' | 'restriction' | 'lead' | 'parents' | 'partner' | 'child' | 'union' };
+  | { kind: 'name' | 'sex' | 'note' | 'source' | 'media' | 'restriction' | 'parents' | 'partner' | 'child' | 'union' };
 
 export interface Completion {
   /** The person's or the family's id in the tree. */
@@ -386,14 +385,6 @@ class Grafter {
       out = { ...out, restriction: theirs.restriction };
       note({ kind: 'restriction' });
     }
-    const fresh: Lead[] = [];
-    for (const l of theirs.leads) {
-      if (l.url && ![...out.leads, ...fresh].some((x) => x.url === l.url)) fresh.push({ ...l, id: newId('L') });
-    }
-    if (fresh.length) {
-      out = { ...out, leads: [...out.leads, ...fresh] };
-      note({ kind: 'lead' });
-    }
     if (out !== mine) this.individuals[mine.id] = out;
   }
 
@@ -667,7 +658,6 @@ class Grafter {
       // Links are rebuilt from the families that come in: some of the file's may not.
       childOf: [],
       partnerIn: [],
-      leads: theirs.leads.map((l) => ({ ...l, id: newId('L') })),
     };
   }
 

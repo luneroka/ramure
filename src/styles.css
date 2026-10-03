@@ -18,7 +18,7 @@
  *   Navigation .................. menus, tree switcher, avatar, home cards
  *   Form controls ............... alignment of labelled fields and buttons
  *   Split person panel
- *   Documents, leads, resources
+ *   Documents, resource links
  *   Controls .................... one quiet scale everywhere, accent focus
  *   Edit dialog ................. sectioned body, fixed head and foot
  *   Relationship banner
@@ -1797,13 +1797,60 @@ label.check input {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   font-size: 13px;
   color: var(--ink-2);
+}
+/* A source never widens the panel: text wraps anywhere, a link is cut to one line. */
+.source {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+.source:last-child {
+  border-bottom: 0;
+}
+.source.editing {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
 }
 .src-label {
   color: var(--accent);
   font-weight: 600;
+  font-size: 12px;
+}
+.src-text {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.src-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.src-link:hover {
+  text-decoration: underline;
+}
+.src-link.own-line {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.src-note {
+  color: var(--ink-3);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.source .doc-actions {
+  margin-top: 2px;
 }
 
 /* ---------- Navigation: menus, tree switcher, avatar, home cards ---------- */
@@ -2378,7 +2425,7 @@ label.check input {
   margin-left: -18px;
 }
 
-/* ---------- Documents, leads, resources ---------- */
+/* ---------- Documents, resource links ---------- */
 .doc-list,
 .lead-list {
   list-style: none;
@@ -2497,15 +2544,6 @@ label.check input {
 .lead:last-child {
   border-bottom: 0;
 }
-.lead-check {
-  flex: none;
-  padding-top: 2px;
-}
-.lead-check input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-}
 .lead-body {
   min-width: 0;
   flex: 1;
@@ -2521,11 +2559,6 @@ label.check input {
 a.lead-title:hover {
   color: var(--accent);
   text-decoration: underline;
-}
-.lead.done .lead-title {
-  color: var(--ink-3);
-  text-decoration: line-through;
-  font-weight: 500;
 }
 .lead-note {
   margin: 0;
@@ -3920,6 +3953,7 @@ textarea:focus {
 .ps-item {
   display: grid;
   grid-template-columns: calc(6 * var(--mm)) minmax(0, 1fr);
+  overflow-wrap: anywhere;
   padding-top: calc(1 * var(--u));
   font-size: calc(7.6 * var(--pt));
   color: var(--ps-ink-2);
@@ -3935,25 +3969,6 @@ textarea:focus {
   font-weight: 600;
   color: var(--ps-accent);
   font-variant-numeric: tabular-nums;
-}
-.ps-lead.ps-done strong {
-  font-weight: 400;
-  color: var(--ps-ink-2);
-}
-.ps-lead-note,
-.ps-lead a {
-  display: block;
-}
-.ps-lead-note {
-  white-space: pre-line;
-}
-.ps-lead a {
-  font-family: var(--mono);
-  font-weight: 500;
-  font-size: 0.92em;
-  color: var(--ps-accent);
-  text-decoration: none;
-  word-break: break-all;
 }
 
 /* What every page carries: a running head after the first, the key and the page number at the foot. */

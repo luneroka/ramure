@@ -65,8 +65,10 @@ export function PersonPanelHost({ navigate }: { navigate(r: Route): void }) {
           }
         });
       }}
-      onSaveLeads={(id, leads) => {
-        if (!draft) saved(w.commit(ops.updatePerson(id, { leads })), 'saved');
+      onSaveSource={(id, change, kind) => {
+        if (draft) return;
+        const op = 'person' in change ? ops.updatePerson(id, change.person) : ops.updateFamily(change.family, change.patch);
+        if (w.commit(op)) toast(t(lang, kind === 'added' ? 'sourceAdded' : kind === 'deleted' ? 'sourceDeleted' : 'saved'));
       }}
       onPrint={(id) => navigate({ name: 'print', id: w.source.id, sheet: true, person: id })}
       onNotice={toast}

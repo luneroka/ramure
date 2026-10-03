@@ -8,7 +8,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatDate } from '@/gedcom/dates';
 import { computeAge } from '@/gedcom/age';
-import { displayName, findEvent, placeText, type Family, type Individual, type Lead, type MediaObject, type Tree } from '@/gedcom/model';
+import {
+  displayName,
+  findEvent,
+  placeText,
+  type Family,
+  type Citation,
+  type Individual,
+  type MediaObject,
+  type Tree,
+} from '@/gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '@/i18n';
 import { isLiving } from '@/canvas/renderer';
 import { nextId, portraitId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '@/tree/edit';
@@ -19,9 +28,9 @@ import { PersonPicker } from './PersonPicker';
 import { PersonRow } from './PersonRow';
 import { SplitPanes } from '@/app/ui/SplitPanes';
 import { DocumentsTab } from '@/app/screens/Documents';
-import { LeadsTab } from '@/app/screens/Leads';
+import { ResearchTab } from '@/app/screens/Research';
 import { Medallion } from '@/app/person/fields/Portrait';
-import { eventRows, sourceRows } from '@/app/lib/lifeEvents';
+import { eventRows, sourceChange, sourceRows, type SourceChange } from '@/app/lib/lifeEvents';
 
 export interface PanelActions {
   onFocus(id: string): void;
@@ -40,7 +49,8 @@ export interface PanelActions {
   /** Documents: a stored media record to attach or update, one to remove, one to promote. */
   onSaveDocument(id: string, media: MediaObject): void;
   onDeleteDocument(id: string, mediaId: string): void;
-  onSaveLeads(id: string, leads: Lead[]): void;
+  /** A source added, edited (`kind` saved) or removed, as the person or family edit that does it. */
+  onSaveSource(id: string, change: SourceChange, kind: 'added' | 'saved' | 'deleted'): void;
   /** Opens the print page on this person's sheet. */
   onPrint(id: string): void;
   /** A short message for the user (toast). */
@@ -354,24 +364,19 @@ export function PersonPanel(props: Props) {
       readOnly={readOnly}
       isDraft={isDraft}
       sources={sources}
+      onSaveSource={(at, next: Citation | null) => {
+        const change = at ? sourceChange(tree, person, at, next) : next && { person: { citations: [...person.citations, next] } };
+        if (change) props.onSaveSource(person.id, change, !at ? 'added' : next ? 'saved' : 'deleted');
+      }}
       onSaveDocument={(m) => props.onSaveDocument(person.id, m)}
       onDeleteDocument={(mid) => props.onDeleteDocument(person.id, mid)}
       onError={props.onNotice}
     />
   );
 
-  const renderRecherches = () => (
-    <LeadsTab
-      person={person}
-      lang={lang}
-      readOnly={readOnly || isDraft}
-      onSaveLeads={(l) => props.onSaveLeads(person.id, l)}
-      onNotice={props.onNotice}
-    />
-  );
-  // The badge counts documents only; citations are listed below them but are not files.
+  const renderRecherches = () => <ResearchTab person={person} lang={lang} onNotice={props.onNotice} />;
+  // The badge counts documents only; sources are listed below them but are not files.
   const docCount = person.mediaIds.filter((id) => tree.media[id] && id !== heroPortrait).length;
-  const openLeads = (person.leads ?? []).filter((l) => !l.done).length;
 
   return (
     <aside className={`panel ${editing ? 'editing' : ''}`} aria-label={name}>
@@ -465,7 +470,7 @@ export function PersonPanel(props: Props) {
         bottom={{
           tabs: [
             { id: 'documents', label: t(lang, 'tabDocuments'), count: docCount },
-            { id: 'recherches', label: t(lang, 'tabRecherches'), count: openLeads },
+            { id: 'recherches', label: t(lang, 'tabRecherches') },
           ],
           active: bottomTab,
           onSelect: setBottomTab,
