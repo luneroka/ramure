@@ -40,6 +40,7 @@ const API_TEXT: Record<string, StringKey> = {
   name_required: 'errNameRequired',
   restore_is_for_owners: 'errRestoreIsForOwners',
   bulk_removal_is_for_owners: 'errBulkRemovalIsForOwners',
+  import_is_for_owners: 'errImportIsForOwners',
   file_too_large: 'errFileTooLarge',
   account_storage_full: 'errAccountStorageFull',
   unsupported_media_type: 'errUnsupportedMediaType',

@@ -33,7 +33,7 @@ import {
   type PersonPatch,
 } from './edit';
 import { newId } from './ids';
-import { applyRecordPatch, type RecordPatch } from './diff';
+import { applyGraft, applyRecordPatch, type GraftRecords, type RecordPatch } from './diff';
 
 export type Op =
   | { t: 'createPerson'; id: string; data: NewPerson }
@@ -56,7 +56,9 @@ export type Op =
   /** Several ops applied as one step (one undo, one sync record), e.g. "add child" then "fill in the card". */
   | { t: 'batch'; ops: Op[] }
   /** Set or remove whole records: the generic inverse of any edit (undo / redo). */
-  | RecordPatch;
+  | RecordPatch
+  /** Records brought in from a GEDCOM file, planned by graft.ts: it only ever adds. */
+  | GraftRecords;
 
 /** An op with its identity and provenance, as stored in a log or sent to a server. */
 export interface OpEnvelope {
@@ -158,6 +160,8 @@ export function applyOp(tree: Tree, op: Op): EditResult {
       throw new EditError('unknown_op', String((op as { t?: string }).t));
     case 'patchRecords':
       return { tree: applyRecordPatch(tree, op) };
+    case 'graft':
+      return { tree: applyGraft(tree, op) };
     case 'batch': {
       let r: EditResult = { tree };
       for (const inner of op.ops) {
@@ -183,6 +187,7 @@ export function opSubject(op: Op, result: EditResult): string | undefined {
     case 'addSibling':
       return op.siblingId;
     case 'replaceTree':
+    case 'graft':
       return undefined;
     case 'batch':
       return op.ops.length ? opSubject(op.ops[op.ops.length - 1]!, result) : result.focusId;
@@ -230,6 +235,8 @@ export function describeOp(op: Op, lang: 'fr' | 'en'): string {
       return fr ? 'Sauvegarde restaurée' : 'Snapshot restored';
     case 'patchRecords':
       return fr ? 'Annulation' : 'Undo';
+    case 'graft':
+      return fr ? 'Arbre complété depuis un GEDCOM' : 'Completed from a GEDCOM';
     case 'batch':
       return op.ops.length ? describeOp(op.ops[0]!, lang) : fr ? 'Modification' : 'Change';
   }
