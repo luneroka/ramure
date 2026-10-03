@@ -46,4 +46,23 @@ describe('PersonEditor', () => {
     await user.keyboard('{Escape}');
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it('is drawn at the root of the page, outside the panel that opened it', () => {
+    // The panel clips its content; Safari applied that clip to the editor's scrolling body and left the
+    // form blank. Nothing of the dialog may sit inside the element it is opened from.
+    const panel = document.createElement('aside');
+    panel.style.overflow = 'hidden';
+    document.body.appendChild(panel);
+    const person = tree.individuals.I2!;
+    render(
+      <PersonEditor tree={tree} person={person} lang="fr" onSave={() => undefined} onCancel={() => undefined} onDelete={() => undefined} />,
+      {
+        container: panel,
+      },
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Modifier la fiche' });
+    expect(panel.contains(dialog)).toBe(false);
+    expect(dialog.closest('.editor-backdrop')!.parentElement).toBe(document.body);
+    panel.remove();
+  });
 });

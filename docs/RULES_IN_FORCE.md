@@ -421,6 +421,16 @@ detail — because a band where one name lies flat and the next stands on end
 reads as a mistake. The consequence is deliberate: one long surname makes its
 whole ring drop to initials.
 
+**The person editor is drawn at the root of the page, not inside the panel.**
+The panel clips its content (`overflow: hidden`). The editor's backdrop used to
+escape that clip by being positioned against the whole app, which is correct
+and which every browser but Safari draws correctly: once the form is long enough
+to scroll, Safari gives its body a layer of its own and clips that layer to the
+panel, so the form came up blank between its title and its buttons. It is
+rendered through a portal into `document.body`
+([src/app/person/PersonEditor.tsx](../src/app/person/PersonEditor.tsx)); a test
+fails if it is ever put back inside the element that opens it.
+
 **The person panel belongs to the canvas route.** It is not rendered over the
 printable charts, the resources page or settings, where it only took half the
 screen away from what those pages exist to show.
