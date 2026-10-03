@@ -40,7 +40,7 @@ export const PersonRow = memo(function PersonRow({ tree, id, lang, tag, onSelect
         </span>
       </button>
       {onRemove && (
-        <button className="icon-btn small" onClick={onRemove} title={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>
+        <button className="icon-btn small" onClick={onRemove} data-tip={t(lang, 'unlink')} aria-label={t(lang, 'unlink')}>
           ⨯
         </button>
       )}

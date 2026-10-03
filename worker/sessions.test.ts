@@ -97,17 +97,16 @@ describe('the session cookie carries the __Host- prefix where the browser will t
       envOverride as never,
     );
 
-  it('sets the prefixed name with Secure on an https origin, reading the old signin cookie on the way', async () => {
+  it('sets the prefixed name with Secure on an https origin', async () => {
     await invite('prefix@example.org');
     // Mail cannot be sent in a test and echo mode is localhost-only, so the link is planted the way
     // the request route would have: this exercises openSession under https, which is the point.
     const token = 'prefix-token-abcdefghijklmnop';
-    const nonce = 'prefix-nonce-abcdefghijklmnop';
-    await env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at, browser_hash) VALUES (?, ?, ?, ?)`)
-      .bind(await sha256(token), 'prefix@example.org', Date.now() + 600_000, await sha256(nonce))
+    await env.DB.prepare(`INSERT INTO magic_links (token_hash, email, expires_at) VALUES (?, ?, ?)`)
+      .bind(await sha256(token), 'prefix@example.org', Date.now() + 600_000)
       .run();
-    // The browser presents the *old* signin cookie name, as one mid-sign-in at deploy time would.
-    const res = await post('/api/auth/verify', { token }, `ramure_signin=${nonce}`, https());
+    // A browser may still hold the old signin cookie from before the binding went; it changes nothing.
+    const res = await post('/api/auth/verify', { token }, `ramure_signin=leftover`, https());
     expect(res.status).toBe(200);
     const setCookies = res.headers.getSetCookie().join('\n');
     expect(setCookies).toMatch(/__Host-ramure_session=/);

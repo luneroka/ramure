@@ -107,7 +107,7 @@ trees.post('/', async (c) => {
   // *slightly* oversized document must still reach `docBytes` below so the answer names the real
   // limit rather than saying the body was too big. An accented French name is two bytes, so a
   // document just over 1.5 MB can carry a good deal more than 1.5 MB of them.
-  const body = await readJson<{ accountId: string; name: string; gedcom: string }>(c.req.raw, MAX_DOC_BYTES * 2);
+  const body = await readJson<{ accountId: string; name: string; gedcom: string; imported?: boolean }>(c.req.raw, MAX_DOC_BYTES * 2);
   const accountId = String(body.accountId ?? '');
   const accRole = await requireAccountRole(c.env, accountId, user, ['owner', 'member']);
   const name = cleanText(body.name, 120) || 'Arbre';
@@ -118,11 +118,21 @@ trees.post('/', async (c) => {
   const doc = serializeGedcom(tree);
   const id = randomId('T');
   const ts = now();
-  await c.env.DB.prepare(
-    `INSERT INTO trees (id, name, owner_id, account_id, version, doc, people, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-  )
-    .bind(id, name, user.id, accountId, doc, Object.keys(tree.individuals).length, ts, ts)
-    .run();
+  const statements = [
+    c.env.DB.prepare(
+      `INSERT INTO trees (id, name, owner_id, account_id, version, doc, people, created_at, updated_at) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+    ).bind(id, name, user.id, accountId, doc, Object.keys(tree.individuals).length, ts, ts),
+  ];
+  // A tree made from a file starts as a named version, so the import itself can always be gone back to
+  // once the edits pile up. A blank tree has nothing worth keeping yet.
+  if (body.imported === true) {
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at, label, created_by) VALUES (?, ?, 0, ?, ?, ?, ?)`,
+      ).bind(randomId('S'), id, doc, ts, `Import de ${name}`, user.id),
+    );
+  }
+  await c.env.DB.batch(statements);
   return c.json({ id, name, version: 0, role: (accRole === 'owner' ? 'owner' : 'editor') as Role }, 201);
 });
 
@@ -296,6 +306,17 @@ trees.post('/:id/ops', async (c) => {
       c.env.DB.prepare(
         `INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at, label, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       ).bind(randomId('S'), id, row.version, row.doc, ts, guardLabel, user.id),
+    );
+  }
+  // …and the version it arrives at, named, so the tree just after the import is one click away too.
+  const graftedFiles = result.applied
+    .flatMap((e) => flat(e.op))
+    .flatMap((o) => (o.t === 'graft' ? [cleanText(o.file, 80) || 'GEDCOM'] : []));
+  if (graftedFiles.length) {
+    statements.push(
+      c.env.DB.prepare(
+        `INSERT INTO tree_snapshots (id, tree_id, version, doc, created_at, label, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(randomId('S'), id, newVersion, doc, ts + 1, `Après import de ${graftedFiles.slice(0, 2).join(' · ')}`, user.id),
     );
   }
   if (Math.floor(newVersion / SNAPSHOT_EVERY) > Math.floor(row.version / SNAPSHOT_EVERY)) {

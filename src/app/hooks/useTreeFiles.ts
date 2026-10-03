@@ -27,12 +27,12 @@ export function useTreeFiles(a: Args) {
   const [busy, setBusy] = useState(false);
 
   const createTreeFrom = useCallback(
-    async (name: string, gedcom: string, thenEdit?: boolean) => {
+    async (name: string, gedcom: string, thenEdit?: boolean, imported?: boolean) => {
       if (!account) return;
       setBusy(true);
       toast(t(lang, 'creatingTree'));
       try {
-        const created = await api.createTree(account.id, name, gedcom);
+        const created = await api.createTree(account.id, name, gedcom, imported);
         await openTree(created.id, created.name, created.role, thenEdit);
         toast(t(lang, 'treeCreated'));
       } catch {
@@ -50,7 +50,7 @@ export function useTreeFiles(a: Args) {
         toast(t(lang, 'treeTooLarge'));
         return;
       }
-      await createTreeFrom(file.name.replace(/\.(ged|gedcom)$/i, ''), decodeGedcom(await file.arrayBuffer()));
+      await createTreeFrom(file.name.replace(/\.(ged|gedcom)$/i, ''), decodeGedcom(await file.arrayBuffer()), false, true);
     },
     [createTreeFrom, lang, toast],
   );

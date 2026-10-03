@@ -138,7 +138,7 @@ export function TreeMenu(p: TreeMenuProps) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title={t(lang, 'switchTree')}
+        data-tip={t(lang, 'switchTree')}
       >
         <span className="tree-name-text">{p.current.name}</span>
         <svg className="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
@@ -234,7 +234,7 @@ export function UserMenu(p: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t(lang, 'account')}
-        title={p.user.email}
+        data-tip={p.user.email}
       >
         {initial}
       </button>

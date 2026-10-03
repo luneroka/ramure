@@ -32,7 +32,7 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           aria-haspopup="menu"
           aria-expanded={modeOpen}
           aria-label={t(lang, 'stageMode')}
-          title={t(lang, 'stageMode')}
+          data-tip={t(lang, 'stageMode')}
           onClick={() => setModeOpen((v) => !v)}
         >
           <ModeIcon mode={mode} />
@@ -69,7 +69,7 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           <button
             className="btn"
             aria-label={t(lang, 'fitYears')}
-            title={t(lang, 'fitYears')}
+            data-tip={t(lang, 'fitYears')}
             onClick={() => {
               const el = document.querySelector('.frise');
               const years = Number(el?.getAttribute('data-years') ?? 0);
@@ -105,7 +105,7 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           </button>
           {/* On a phone the words are replaced by their glyph: five labelled buttons and the view
               chooser do not fit across 390 px, and a third row of tools would cover the tree. */}
-          <button className="btn" onClick={() => w.canvasRef.current?.fit(true)} aria-label={t(lang, 'fit')} title={t(lang, 'fit')}>
+          <button className="btn" onClick={() => w.canvasRef.current?.fit(true)} aria-label={t(lang, 'fit')} data-tip={t(lang, 'fit')}>
             <span className="long">{t(lang, 'fit')}</span>
             <span className="short" aria-hidden="true">
               ⤢
@@ -115,7 +115,7 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
             className="btn"
             onClick={() => w.layout && w.canvasRef.current?.centerOn(w.layout.focusId, true)}
             aria-label={t(lang, 'recentre')}
-            title={t(lang, 'recentre')}
+            data-tip={t(lang, 'recentre')}
           >
             <span className="long">{t(lang, 'recentre')}</span>
             <span className="short" aria-hidden="true">

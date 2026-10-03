@@ -190,7 +190,7 @@ export function DateField({ value, onChange, lang, label }: Props) {
             }
           }}
           disabled={mode === 'text' && !isGuidable(value)}
-          title={mode === 'text' && !isGuidable(value) ? t(lang, 'dateNotGuidable') : undefined}
+          data-tip={mode === 'text' && !isGuidable(value) ? t(lang, 'dateNotGuidable') : undefined}
         >
           {mode === 'guided' ? t(lang, 'dateFreeText') : t(lang, 'dateGuided')}
         </button>

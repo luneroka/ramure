@@ -36,6 +36,15 @@ export function ThemeIcon({ choice }: { choice: ThemeChoice }) {
   );
 }
 
+export function SearchIcon() {
+  return (
+    <svg {...stroke}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5 20.5 20.5" />
+    </svg>
+  );
+}
+
 export function UndoIcon() {
   return (
     <svg {...stroke} strokeWidth={2}>

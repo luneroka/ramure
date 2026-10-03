@@ -387,7 +387,7 @@ export function PersonPanel(props: Props) {
           onClick={() => !readOnly && photoInput.current?.click()}
           disabled={photoBusy || readOnly}
           aria-label={heroPortrait ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
-          title={heroPortrait ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
+          data-tip={heroPortrait ? t(lang, 'changePhoto') : t(lang, 'choosePhoto')}
         >
           <Medallion mediaId={heroPortrait} size={88} className="panel-medallion" />
           {!readOnly && (

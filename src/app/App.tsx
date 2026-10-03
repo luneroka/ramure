@@ -34,6 +34,7 @@ import { TreeStage } from '@/app/stage/TreeStage';
 import { defaultFocus } from '@/app/hooks/useTreeLayout';
 import { ErrorBoundary } from '@/app/ui/ErrorBoundary';
 import { ThemeIcon } from '@/app/ui/icons';
+import { Tooltips } from '@/app/ui/Tooltip';
 import { UiProvider, useUi } from '@/app/ui/UiContext';
 import { UpdateBanner } from '@/app/ui/UpdateBanner';
 import { reportError } from '@/app/lib/report';
@@ -48,6 +49,7 @@ export function App() {
       <UiProvider>
         <Shell />
         <UpdateBanner />
+        <Tooltips />
       </UiProvider>
     </ErrorBoundary>
   );
@@ -249,7 +251,7 @@ function Shell() {
       <div className="app gate">
         <Login key={invites.pendingInvite?.email ?? ''} lang={lang} auth={auth} pendingInvite={invites.pendingInvite} toast={toast} />
         <div className="gate-tools">
-          <button className="btn icon" onClick={ui.cycleTheme} aria-label={themeLabel} title={themeLabel}>
+          <button className="btn icon" onClick={ui.cycleTheme} aria-label={themeLabel} data-tip={themeLabel}>
             <ThemeIcon choice={nextTheme} />
           </button>
         </div>

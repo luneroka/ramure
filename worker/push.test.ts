@@ -163,6 +163,18 @@ describe('completing a tree from a file', () => {
     expect(after.body.doc).toContain('Carl');
     const snaps = await c.call<{ snapshots: Array<{ label: string | null; version: number }> }>('GET', `/api/trees/${treeId}/snapshots`);
     expect(snaps.body.snapshots.find((s) => s.label === 'Avant import de recherches.ged')?.version).toBe(0);
+    expect(snaps.body.snapshots.find((s) => s.label === 'Après import de recherches.ged')?.version).toBe(1);
+  });
+
+  it('keeps a tree made from a file as a named version, and a blank tree as none', async () => {
+    const { c, accountId } = await treeOf('import-version@example.org');
+    const imported = await c.call<{ id: string }>('POST', '/api/trees', { accountId, name: 'Famille', gedcom: TREE, imported: true });
+    const blank = await c.call<{ id: string }>('POST', '/api/trees', { accountId, name: 'Vide', gedcom: TREE });
+    const listOf = (id: string) =>
+      c.call<{ snapshots: Array<{ label: string | null; version: number }> }>('GET', `/api/trees/${id}/snapshots`);
+    const snaps = (await listOf(imported.body.id)).body.snapshots;
+    expect(snaps.map((s) => [s.label, s.version])).toEqual([['Import de Famille', 0]]);
+    expect((await listOf(blank.body.id)).body.snapshots).toEqual([]);
   });
 
   it('refuses a graft that would remove a record', async () => {

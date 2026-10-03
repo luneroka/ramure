@@ -6,12 +6,12 @@ import { EditError } from '@/tree/edit';
 const api = (status: number, code?: string) => new ApiError(status, 'english prose', code ? { code } : {});
 
 describe('errorText', () => {
-  it('tells apart the three different 403s the sign-in path answers with', () => {
-    // The bug this pass fixes: status alone said "other device" for all of them.
-    const other = errorText('fr', api(403, 'other_device'));
+  it('tells apart refusals that share a status', () => {
+    // Status alone once said "other device" for every 403 on the sign-in path.
     const invitation = errorText('fr', api(403, 'invitation_required'));
     const admin = errorText('fr', api(403, 'administrator_only'));
-    expect(new Set([other, invitation, admin]).size).toBe(3);
+    const notAllowed = errorText('fr', api(403, 'not_allowed'));
+    expect(new Set([invitation, admin, notAllowed]).size).toBe(3);
   });
 
   it('never lets the English message through to a French screen', () => {

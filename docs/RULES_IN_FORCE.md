@@ -167,7 +167,12 @@ first.** A `graft` can write hundreds of records at once, and taking it back is
 a bulk removal only an owner may make, so an editor who could graft could not
 undo it (`import_is_for_owners`, checked after flattening like `replaceTree`).
 Whatever its size, the push keeps the document as it was, labelled « Avant
-import de … » with the file's name.
+import de … » with the file's name, and the document it arrives at, labelled
+« Après import de … ».
+
+**A tree made from a file starts as a named version**, « Import de … », so the
+import as it came in can be restored however far the edits go. A blank tree
+gets none. Neither label starts with « Avant », so both are kept for good.
 
 **An automatic snapshot every 100 ops** (`SNAPSHOT_EVERY`), crossing the
 boundary rather than counting since the last one.
@@ -235,10 +240,14 @@ out sessions, and a six-digit code cannot be brute-forced offline from one.
 `CODE_PEPPER` is set in production; without it `hmac` degrades to a plain hash,
 which is acceptable in development and **not** in production.
 
-**A link works only in the browser that asked for it.** Requesting a sign-in
-sets a nonce cookie; the link and the code are refused elsewhere
-(`browser_hash`). This is why a link opened on a phone after being requested on
-a laptop says "other device" rather than signing you in.
+**A link or a code signs in whichever browser uses it.** Holding the mail is the
+proof, as with any sign-in link. Until October 2026 both were bound to the
+browser that asked (a nonce cookie, `browser_hash`), which refused nearly every
+link opened on a phone: the mail app opens it in its own browser, or in Safari
+when the request came from the home-screen app. What still holds: a link and a
+code are single use, last 15 minutes, and the failed-code limits below apply
+per address. The `browser_hash` column stays, unused, because migrations are
+forward-only.
 
 **The token travels in the URL fragment**, and the app posts it. A fragment
 never reaches a server or a log, and merely opening the page does nothing.

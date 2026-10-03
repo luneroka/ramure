@@ -1090,6 +1090,41 @@ label.check input {
   font-weight: 500;
 }
 
+/* The app's own tooltip (src/app/ui/Tooltip.tsx): fixed to the viewport, above every layer, never in the way. */
+.tip {
+  position: fixed;
+  z-index: 2000;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--ground);
+  font: 500 12.5px/1.35 var(--body);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  animation: tip-in 120ms ease-out;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.tip.below {
+  animation-name: tip-in-below;
+}
+@keyframes tip-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip {
+    animation: none;
+  }
+}
+
 .toast {
   position: absolute;
   left: 50%;
@@ -1564,17 +1599,19 @@ label.check input {
 }
 
 /* ---------- Login and account home ---------- */
+/* Centred by auto margins rather than `place-items`: a card taller than the screen (a phone, the
+   keyboard up) then starts at the top and scrolls, where centring pushed its head out of reach. */
 .login {
   min-height: 100%;
   box-sizing: border-box;
   display: grid;
-  place-items: center;
   padding: 24px;
 }
 .app.gate {
   overflow: auto;
 }
 .login-card {
+  margin: auto;
   width: min(420px, 100%);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1673,6 +1710,15 @@ label.check input {
   right: 12px;
   display: flex;
   gap: 6px;
+}
+/* On a phone the card is as wide as the screen and the theme button sat on its corner. */
+@media (max-width: 640px) {
+  .login {
+    padding: 64px 12px 24px;
+  }
+  .login-card {
+    padding: 24px 18px 20px;
+  }
 }
 
 /* ---------- Person panel: hero, bands, timeline ---------- */
@@ -2141,6 +2187,16 @@ label.check input {
     margin-top: 6px;
     /* Over the canvas HUD, which on a narrow screen sits in the same corner and showed through the field. */
     z-index: 1100;
+  }
+  /* The field's own z-index counts only inside the bar, and the bar sits at 10 while the HUD and the
+     canvas tools sit at 1001 to clear Leaflet: the HUD covered the field and took every tap meant for
+     it. The bar rises while its search is open, and only then, so dialogs still cover it otherwise. */
+  .topbar:has(.search.open) {
+    z-index: 1100;
+  }
+  /* Under 16 px iOS zooms the page on focus and leaves it zoomed. */
+  .search input {
+    font-size: 16px;
   }
   .search-toggle {
     display: inline-flex;
