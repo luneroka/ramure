@@ -1704,7 +1704,9 @@ label.check input {
 .panel-hero .icon-btn {
   margin: -6px -6px 0 0;
 }
-.panel .band {
+/* The editor shares the panel's bands but is drawn outside it (see PersonEditor), so it is named too. */
+.panel .band,
+.editor-dialog .band {
   margin: 18px -18px 8px;
   padding: 7px 18px;
   background: var(--surface-2);

@@ -1,4 +1,11 @@
+/**
+ * The person editor: a modal over everything, sectioned (identity, the life's
+ * events, notes, the « à vérifier » flag), that returns one patch on save. The
+ * union editor below it is inline in the panel's Famille tab instead.
+ */
+
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { approximateYear, type GDate } from '@/gedcom/dates';
 import {
   placeText,
@@ -217,7 +224,12 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const title = isDraft ? t(lang, 'newPersonTitle') : t(lang, 'editPerson');
   const shownName = [given, surname].filter((s) => s.trim()).join(' ');
 
-  return (
+  // The dialog is drawn at the root of the page, not inside the panel that opens it. The panel clips
+  // its content (`overflow: hidden`); the backdrop escapes that clip by being positioned against the
+  // whole app, which every browser draws correctly except Safari once the form is long enough to
+  // scroll: it gives the scrolling body a layer of its own and clips that layer to the panel, so the
+  // form came up blank between its title and its buttons for anyone with three or more events.
+  return createPortal(
     <div className="dialog-backdrop editor-backdrop" onClick={cancel}>
       <form
         ref={dialog}
@@ -380,7 +392,8 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
           )}
         </footer>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
