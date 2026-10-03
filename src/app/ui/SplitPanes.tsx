@@ -130,7 +130,7 @@ export function SplitPanes({ lang, top, bottom, narrow }: Props) {
     <button
       className="tab-collapse"
       onClick={() => toggle(which)}
-      title={collapsed === which ? t(lang, 'expandHalf') : t(lang, 'collapseHalf')}
+      data-tip={collapsed === which ? t(lang, 'expandHalf') : t(lang, 'collapseHalf')}
       aria-label={collapsed === which ? t(lang, 'expandHalf') : t(lang, 'collapseHalf')}
     >
       {collapsed === which ? (which === 'top' ? '⌄' : '⌃') : which === 'top' ? '⌃' : '⌄'}
@@ -150,7 +150,7 @@ export function SplitPanes({ lang, top, bottom, narrow }: Props) {
         className={`divider ${collapsed ? 'disabled' : ''}`}
         role="separator"
         aria-orientation="horizontal"
-        title={t(lang, 'resizeHint')}
+        data-tip={t(lang, 'resizeHint')}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onDoubleClick={() => {

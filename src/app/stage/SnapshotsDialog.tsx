@@ -62,7 +62,7 @@ export function SnapshotsDialog({ snapshots, readOnly, owner, onClose, onSaveVer
                   className="btn small"
                   onClick={() => onRestore(s.id)}
                   disabled={!owner}
-                  title={!owner ? t(lang, 'adminsOnly') : undefined}
+                  data-tip={!owner ? t(lang, 'adminsOnly') : undefined}
                 >
                   {t(lang, 'restore')}
                 </button>

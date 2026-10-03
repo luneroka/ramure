@@ -58,7 +58,7 @@ export function TopBar(p: Props) {
   return (
     <header className="topbar">
       <div className="brand">
-        <button className="brand-name as-button" onClick={p.onHome} title={t(lang, 'library')}>
+        <button className="brand-name as-button" onClick={p.onHome} data-tip={t(lang, 'library')}>
           {t(lang, 'appName')}
         </button>
         {w && (
@@ -86,7 +86,7 @@ export function TopBar(p: Props) {
             <button
               className={`sync-pill ${w.sync.status}`}
               onClick={() => void w.engineRef.current?.sync()}
-              title={syncLabel(lang, w.sync.status, w.sync.pending)}
+              data-tip={syncLabel(lang, w.sync.status, w.sync.pending)}
               aria-label={syncLabel(lang, w.sync.status, w.sync.pending)}
             >
               <span className="sync-dot" />
@@ -96,7 +96,7 @@ export function TopBar(p: Props) {
               <button
                 className="sync-pill checks"
                 onClick={() => w.dispatch({ type: 'showReport', show: true })}
-                title={t(lang, 'importReport')}
+                data-tip={t(lang, 'importReport')}
                 aria-label={t(lang, 'importReport')}
               >
                 <span className="sync-dot" />
@@ -113,7 +113,7 @@ export function TopBar(p: Props) {
             p.navigate(p.route.name === 'resources' ? { name: 'tree', id: w.source.id } : { name: 'resources', id: w.source.id })
           }
           aria-label={t(lang, 'resources')}
-          title={t(lang, 'resources')}
+          data-tip={t(lang, 'resources')}
         >
           <ResourcesIcon />
         </button>
@@ -133,7 +133,7 @@ export function TopBar(p: Props) {
             className="btn icon search-toggle"
             onClick={() => w.dispatch({ type: 'setSearchOpen', open: !w.editor.searchOpen })}
             aria-label={t(lang, 'searchShort')}
-            title={t(lang, 'searchShort')}
+            data-tip={t(lang, 'searchShort')}
           >
             ⌕
           </button>
@@ -145,7 +145,7 @@ export function TopBar(p: Props) {
               onClick={w.undo}
               disabled={!w.canUndo}
               aria-label={t(lang, 'undo')}
-              title={`${t(lang, 'undo')} (⌘Z)`}
+              data-tip={`${t(lang, 'undo')} (⌘Z)`}
             >
               <UndoIcon />
             </button>
@@ -154,13 +154,13 @@ export function TopBar(p: Props) {
               onClick={w.redo}
               disabled={!w.canRedo}
               aria-label={t(lang, 'redo')}
-              title={`${t(lang, 'redo')} (⇧⌘Z)`}
+              data-tip={`${t(lang, 'redo')} (⇧⌘Z)`}
             >
               <RedoIcon />
             </button>
           </>
         )}
-        <button className="btn icon" onClick={ui.cycleTheme} aria-label={themeLabel} title={themeLabel}>
+        <button className="btn icon" onClick={ui.cycleTheme} aria-label={themeLabel} data-tip={themeLabel}>
           <ThemeIcon choice={nextTheme} />
         </button>
         <UserMenu

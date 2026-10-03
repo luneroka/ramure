@@ -142,7 +142,7 @@ export function Settings(p: Props) {
                   {owner && m.id !== p.user.id && (
                     <button
                       className="icon-btn small"
-                      title={t(lang, 'removeMember')}
+                      data-tip={t(lang, 'removeMember')}
                       aria-label={t(lang, 'removeMember')}
                       onClick={async () => {
                         const ok = await p.ask({
@@ -226,7 +226,7 @@ export function Settings(p: Props) {
               <button
                 className="btn subtle danger-text"
                 disabled={lastOwner}
-                title={lastOwner ? t(lang, 'lastOwnerLeave') : undefined}
+                data-tip={lastOwner ? t(lang, 'lastOwnerLeave') : undefined}
                 onClick={async () => {
                   const ok = await p.ask({
                     title: t(lang, 'leaveAccountTitle'),

@@ -163,7 +163,7 @@ export function DocumentList(p: DocumentListProps) {
             </li>
           ) : (
             <li key={m.id} className="doc">
-              <button type="button" className="doc-open" onClick={() => setViewing(m)} title={t(lang, 'open')}>
+              <button type="button" className="doc-open" onClick={() => setViewing(m)} data-tip={t(lang, 'open')}>
                 <Thumb media={m} />
               </button>
               <div className="doc-body">

@@ -142,7 +142,7 @@ export function Timeline({ tree, lang, selectedId, focusId, onSelect, pxPerYear,
               onClick={() => onSelect(r.bar.id)}
               onMouseEnter={() => setHover(r.bar.id)}
               onMouseLeave={() => setHover(undefined)}
-              title={title(r.bar)}
+              data-tip={title(r.bar)}
               aria-label={r.bar.name}
             >
               <span className="tl-name" style={{ width: LABEL_W }}>

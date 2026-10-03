@@ -1090,6 +1090,41 @@ label.check input {
   font-weight: 500;
 }
 
+/* The app's own tooltip (src/app/ui/Tooltip.tsx): fixed to the viewport, above every layer, never in the way. */
+.tip {
+  position: fixed;
+  z-index: 2000;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--ground);
+  font: 500 12.5px/1.35 var(--body);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  animation: tip-in 120ms ease-out;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.tip.below {
+  animation-name: tip-in-below;
+}
+@keyframes tip-in-below {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip {
+    animation: none;
+  }
+}
+
 .toast {
   position: absolute;
   left: 50%;

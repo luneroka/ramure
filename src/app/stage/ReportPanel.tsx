@@ -50,7 +50,7 @@ export function ReportPanel() {
                     {t(lang, 'fix')}
                   </button>
                 )}
-                <button className="btn small subtle" onClick={() => w.dismissNote(noteKey(n))} title={t(lang, 'dismissHint')}>
+                <button className="btn small subtle" onClick={() => w.dismissNote(noteKey(n))} data-tip={t(lang, 'dismissHint')}>
                   {t(lang, 'dismiss')}
                 </button>
               </span>
