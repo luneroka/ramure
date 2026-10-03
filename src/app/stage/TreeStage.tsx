@@ -3,10 +3,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { TreeCanvas, type TreeCanvasHandle } from '@/canvas/TreeCanvas';
 import type { DetailBand, HandleKind } from '@/canvas/renderer';
-import { tn } from '@/i18n';
+import { t, tn } from '@/i18n';
 import { ops } from '@/tree/ops';
 import { Timeline } from '@/app/screens/Timeline';
 import { useWorkspace } from '@/app/state/Workspace';
+import { hideTip, showTip } from '@/app/ui/Tooltip';
 import { useUi } from '@/app/ui/UiContext';
 import { AddRelativeMenu } from './AddRelativeMenu';
 import { CanvasTools } from './CanvasTools';
@@ -84,6 +85,9 @@ export function TreeStage({ onHandle }: { onHandle(kind: HandleKind, id: string,
           onSelect={w.select}
           onFocus={w.focusOn}
           onHandle={onHandle}
+          onHandleHover={(hover) =>
+            hover ? showTip(hover.rect, t(lang, hover.kind === 'plus' ? 'addRelativeHint' : 'kinshipHint')) : hideTip()
+          }
           draftId={editor.draft?.preview.focusId}
           lit={w.lit}
           onBandChange={onBandChange}

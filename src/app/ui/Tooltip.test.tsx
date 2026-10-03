@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { placeTip, tipFor, Tooltips } from './Tooltip';
+import { hideTip, placeTip, showTip, tipFor, Tooltips } from './Tooltip';
 
 afterEach(() => {
   cleanup();
@@ -83,6 +83,22 @@ describe('Tooltips', () => {
     // The label already names the button: the hint does not describe it a second time.
     expect(button.hasAttribute('aria-describedby')).toBe(false);
     fireEvent.pointerDown(button, { pointerType: 'mouse' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('shows a hint for something drawn on the canvas at the rectangle it is given, and drops it on request', () => {
+    vi.useFakeTimers();
+    render(<Tooltips />);
+    act(() => showTip({ left: 300, top: 200, width: 24, bottom: 224 }, 'Ajouter un proche (A)'));
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    act(() => void vi.advanceTimersByTime(400));
+    expect(screen.getByRole('tooltip').textContent).toBe('Ajouter un proche (A)');
+    act(() => hideTip());
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    // Gone before its delay is up: never appears.
+    act(() => showTip({ left: 300, top: 200, width: 24, bottom: 224 }, 'Lien de parenté'));
+    act(() => hideTip());
+    act(() => void vi.advanceTimersByTime(400));
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
 });

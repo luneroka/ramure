@@ -12,6 +12,10 @@
  * there are dozens of buttons and none of them has to know about this. Touch
  * is left out on purpose — a press is a click, and a bubble that appears under
  * the finger and stays would only hide what was tapped.
+ *
+ * What is drawn rather than built — the round handles on a card on the canvas
+ * — has no element to hover, so its owner calls `showTip` with the rectangle it
+ * drew and `hideTip` when the pointer leaves it.
  */
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -20,6 +24,19 @@ const SHOW_DELAY = 350;
 const GAP = 8;
 const MARGIN = 8;
 const TIP_ID = 'ramure-tip';
+const TIP_EVENT = 'ramure:tip';
+
+type Anchor = { left: number; top: number; width: number; bottom: number };
+type Shown = { text: string; anchor: () => Anchor; el?: HTMLElement };
+
+/** A hint for something drawn rather than built, at its rectangle in viewport pixels. Mouse only, like the rest. */
+export function showTip(anchor: Anchor, text: string): void {
+  document.dispatchEvent(new CustomEvent<{ anchor: Anchor; text: string } | null>(TIP_EVENT, { detail: { anchor, text } }));
+}
+
+export function hideTip(): void {
+  document.dispatchEvent(new CustomEvent(TIP_EVENT, { detail: null }));
+}
 
 /** The element a hint belongs to, and its words, or null when there is nothing to say. */
 export function tipFor(target: EventTarget | null): { el: HTMLElement; text: string } | null {
@@ -47,7 +64,7 @@ export function placeTip(
 }
 
 export function Tooltips() {
-  const [shown, setShown] = useState<{ el: HTMLElement; text: string } | null>(null);
+  const [shown, setShown] = useState<Shown | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
   const tipRef = useRef<HTMLDivElement>(null);
 
@@ -66,8 +83,14 @@ export function Tooltips() {
       timer = setTimeout(() => {
         // An element with an accessible name of its own only gains a description when the hint adds to it.
         if (found.el.getAttribute('aria-label') !== found.text) found.el.setAttribute('aria-describedby', TIP_ID);
-        setShown(found);
+        setShown({ text: found.text, el: found.el, anchor: () => found.el.getBoundingClientRect() });
       }, delay);
+    };
+    const drawn = (e: Event) => {
+      const detail = (e as CustomEvent<{ anchor: Anchor; text: string } | null>).detail;
+      hide();
+      if (!detail) return;
+      timer = setTimeout(() => setShown({ text: detail.text, anchor: () => detail.anchor }), SHOW_DELAY);
     };
     const over = (e: PointerEvent) => {
       if (e.pointerType === 'touch') return;
@@ -95,6 +118,7 @@ export function Tooltips() {
     document.addEventListener('keydown', key);
     window.addEventListener('scroll', hide, true);
     window.addEventListener('resize', hide);
+    document.addEventListener(TIP_EVENT, drawn);
     return () => {
       hide();
       document.removeEventListener('pointerover', over);
@@ -105,14 +129,16 @@ export function Tooltips() {
       document.removeEventListener('keydown', key);
       window.removeEventListener('scroll', hide, true);
       window.removeEventListener('resize', hide);
+      document.removeEventListener(TIP_EVENT, drawn);
     };
   }, []);
 
   // A button that goes away under the pointer (a menu closing, a screen changing) takes its hint with it.
   useEffect(() => {
-    if (!shown) return;
+    const el = shown?.el;
+    if (!el) return;
     const check = setInterval(() => {
-      if (!shown.el.isConnected) setShown(null);
+      if (!el.isConnected) setShown(null);
     }, 250);
     return () => clearInterval(check);
   }, [shown]);
@@ -120,7 +146,7 @@ export function Tooltips() {
   useLayoutEffect(() => {
     const tip = tipRef.current;
     if (!shown || !tip) return setPos(null);
-    setPos(placeTip(shown.el.getBoundingClientRect(), tip.getBoundingClientRect(), { width: window.innerWidth }));
+    setPos(placeTip(shown.anchor(), tip.getBoundingClientRect(), { width: window.innerWidth }));
   }, [shown]);
 
   if (!shown) return null;

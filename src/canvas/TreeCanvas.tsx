@@ -47,6 +47,8 @@ export interface TreeCanvasProps {
   onBandChange?(band: DetailBand, zoom: number): void;
   /** Tap on an add-relative handle of the selected card. */
   onHandle?(kind: HandleKind, personId: string, at: { x: number; y: number }): void;
+  /** The mouse came onto a handle (its rectangle in viewport pixels) or left it (null), for a hint. */
+  onHandleHover?(hover: { kind: HandleKind; rect: { left: number; top: number; width: number; bottom: number } } | null): void;
   /** Show the add-relative handle on the selected card (the kinship handle is always there). */
   editable?: boolean;
   /** Card drawn as a dashed preview: a relative being added, not yet saved. */
@@ -58,7 +60,7 @@ export interface TreeCanvasProps {
 const ROW_H = DEFAULT_LAYOUT.cardH + DEFAULT_LAYOUT.rowGap;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
-  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, editable, draftId, lit } = props;
+  const { tree, layout, selectedId, lang, onSelect, onFocus, onBandChange, onHandle, onHandleHover, editable, draftId, lit } = props;
   const handles = useMemo(() => computeHandles(layout, tree, selectedId, { plus: !!editable }), [editable, layout, tree, selectedId]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cam = useRef<Camera>({ x: 0, y: 0, k: 1 });
@@ -307,6 +309,19 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     moved: 0,
   });
 
+  /** The handle under the mouse, so the hint is asked for once on the way in and dropped once on the way out. */
+  const hoverHandle = useRef<HandleKind | undefined>(undefined);
+  const setHoverHandle = (hd: (typeof handles)[number] | undefined) => {
+    if (hd?.kind === hoverHandle.current) return;
+    hoverHandle.current = hd?.kind;
+    if (!hd) return onHandleHover?.(null);
+    const r = canvasRef.current!.getBoundingClientRect();
+    const c = cam.current;
+    const left = r.left + hd.x * c.k + c.x,
+      top = r.top + hd.y * c.k + c.y;
+    onHandleHover?.({ kind: hd.kind, rect: { left, top, width: hd.w * c.k, bottom: top + hd.h * c.k } });
+  };
+
   const pos = (e: React.PointerEvent | React.WheelEvent) => {
     const r = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
@@ -323,6 +338,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       /* synthetic events have no capturable pointer */
     }
     ptrs.current.set(e.pointerId, pos(e));
+    setHoverHandle(undefined);
     if (ptrs.current.size === 1) {
       gesture.current.moved = 0;
       gesture.current.downAt = performance.now();
@@ -338,6 +354,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     if (!ptrs.current.has(e.pointerId)) {
       if (e.pointerType === 'mouse') {
         const hd = hitHandle(handles, cam.current, p.x, p.y);
+        setHoverHandle(hd);
         const h = hd ? undefined : hitTest(layout, cam.current, p.x, p.y);
         const id = h?.id;
         if (id !== hoverId.current) {
@@ -402,6 +419,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   };
 
   const onWheel = (e: React.WheelEvent) => {
+    setHoverHandle(undefined);
     const p = pos(e);
     // Trackpad pinch arrives as ctrlKey+wheel; plain wheel zooms too, gently.
     const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0022));
@@ -474,6 +492,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onPointerLeave={() => setHoverHandle(undefined)}
         onWheel={onWheel}
         onKeyDown={onKeyDown}
       />
