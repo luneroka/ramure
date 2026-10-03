@@ -76,6 +76,15 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
 
+  // The panel's « Imprimer » opens the print page on that person's sheet, on paper-sized pages.
+  await page.getByRole('button', { name: /Testine/ }).click();
+  await page.locator('.panel-actions').getByRole('button', { name: 'Imprimer' }).click();
+  await expect(page.getByRole('radio', { name: 'Fiche individuelle' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.person-page').first()).toContainText('Testine');
+  await expect(page.locator('.person-page').first()).toContainText('Marguerite');
+  await page.getByRole('button', { name: /← Arbre/ }).click();
+  await expect(page.locator('canvas.tree-canvas')).toBeVisible();
+
   // Complete the tree from a file researched elsewhere: the same family plus one child. The file
   // knows nothing of Testine, who must stay; only Jules is new, and the addition undoes like any edit.
   await page.keyboard.press('Escape');

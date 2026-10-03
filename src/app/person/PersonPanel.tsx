@@ -1,17 +1,14 @@
+/**
+ * The person panel: a fixed hero (portrait, name, the actions), then two
+ * halves — Fiche and Famille above, Documents and Recherches below — that the
+ * divider shares out. Every change goes up through `PanelActions` as an op;
+ * the panel itself holds only what is open, being picked or being edited.
+ */
+
 import { useEffect, useRef, useState } from 'react';
-import { approximateYear, formatDate } from '@/gedcom/dates';
+import { formatDate } from '@/gedcom/dates';
 import { computeAge } from '@/gedcom/age';
-import {
-  displayName,
-  findEvent,
-  placeText,
-  type Event,
-  type Family,
-  type Individual,
-  type Lead,
-  type MediaObject,
-  type Tree,
-} from '@/gedcom/model';
+import { displayName, findEvent, placeText, type Family, type Individual, type Lead, type MediaObject, type Tree } from '@/gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '@/i18n';
 import { isLiving } from '@/canvas/renderer';
 import { nextId, portraitId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '@/tree/edit';
@@ -24,6 +21,7 @@ import { SplitPanes } from '@/app/ui/SplitPanes';
 import { DocumentsTab } from '@/app/screens/Documents';
 import { LeadsTab } from '@/app/screens/Leads';
 import { Medallion } from '@/app/person/fields/Portrait';
+import { eventRows, sourceRows } from '@/app/lib/lifeEvents';
 
 export interface PanelActions {
   onFocus(id: string): void;
@@ -43,6 +41,8 @@ export interface PanelActions {
   onSaveDocument(id: string, media: MediaObject): void;
   onDeleteDocument(id: string, mediaId: string): void;
   onSaveLeads(id: string, leads: Lead[]): void;
+  /** Opens the print page on this person's sheet. */
+  onPrint(id: string): void;
   /** A short message for the user (toast). */
   onNotice(message: string): void;
 }
@@ -61,90 +61,6 @@ interface Props extends PanelActions {
 }
 
 type Picking = { kind: 'merge' } | { kind: 'partner' } | { kind: 'child'; familyId: string } | null;
-
-/** One row of the life timeline: a person event, or a union event seen from this person. */
-interface Row {
-  key: string;
-  label: string;
-  date?: string;
-  year?: number;
-  lines: string[];
-  cause?: string;
-  age?: string;
-}
-
-function eventRows(tree: Tree, person: Individual, lang: Lang): Row[] {
-  const birth = findEvent(person.events, 'birth') ?? findEvent(person.events, 'baptism');
-  // An undated, unplaced occupation is the subtitle of the hero, not a timeline row.
-  const rows: Row[] = person.events
-    .filter((e) => !(e.type === 'occupation' && !e.date && !e.place))
-    .map((e, i) => {
-      const lines: string[] = [];
-      if (e.value) lines.push(e.value);
-      if (e.place) lines.push(placeText(e.place));
-      if (e.address) lines.push(e.address);
-      lines.push(...e.notes);
-      const age =
-        e.type === 'death'
-          ? e.age
-            ? e.age.replace(/y$/, ' ' + (lang === 'fr' ? 'ans' : 'y'))
-            : (() => {
-                const a = computeAge(birth?.date, e.date);
-                return a ? formatAge(lang, a) : undefined;
-              })()
-          : undefined;
-      return {
-        key: `e${i}`,
-        label: eventLabel(lang, e.type, e.customType),
-        date: e.date ? formatDate(e.date, lang) : undefined,
-        year: approximateYear(e.date),
-        lines,
-        cause: e.cause,
-        age,
-      };
-    });
-  for (const fid of person.partnerIn) {
-    const f = tree.families[fid];
-    if (!f) continue;
-    const partnerId = f.husbandId === person.id ? f.wifeId : f.husbandId;
-    const partner = partnerId ? tree.individuals[partnerId] : undefined;
-    for (const e of f.events) {
-      if (e.type !== 'marriage' && e.type !== 'divorce' && e.type !== 'engagement' && e.type !== 'separation' && e.type !== 'annulment')
-        continue;
-      const lines: string[] = [];
-      if (partner) lines.push(`${t(lang, 'with')} ${displayName(partner)}`);
-      if (e.place) lines.push(placeText(e.place));
-      lines.push(...e.notes);
-      rows.push({
-        key: `f${fid}${e.type}`,
-        label: eventLabel(lang, e.type, e.customType),
-        date: e.date ? formatDate(e.date, lang) : undefined,
-        year: approximateYear(e.date),
-        lines,
-      });
-    }
-  }
-  const order = (r: Row) => (r.label === eventLabel(lang, 'birth') ? -Infinity : (r.year ?? Infinity));
-  return rows.sort((a, b) => order(a) - order(b));
-}
-
-function sourceRows(tree: Tree, person: Individual, lang: Lang): Array<{ label: string; text: string }> {
-  const out: Array<{ label: string; text: string }> = [];
-  const push = (label: string, cites: Event['citations']) => {
-    for (const c of cites) {
-      const src = c.sourceId ? tree.sources[c.sourceId] : undefined;
-      const text = src ? [src.title, c.page, c.text].filter(Boolean).join(' · ') : [c.flat, c.text].filter(Boolean).join(' · ');
-      if (text) out.push({ label, text });
-    }
-  };
-  push(t(lang, 'identity'), person.citations);
-  for (const e of person.events) push(eventLabel(lang, e.type, e.customType), e.citations);
-  for (const fid of person.partnerIn) {
-    const f = tree.families[fid];
-    if (f) for (const e of f.events) push(eventLabel(lang, e.type, e.customType), e.citations);
-  }
-  return out;
-}
 
 function useNarrow(): boolean {
   const [narrow, setNarrow] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 640px)').matches);
@@ -518,6 +434,12 @@ export function PersonPanel(props: Props) {
             {!readOnly && (
               <button className="btn small" onClick={() => setEditing(true)}>
                 {t(lang, 'edit')}
+              </button>
+            )}
+            {/* Printing changes nothing, so a viewer may; a draft is not in the tree yet and has no sheet. */}
+            {!isDraft && (
+              <button className="btn small" onClick={() => props.onPrint(person.id)}>
+                {t(lang, 'print')}
               </button>
             )}
           </div>

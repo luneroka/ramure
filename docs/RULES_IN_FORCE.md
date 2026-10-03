@@ -388,6 +388,33 @@ single sheet was pinned over the page with `position: fixed`, and prints blank
 pages the moment a poster has several sheets. The sheets print in flow, one page
 each, with `break-after: page`.
 
+**The person sheet is paginated by the app, not the browser.** Every page
+prints with no page margin, like the charts, because the margin is where the
+browser writes its own header and footer — the address and the date — and a
+sheet sent to a relative should carry neither. With no page margin the browser
+cannot give a second page its own top margin, so the sheet's blocks are measured
+off screen at the paper's real size and packed onto page-sized boxes
+([src/print/pack.ts](../src/print/pack.ts)): a section title or a union's header
+never ends a page, and the space above a block is dropped when it opens one.
+
+**The person sheet stays on one page when shrinking the text by 15 % at most
+does it.** Past that it takes the pages it needs at full size, and the line
+under the options says which happened (« texte resserré à 90 % »). A sheet
+squeezed below 85 % stops being comfortable to read on paper; a second page
+is not.
+
+**The person sheet holds back living relatives only when asked, and never the
+subject.** « Discrétion pour les vivants » is off by default: the sheet exists
+to share facts with family. When it is ticked, a living relative keeps a name
+and a birth year and loses the day, the place and the occupation. The person
+the sheet is about is always printed in full — they were chosen. A relative the
+file marks private (`RESN privacy` or `confidential`) is held back whatever the
+box says, because that mark was made on purpose by whoever entered them.
+
+**The Fiche tab and the printed sheet list the same events.** Both read
+`eventRows` ([src/app/lib/lifeEvents.ts](../src/app/lib/lifeEvents.ts)): the
+same rows, union events included, birth first, then by year, undated last.
+
 **A ring is written one way, not per person.** Labels are planned for a whole
 ring — flat, along the arc, or along the radius, at one size and one level of
 detail — because a band where one name lies flat and the next stands on end

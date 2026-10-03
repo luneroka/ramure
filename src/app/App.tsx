@@ -21,7 +21,7 @@ import { useSnapshots } from '@/app/hooks/useSnapshots';
 import { useTreeFiles } from '@/app/hooks/useTreeFiles';
 import { useTreeSession } from '@/app/hooks/useTreeSession';
 import { useWorkspaceState } from '@/app/hooks/useWorkspaceState';
-import { useHashRoute } from '@/app/state/router';
+import { routeHash, useHashRoute } from '@/app/state/router';
 import { WorkspaceProvider } from '@/app/state/Workspace';
 import { PersonPanelHost } from '@/app/stage/PersonPanelHost';
 import { PrintPage } from '@/app/screens/PrintPage';
@@ -320,7 +320,7 @@ function Shell() {
             {route.name === 'tree' ? (
               <TreeStage onHandle={onHandle} />
             ) : route.name === 'print' ? (
-              <PrintPage navigate={navigate} />
+              <PrintPage key={routeHash(route)} navigate={navigate} route={route} />
             ) : (
               <ResourcesHost navigate={navigate} />
             )}
@@ -390,7 +390,7 @@ function Shell() {
           from what they exist to show — the printable chart, most of all, which is a preview. */}
       {workspace && editor.selectedId && route.name === 'tree' && (
         <WorkspaceProvider value={workspace}>
-          <PersonPanelHost />
+          <PersonPanelHost navigate={navigate} />
         </WorkspaceProvider>
       )}
     </div>
