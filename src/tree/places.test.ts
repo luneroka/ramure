@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseGedcom } from '../gedcom/parse';
-import { collectPlaces } from './places';
+import { collectPlaces, placesBetween, yearSpan, type PlaceEntry } from './places';
 import { applyOp, ops } from './ops';
 
 const tree = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
@@ -35,5 +35,22 @@ describe('places', () => {
     // Idempotent: a second pass changes nothing.
     const again = applyOp(after, ops.geocodePlaces([{ text: 'Brest, Finistère, Bretagne, France', lat: 48.39, lon: -4.49 }])).tree;
     expect(again).toBe(after);
+  });
+
+  it('spans the dated mentions and narrows places to a window of years', () => {
+    const at = (year?: number) => ({ personId: 'I1', personName: 'A', type: 'birth' as const, year });
+    const places: PlaceEntry[] = [
+      { key: 'a', text: 'A', place: { text: 'A', parts: ['A'] }, mentions: [at(1820), at(1850), at()] },
+      { key: 'b', text: 'B', place: { text: 'B', parts: ['B'] }, mentions: [at(1900)] },
+      { key: 'c', text: 'C', place: { text: 'C', parts: ['C'] }, mentions: [at()] },
+    ];
+    expect(yearSpan(places)).toEqual({ min: 1820, max: 1900 });
+    expect(yearSpan([places[2]!])).toBeUndefined();
+    const window = placesBetween(places, 1830, 1900);
+    expect(window.map((p) => p.key)).toEqual(['a', 'b']);
+    expect(window[0]!.mentions.map((m) => m.year)).toEqual([1850]);
+    // A place whose every mention falls inside keeps its identity.
+    expect(window[1]).toBe(places[1]);
+    expect(placesBetween(places, 1700, 1800)).toEqual([]);
   });
 });

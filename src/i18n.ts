@@ -738,6 +738,11 @@ const strings = {
   geocodeNone: { fr: 'Aucun lieu n’a pu être localisé.', en: 'No place could be located.' },
   placesLocatedCount: { fr: '{n} lieu localisé|{n} lieux localisés', en: '{n} place located|{n} places located' },
   noPlaces: { fr: 'Aucun lieu dans cet arbre pour l’instant.', en: 'No places in this tree yet.' },
+  mapTimeline: { fr: 'Année affichée sur la carte', en: 'Year shown on the map' },
+  mapAllYears: { fr: 'Toutes les époques', en: 'All periods' },
+  mapPlay: { fr: 'Parcourir les générations', en: 'Play through the generations' },
+  mapPause: { fr: 'Mettre en pause', en: 'Pause' },
+  mapShowAll: { fr: 'Revenir à toutes les époques', en: 'Back to all periods' },
   kinshipArmed: { fr: 'Cliquez sur une autre personne pour voir son lien avec', en: 'Click another person to see their link with' },
   unsureLabel: { fr: 'Informations à vérifier', en: 'Information to check' },
   unsureHint: {

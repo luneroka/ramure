@@ -386,6 +386,7 @@ textarea:focus {
    a phone they covered the buttons at its foot. */
 .app:has(.panel.editing) .canvas-tools,
 .app:has(.panel.editing) .hud,
+.app:has(.panel.editing) .map-timeline,
 .app:has(.dialog-backdrop) .canvas-tools,
 .app:has(.dialog-backdrop) .hud,
 .stage:has(.report) .canvas-tools {
@@ -742,13 +743,18 @@ textarea:focus {
      panel's own content, and hiding them would take zoom and the view chooser away for as long as
      anyone is reading about a person. (They go entirely while the editor has the screen — that rule
      sits with the tools themselves, since it holds at every width.) */
-  .app:has(.panel) .canvas-tools {
+  .app:has(.panel) .canvas-tools,
+  .app:has(.panel) .map-timeline {
     bottom: calc(60% + 12px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+  .map-notice.busy {
+    animation: none;
+    border-color: var(--accent);
   }
 }
 
@@ -3222,6 +3228,25 @@ textarea:focus {
 .map-view {
   position: absolute;
   inset: 0;
+  --pin: var(--accent);
+  --pin-ring: var(--accent);
+}
+/* The darkened tiles are themselves a muted teal, and a translucent teal ring vanished into them. On
+   the dark map a pin is a bright, nearly opaque disc with a dark rim, so it reads against land and
+   sea alike. */
+.map-dark {
+  --pin: #7cf0c4;
+  --pin-ring: #0b1512;
+}
+.map-dark .map-pin:not(.mine):not(.ghost) {
+  fill-opacity: 0.85;
+}
+.map-dark .map-pin.ghost {
+  stroke: #7cf0c4;
+}
+.map-pin.ghost {
+  stroke-dasharray: 3 3;
+  stroke-opacity: 0.75;
 }
 .map-box {
   position: absolute;
@@ -3304,6 +3329,75 @@ textarea:focus {
   font-size: 13.5px;
   z-index: 500;
   white-space: nowrap;
+}
+/* While places are being located the pill breathes, so a long pass reads as work in progress. */
+.map-notice.busy {
+  animation: map-busy 1.6s ease-in-out infinite;
+}
+@keyframes map-busy {
+  0%,
+  100% {
+    border-color: var(--line);
+    box-shadow:
+      var(--shadow),
+      0 0 0 0 transparent;
+  }
+  50% {
+    border-color: var(--accent);
+    box-shadow:
+      var(--shadow),
+      0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+}
+/* The cursor sits along the foot of the map, clear of the stage tools on the right and above the
+   zoom buttons' corner. */
+.map-timeline {
+  position: absolute;
+  z-index: 1000;
+  left: 12px;
+  right: 140px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: 620px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.map-timeline input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+.map-timeline input.all {
+  opacity: 0.6;
+}
+.map-years {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  min-width: 11ch;
+  text-align: center;
+}
+@container stage (max-width: 560px) {
+  .map-timeline {
+    left: 8px;
+    right: 80px;
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .map-years {
+    min-width: 0;
+    font-size: 11px;
+  }
+  .map-timeline .btn.icon {
+    min-width: 40px;
+    min-height: 40px;
+  }
 }
 .map-empty {
   position: absolute;

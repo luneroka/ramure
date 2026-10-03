@@ -114,3 +114,30 @@ export function geocodePlaces(tree: Tree, fixes: Geocode[]): EditResult {
   if (individuals === tree.individuals && families === tree.families) return { tree };
   return { tree: { ...tree, individuals, families } };
 }
+
+/** The span of years the dated mentions cover, or nothing when no mention has a year. */
+export function yearSpan(places: PlaceEntry[]): { min: number; max: number } | undefined {
+  let min = Infinity,
+    max = -Infinity;
+  for (const p of places)
+    for (const m of p.mentions)
+      if (m.year !== undefined) {
+        min = Math.min(min, m.year);
+        max = Math.max(max, m.year);
+      }
+  return min <= max ? { min, max } : undefined;
+}
+
+/**
+ * The places as they stood between two years, both included: each keeps only the mentions dated in that
+ * window, and a place left with none drops out. Undated mentions never fall inside a window, since a
+ * guess at where they belong would move people on the map who never moved.
+ */
+export function placesBetween(places: PlaceEntry[], from: number, to: number): PlaceEntry[] {
+  const out: PlaceEntry[] = [];
+  for (const p of places) {
+    const mentions = p.mentions.filter((m) => m.year !== undefined && m.year >= from && m.year <= to);
+    if (mentions.length) out.push(mentions.length === p.mentions.length ? p : { ...p, mentions });
+  }
+  return out;
+}

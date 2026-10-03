@@ -38,7 +38,8 @@ export function CanvasTools({ pxPerYear, onPxPerYear }: { pxPerYear: number; onP
           <ModeIcon mode={mode} />
           <span className="long">{t(lang, MODE_KEY[mode])}</span>
         </button>
-        <Dropdown open={modeOpen} onClose={() => setModeOpen(false)} placement="up">
+        {/* On the map the chooser stands alone in the corner, so its menu opens leftward rather than past the edge. */}
+        <Dropdown open={modeOpen} onClose={() => setModeOpen(false)} placement="up" align={mode === 'map' ? 'right' : 'left'}>
           {MODES.map((m) => (
             <button
               key={m}
