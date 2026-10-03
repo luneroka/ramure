@@ -172,8 +172,8 @@ export const api = {
   acceptInvite: (token: string) => call<{ accountId: string; role: 'owner' | 'member' }>('POST', '/api/invites/accept', { token }),
 
   listTrees: (accountId: string) => call<{ trees: TreeSummary[] }>('GET', `/api/trees?account=${encodeURIComponent(accountId)}`),
-  createTree: (accountId: string, name: string, gedcom: string) =>
-    call<{ id: string; name: string; version: number; role: Role }>('POST', '/api/trees', { accountId, name, gedcom }),
+  createTree: (accountId: string, name: string, gedcom: string, imported = false) =>
+    call<{ id: string; name: string; version: number; role: Role }>('POST', '/api/trees', { accountId, name, gedcom, imported }),
   getTree: (id: string) =>
     call<{ id: string; name: string; version: number; doc: string; people: number; role: Role; updatedAt: number }>(
       'GET',

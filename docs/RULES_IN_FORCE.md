@@ -167,7 +167,12 @@ first.** A `graft` can write hundreds of records at once, and taking it back is
 a bulk removal only an owner may make, so an editor who could graft could not
 undo it (`import_is_for_owners`, checked after flattening like `replaceTree`).
 Whatever its size, the push keeps the document as it was, labelled « Avant
-import de … » with the file's name.
+import de … » with the file's name, and the document it arrives at, labelled
+« Après import de … ».
+
+**A tree made from a file starts as a named version**, « Import de … », so the
+import as it came in can be restored however far the edits go. A blank tree
+gets none. Neither label starts with « Avant », so both are kept for good.
 
 **An automatic snapshot every 100 ops** (`SNAPSHOT_EVERY`), crossing the
 boundary rather than counting since the last one.
