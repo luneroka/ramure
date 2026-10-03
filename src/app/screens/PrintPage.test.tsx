@@ -60,11 +60,11 @@ function workspace(t: Tree, selectedId: string): Workspace {
   };
 }
 
-function renderPage(selectedId = léa.id) {
+function renderPage(selectedId = léa.id, route?: Parameters<typeof PrintPage>[0]['route'], t: Tree = tree) {
   return render(
     <UiProvider>
-      <WorkspaceProvider value={workspace(tree, selectedId)}>
-        <PrintPage navigate={noop} />
+      <WorkspaceProvider value={workspace(t, selectedId)}>
+        <PrintPage navigate={noop} route={route} />
       </WorkspaceProvider>
     </UiProvider>,
   );
@@ -129,5 +129,44 @@ describe('the printable charts screen', () => {
     fireEvent.change(screen.getByLabelText('Taille'), { target: { value: 'one' } });
     expect(document.querySelectorAll('.print-sheet')).toHaveLength(1);
     expect(screen.getByText(/33 personnes sur 33/)).toBeTruthy();
+  });
+
+  it('opens on a person’s sheet when it is reached from their panel', () => {
+    const marguerite = Object.values(tree.individuals).find((i) => i.names[0]?.given === 'Marguerite')!;
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: marguerite.id });
+    expect(screen.getByRole('radio', { name: 'Fiche individuelle' }).getAttribute('aria-checked')).toBe('true');
+    const page = document.querySelector('.person-page')!;
+    expect(page.textContent).toContain('Marguerite');
+    expect(page.textContent).toContain('Frères et sœurs');
+    expect(page.textContent).toContain('demi-frère par le père');
+    // A sheet of text is upright and sent as a PDF: no orientation to choose and no PNG.
+    expect(screen.queryByLabelText('Orientation')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Enregistrer en PNG' })).toBeNull();
+    expect(screen.getByText(/16 personnes · 6 événements/)).toBeTruthy();
+  });
+
+  it('holds the living back only when discretion is ticked', () => {
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I1' });
+    const page = () => document.querySelector('.person-page')!.textContent!;
+    expect(page()).toContain('° 30 mai 1944');
+    expect(screen.getByText(/proches vivants/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Discrétion pour les vivants'));
+    expect(page()).not.toContain('° 30 mai 1944');
+    expect(page()).toContain('né en 1944');
+    expect(screen.getByText(/proches vivants, année de naissance seule/)).toBeTruthy();
+  });
+
+  it('adds the research leads when asked for, and drops the sources when not', () => {
+    const t = parseGedcom(readFileSync('fixtures/geneanet/input-fixture.ged', 'utf8'));
+    t.individuals.I1!.leads = [{ id: 'L1', title: 'Acte de mariage 1974', url: 'https://example.org/acte' }];
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I1' }, t);
+    const page = () => document.querySelector('.person-page')!.textContent!;
+    expect(page()).not.toContain('Acte de mariage 1974');
+    fireEvent.click(screen.getByLabelText('Pistes de recherche'));
+    expect(page()).toContain('Acte de mariage 1974');
+    expect(document.querySelector('.person-page a')!.getAttribute('href')).toBe('https://example.org/acte');
+    expect(page()).toContain('Livret de famille');
+    fireEvent.click(screen.getByLabelText('Sources'));
+    expect(page()).not.toContain('Livret de famille');
   });
 });

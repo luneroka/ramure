@@ -106,6 +106,13 @@ be tested on a wall-sized tree without building one.
 `text.ts` is the measuring tape both need to fit words without a DOM, and
 `person.ts` the short name-and-years form they both put on a card.
 
+`sheet.ts` is the person sheet: one person, their parents, siblings, unions,
+children and grandchildren, their events, notes, sources and leads — what is on
+it and how much of each, with discretion applied, as data the screen draws in
+HTML (`src/app/screens/PersonSheet.tsx`). `pack.ts` deals the drawn blocks onto
+pages and decides how far the text may shrink to keep one; the screen measures,
+these two decide, so both are tested without a browser.
+
 ### `src/app/` — the React shell
 
 `App.tsx` is a wiring file: it decides who is signed in, which route, and
@@ -127,7 +134,7 @@ its name:
 | `ui/`      | Cross-cutting primitives with no domain knowledge: `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `icons`, `ErrorBoundary`.           |
 | `hooks/`   | The shell's state machines, one concern each (`useBoot`, `useAccounts`, `useTreeSession`, `useEditing`, `useSnapshots`…).          |
 | `state/`   | What the shell knows and how it changes: `Workspace` (the context), `history`, `editorState`, `router`, `useAuth`.                 |
-| `lib/`     | Pure helpers, no React: `format`, `report`, `mapPopup`, `errorText`.                                                               |
+| `lib/`     | Pure helpers, no React: `format`, `report`, `mapPopup`, `errorText`, `lifeEvents`.                                                 |
 
 `App.tsx` stays at the root — it is the entry point and belongs to no folder.
 Tests sit beside their subject.

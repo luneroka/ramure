@@ -360,7 +360,10 @@ function parents(person: Individual, c: Context): ParentCouple[] {
 
 function siblings(person: Individual, c: Context): SiblingRow[] {
   const { tree, lang } = c;
-  const own = familiesOf(tree, person.childOf.map((l) => l.familyId));
+  const own = familiesOf(
+    tree,
+    person.childOf.map((l) => l.familyId),
+  );
   const ownIds = new Set(own.map((f) => f.id));
   const seen = new Set([person.id]);
   const found: Array<{ ind: Individual; side?: 'father' | 'mother' }> = [{ ind: person }];
@@ -546,10 +549,17 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
     siblings: siblingRows,
     unions: unionBlocks,
     events,
-    notes: opts.notes ? person.notes.flatMap((n) => n.split(/\n\s*\n/)).map((p) => p.trim()).filter(Boolean) : [],
+    notes: opts.notes
+      ? person.notes
+          .flatMap((n) => n.split(/\n\s*\n/))
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [],
     sources,
     documents,
-    leads: opts.leads ? { open: leads.filter((l) => !l.done).map(lead), done: leads.filter((l) => l.done).map(lead) } : { open: [], done: [] },
+    leads: opts.leads
+      ? { open: leads.filter((l) => !l.done).map(lead), done: leads.filter((l) => l.done).map(lead) }
+      : { open: [], done: [] },
     symbols: SYMBOL_ORDER.filter((s) => c.symbols.has(s)),
     counts: {
       people: c.people.size,

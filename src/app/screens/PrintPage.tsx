@@ -120,9 +120,7 @@ export function PrintPage({ navigate, route }: { navigate(r: Route): void; route
   );
   const sheet = useMemo(
     () =>
-      isSheet && root
-        ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources, leads: withLeads })
-        : null,
+      isSheet && root ? personSheet(w.tree, root.id, { lang, discreet, notes: withNotes, sources: withSources, leads: withLeads }) : null,
     [isSheet, w.tree, root, lang, discreet, withNotes, withSources, withLeads],
   );
   const sheets = chart ? [chart.svg] : (poster?.sheets ?? []);

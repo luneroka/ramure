@@ -18,7 +18,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { t, tf, type Lang, type StringKey } from '@/i18n';
 import { fitScale, packPages, type MeasuredBlock } from '@/print/pack';
-import type { ChildRow, Mention, ParentCouple, PersonSheet, SheetEvent, SheetLead, SheetSymbol, SiblingRow, UnionBlock } from '@/print/sheet';
+import type {
+  ChildRow,
+  Mention,
+  ParentCouple,
+  PersonSheet,
+  SheetEvent,
+  SheetLead,
+  SheetSymbol,
+  SiblingRow,
+  UnionBlock,
+} from '@/print/sheet';
 import { usePortraitUrl } from '@/app/person/fields/Portrait';
 import { safeHref } from '@/app/screens/Leads';
 
@@ -148,7 +158,11 @@ function paginate(page: HTMLElement, size: { w: number; h: number }, count: numb
 
 function draw(b: Block) {
   return (
-    <div key={b.key} className={['ps-block', ...b.kinds.map((k) => `ps-${k}`), b.first ? 'first' : ''].join(' ').trim()} data-keep={b.keep ? '1' : undefined}>
+    <div
+      key={b.key}
+      className={['ps-block', ...b.kinds.map((k) => `ps-${k}`), b.first ? 'first' : ''].join(' ').trim()}
+      data-keep={b.keep ? '1' : undefined}
+    >
       {b.node}
     </div>
   );
@@ -172,13 +186,25 @@ function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName:
   if (sheet.siblings.length) {
     title('siblings', t(lang, 'siblings'));
     sheet.siblings.forEach((s, i) =>
-      add(`sibling-${s.id}`, ['rel', 'sib', ...(s.self ? ['self'] : [])], <Row r={s} lang={lang} next={t(lang, 'children')} />, false, i === 0),
+      add(
+        `sibling-${s.id}`,
+        ['rel', 'sib', ...(s.self ? ['self'] : [])],
+        <Row r={s} lang={lang} next={t(lang, 'children')} />,
+        false,
+        i === 0,
+      ),
     );
   }
   if (sheet.unions.length) {
     title('unions', t(lang, 'sheetUnions'));
     sheet.unions.forEach((u, i) => {
-      add(`union-${u.familyId}`, ['union'], <UnionHead u={u} n={sheet.unions.length > 1 ? i + 1 : undefined} lang={lang} />, u.children.length > 0, i === 0);
+      add(
+        `union-${u.familyId}`,
+        ['union'],
+        <UnionHead u={u} n={sheet.unions.length > 1 ? i + 1 : undefined} lang={lang} />,
+        u.children.length > 0,
+        i === 0,
+      );
       u.children.forEach((k, j) =>
         add(`child-${u.familyId}-${k.id}`, ['rel', 'kid'], <Row r={k} lang={lang} next={t(lang, 'sheetGrandchildren')} />, false, j === 0),
       );
@@ -233,7 +259,9 @@ function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName:
     const group = (key: string, heading: string, leads: SheetLead[], finished: boolean, first: boolean) => {
       if (!leads.length) return;
       add(`leads-${key}`, ['subtitle'], <h4>{heading}</h4>, true, first);
-      leads.forEach((l, i) => add(`lead-${l.id}`, ['item', 'lead', ...(finished ? ['done'] : [])], <LeadRow l={l} done={finished} />, false, i === 0));
+      leads.forEach((l, i) =>
+        add(`lead-${l.id}`, ['item', 'lead', ...(finished ? ['done'] : [])], <LeadRow l={l} done={finished} />, false, i === 0),
+      );
     };
     group('open', t(lang, 'sheetToFind'), open, false, true);
     group('done', t(lang, 'sheetFound'), done, true, !open.length);

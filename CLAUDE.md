@@ -101,18 +101,18 @@ regression.
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full map. The short
 version:
 
-| Path          | What belongs here                                                            |
-| ------------- | ---------------------------------------------------------------------------- |
-| `src/gedcom/` | Parse, repair, serialise, dates. Pure, no React, no DOM.                     |
-| `src/tree/`   | The domain: layout, ops, kinship, audit, diff. Pure. Shared with the Worker. |
-| `src/canvas/` | Canvas 2D renderer and the gesture wrapper.                                  |
-| `src/print/`  | Paper charts as SVG, sized to a sheet. Pure, no React, no DOM.               |
-| `src/sync/`   | Op-log sync: rebase core, engine, API client.                                |
-| `src/store/`  | Storage interfaces and their IndexedDB implementations.                      |
-| `src/app/`    | React shell, screens, hooks, UI. The only place React lives.                 |
-| `worker/`     | Hono routes, auth, D1 access, mail, cron jobs.                               |
-| `migrations/` | D1 schema, forward-only.                                                     |
-| `docs/`       | Design brief, architecture, rules in force, plans.                           |
+| Path          | What belongs here                                                                |
+| ------------- | -------------------------------------------------------------------------------- |
+| `src/gedcom/` | Parse, repair, serialise, dates. Pure, no React, no DOM.                         |
+| `src/tree/`   | The domain: layout, ops, kinship, audit, diff. Pure. Shared with the Worker.     |
+| `src/canvas/` | Canvas 2D renderer and the gesture wrapper.                                      |
+| `src/print/`  | Paper: SVG charts, the person sheet's content and pages. Pure, no React, no DOM. |
+| `src/sync/`   | Op-log sync: rebase core, engine, API client.                                    |
+| `src/store/`  | Storage interfaces and their IndexedDB implementations.                          |
+| `src/app/`    | React shell, screens, hooks, UI. The only place React lives.                     |
+| `worker/`     | Hono routes, auth, D1 access, mail, cron jobs.                                   |
+| `migrations/` | D1 schema, forward-only.                                                         |
+| `docs/`       | Design brief, architecture, rules in force, plans.                               |
 
 **`src/tree/`, `src/gedcom/` and `src/util/` are compiled into the Worker.**
 Two rules follow, and both are enforced by `npm run typecheck`:

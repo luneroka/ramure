@@ -73,6 +73,15 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
 
+  // The panel's « Imprimer » opens the print page on that person's sheet, on paper-sized pages.
+  await page.getByRole('button', { name: /Testine/ }).click();
+  await page.locator('.panel-actions').getByRole('button', { name: 'Imprimer' }).click();
+  await expect(page.getByRole('radio', { name: 'Fiche individuelle' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.person-page').first()).toContainText('Testine');
+  await expect(page.locator('.person-page').first()).toContainText('Marguerite');
+  await page.getByRole('button', { name: /← Arbre/ }).click();
+  await expect(page.locator('canvas.tree-canvas')).toBeVisible();
+
   // On a phone: nothing scrolls sideways, the search is reachable from its button and its results can
   // be tapped, and undo is on screen. All three were broken — the app was 423 px wide on a 390 px
   // screen, the search field opened below the canvas with its results off the bottom of the page, and

@@ -8,16 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatDate } from '@/gedcom/dates';
 import { computeAge } from '@/gedcom/age';
-import {
-  displayName,
-  findEvent,
-  placeText,
-  type Family,
-  type Individual,
-  type Lead,
-  type MediaObject,
-  type Tree,
-} from '@/gedcom/model';
+import { displayName, findEvent, placeText, type Family, type Individual, type Lead, type MediaObject, type Tree } from '@/gedcom/model';
 import { eventLabel, formatAge, t, tg, type Lang } from '@/i18n';
 import { isLiving } from '@/canvas/renderer';
 import { nextId, portraitId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '@/tree/edit';

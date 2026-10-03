@@ -48,7 +48,7 @@ export function packPages(blocks: MeasuredBlock[], room: number): number[][] {
   const pages: number[][] = [];
   let page: number[] = [];
   let used = 0;
-  for (let i = 0; i < blocks.length; ) {
+  for (let i = 0; i < blocks.length;) {
     // The run that must stay together: this block and every one it is kept with.
     let j = i;
     while (j < blocks.length - 1 && blocks[j]!.keepWithNext) j++;

@@ -3331,6 +3331,11 @@ textarea:focus {
   font-weight: 600;
   letter-spacing: 0.02em;
 }
+/* Four documents do not fit one row on a phone: the choice wraps rather than pushing the page sideways. */
+.print-options .segmented {
+  flex-wrap: wrap;
+  margin-right: 0;
+}
 .print-subject {
   display: grid;
   gap: 8px;
@@ -3720,7 +3725,6 @@ textarea:focus {
 }
 .ps-date {
   padding-right: calc(2 * var(--mm));
-  font-variant-numeric: tabular-nums;
 }
 .ps-what {
   padding-right: calc(2 * var(--mm));
