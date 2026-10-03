@@ -12,7 +12,7 @@
  */
 
 import type { Family, Individual, Lead, MediaObject, Repository, Source, Tree } from '../gedcom/model';
-import { EditError } from './edit';
+import { EditError, withoutLeads } from './edit';
 
 export interface RecordPatch {
   t: 'patchRecords';
@@ -121,6 +121,13 @@ function tableFor(tree: Tree, kind: string): Record<string, unknown> {
           : tree.media;
 }
 
+/** Person records as an op written before leads became sources may carry them. */
+function upgraded(table: Record<string, Individual | null>): Record<string, Individual | null> {
+  const out: Record<string, Individual | null> = Object.create(null);
+  for (const [id, ind] of Object.entries(table ?? {})) out[id] = ind && withoutLeads(ind);
+  return out;
+}
+
 export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
   if (p.expect) {
     for (const [key, fp] of Object.entries(p.expect)) {
@@ -131,7 +138,7 @@ export function applyRecordPatch(tree: Tree, p: RecordPatch): Tree {
   }
   return repairLinks({
     ...tree,
-    individuals: applyTable(tree.individuals, p.individuals),
+    individuals: applyTable(tree.individuals, upgraded(p.individuals)),
     families: applyTable(tree.families, p.families),
     media: applyTable(tree.media, p.media),
     ...(p.sources ? { sources: applyTable(tree.sources, p.sources) } : {}),

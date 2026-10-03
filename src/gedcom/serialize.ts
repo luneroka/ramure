@@ -121,13 +121,13 @@ function writeHeader(w: Writer, tree: Tree, o: SerializeOptions): void {
     w.line(2, 'FORM', tree.header.placeFormat);
   }
   for (const n of tree.header.notes) w.line(1, 'NOTE', n);
-  writeLeads(w, 1, tree.resources ?? []);
+  writeLinks(w, 1, tree.resources ?? []);
   for (const id of tree.documentIds ?? []) if (tree.media[id]) w.line(1, '_DOC', ptr(id));
   for (const key of tree.dismissedChecks ?? []) w.line(1, '_DISMISS', key);
 }
 
-function writeLeads(w: Writer, level: number, leads: Lead[]): void {
-  for (const l of leads) {
+function writeLinks(w: Writer, level: number, links: Lead[]): void {
+  for (const l of links) {
     w.line(level, '_LINK', l.url);
     w.line(level + 1, '_ID', l.id);
     if (l.title && l.title !== l.url) w.line(level + 1, 'TITL', l.title);
@@ -220,7 +220,6 @@ function writeIndividual(w: Writer, ind: Individual): void {
   for (const n of ind.notes) w.line(1, 'NOTE', n);
   writeCitations(w, 1, ind.citations);
   for (const m of ind.mediaIds) w.line(1, 'OBJE', ptr(m));
-  writeLeads(w, 1, ind.leads ?? []);
   for (const x of ind.extra) w.raw(x, 1);
 }
 

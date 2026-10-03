@@ -37,7 +37,6 @@ import {
   type Event,
   type Family,
   type Individual,
-  type Lead,
   type MediaKind,
   type Place,
   type Sex,
@@ -54,7 +53,6 @@ export interface SheetOptions {
   discreet: boolean;
   notes: boolean;
   sources: boolean;
-  leads: boolean;
 }
 
 /** A relative given a line of their own: a parent, a sibling, a partner, a child. */
@@ -136,13 +134,6 @@ export interface SheetDocument {
   detail: string;
 }
 
-export interface SheetLead {
-  id: string;
-  title: string;
-  note?: string;
-  url?: string;
-}
-
 export interface PersonSheet {
   subject: {
     id: string;
@@ -166,7 +157,6 @@ export interface PersonSheet {
   notes: string[];
   sources: SheetSource[];
   documents: SheetDocument[];
-  leads: { open: SheetLead[]; done: SheetLead[] };
   counts: {
     /** Everyone on the sheet, the subject included. */
     people: number;
@@ -176,7 +166,6 @@ export interface PersonSheet {
     private: number;
     events: number;
     sources: number;
-    leads: number;
   };
 }
 
@@ -549,8 +538,6 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
           return { id: m, title: media.title?.trim() || kind, detail: [media.title?.trim() ? kind : '', date].filter(Boolean).join(', ') };
         });
 
-  const leads = person.leads ?? [];
-  const lead = (l: Lead): SheetLead => ({ id: l.id, title: l.title, note: l.note || undefined, url: l.url || undefined });
   const relatives = [...c.people].filter((p) => p !== person.id).map((p) => tree.individuals[p]!);
 
   return {
@@ -578,16 +565,12 @@ export function personSheet(tree: Tree, id: string, opts: SheetOptions): PersonS
       : [],
     sources,
     documents,
-    leads: opts.leads
-      ? { open: leads.filter((l) => !l.done).map(lead), done: leads.filter((l) => l.done).map(lead) }
-      : { open: [], done: [] },
     counts: {
       people: c.people.size,
       living: relatives.filter(isLiving).length,
       private: relatives.filter((r) => PRIVATE.test(r.restriction ?? '') && !(opts.discreet && isLiving(r))).length,
       events: events.length,
       sources: sources.length,
-      leads: opts.leads ? leads.length : 0,
     },
   };
 }

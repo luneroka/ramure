@@ -12,6 +12,8 @@ import {
   type EventType,
   type Family,
   type Individual,
+  leadCitation,
+  type Citation,
   type Lead,
   type MediaObject,
   type Name,
@@ -105,8 +107,8 @@ export interface PersonPatch {
   portrait?: MediaObject | null;
   /** Marked as needing another look; undefined clears it. */
   unsure?: boolean | undefined;
-  /** Research leads, replaced wholesale. */
-  leads?: Lead[];
+  /** The person's own sources (citations on the record itself), replaced wholesale. */
+  citations?: Citation[];
   /** Media records to add or update in the tree (documents). */
   media?: MediaObject[];
   /** Attached media, in order; index 0 is the portrait. */
@@ -169,10 +171,30 @@ export function portraitId(ind: Individual, tree?: Tree): string | undefined {
   });
 }
 
+/** Research leads as ops written before they were folded into sources still carry them. */
+type LegacyLeads = { leads?: Array<Pick<Lead, 'title' | 'url' | 'note'>> };
+
+/**
+ * A person record from an op written before leads became sources: its leads
+ * follow its citations, exactly as parsing the document it produced reads
+ * them, so replaying the op and reading the server's copy agree.
+ */
+export function withoutLeads(ind: Individual): Individual {
+  if (!('leads' in ind)) return ind;
+  const { leads, ...rest } = ind as Individual & LegacyLeads;
+  return { ...rest, citations: [...rest.citations, ...(leads ?? []).map(leadCitation)] };
+}
+
 export function updatePerson(tree: Tree, id: string, patch: PersonPatch): EditResult {
   const ind = must(tree, id);
-  const { portrait, media, ...rest } = patch;
+  const { portrait, media, leads, ...rest } = patch as PersonPatch & LegacyLeads;
   const next: Individual = { ...ind, ...rest };
+  // An old device's lead edit: what it adds arrives as sources; nothing it typed is lost.
+  if (leads) {
+    const have = new Set(next.citations.map((c) => c.flat));
+    const fresh = leads.map(leadCitation).filter((c) => !have.has(c.flat) && have.add(c.flat));
+    if (fresh.length) next.citations = [...next.citations, ...fresh];
+  }
   if (patch.restriction === undefined && 'restriction' in patch) delete next.restriction;
   if (!patch.unsure && 'unsure' in patch) delete next.unsure;
   let t = tree;

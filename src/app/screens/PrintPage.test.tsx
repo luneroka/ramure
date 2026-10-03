@@ -5,7 +5,7 @@ import { createRef } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PrintPage } from './PrintPage';
 import { parseGedcom } from '@/gedcom/parse';
-import { displayName, type Tree } from '@/gedcom/model';
+import { displayName, writtenSource, type Tree } from '@/gedcom/model';
 import { DEFAULT_LAYOUT } from '@/tree/layout';
 import { initialEditor } from '@/app/state/editorState';
 import { WorkspaceProvider, type Workspace } from '@/app/state/Workspace';
@@ -156,17 +156,16 @@ describe('the printable charts screen', () => {
     expect(screen.getByText(/proches vivants, année de naissance seule/)).toBeTruthy();
   });
 
-  it('adds the research leads when asked for, and drops the sources when not', () => {
+  it('prints a written source among the sources, and drops the sources when not asked for', () => {
     const t = parseGedcom(readFileSync('fixtures/geneanet/input-fixture.ged', 'utf8'));
-    t.individuals.I1!.leads = [{ id: 'L1', title: 'Acte de mariage 1974', url: 'https://example.org/acte' }];
+    t.individuals.I1!.citations.push(writtenSource('Acte de mariage 1974', 'https://example.org/acte'));
     renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I1' }, t);
     const page = () => document.querySelector('.person-page')!.textContent!;
-    expect(page()).not.toContain('Acte de mariage 1974');
-    fireEvent.click(screen.getByLabelText('Pistes de recherche'));
-    expect(page()).toContain('Acte de mariage 1974');
-    expect(document.querySelector('.person-page a')!.getAttribute('href')).toBe('https://example.org/acte');
+    expect(screen.queryByLabelText('Pistes de recherche')).toBeNull();
+    expect(page()).toContain('Acte de mariage 1974 — https://example.org/acte');
     expect(page()).toContain('Livret de famille');
     fireEvent.click(screen.getByLabelText('Sources'));
     expect(page()).not.toContain('Livret de famille');
+    expect(page()).not.toContain('Acte de mariage 1974');
   });
 });

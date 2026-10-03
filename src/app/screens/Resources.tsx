@@ -8,7 +8,8 @@ import type { Lead, MediaObject, Tree } from '@/gedcom/model';
 import { t, type Lang } from '@/i18n';
 import { newId } from '@/tree/ids';
 import { DocumentList } from './Documents';
-import { LeadForm, safeHref } from './Leads';
+import { safeHref } from '@/app/lib/urls';
+import { LinkForm } from '@/app/ui/LinkForm';
 
 interface Props {
   lang: Lang;
@@ -46,16 +47,17 @@ export function ResourcesPage({ lang, tree, treeName, readOnly, onSaveLinks, onS
           {resources.map((r) =>
             editingId === r.id ? (
               <li key={r.id} className="lead editing">
-                <LeadForm
+                <LinkForm
                   lang={lang}
-                  initial={r}
+                  initial={{ title: r.title, url: r.url, note: r.note }}
                   titleLabel={t(lang, 'resourceTitle')}
+                  titlePlaceholder={t(lang, 'resourceTitlePlaceholder')}
                   urlLabel={t(lang, 'resourceUrl')}
                   withNote
                   submitLabel={t(lang, 'save')}
                   onSubmit={(v) => {
                     onSaveLinks(
-                      resources.map((x) => (x.id === r.id ? { ...x, title: v.title, url: v.url, note: v.note || undefined } : x)),
+                      resources.map((x) => (x.id === r.id ? { ...x, title: v.title || v.url, url: v.url, note: v.note || undefined } : x)),
                     );
                     setEditingId(null);
                   }}
@@ -93,14 +95,15 @@ export function ResourcesPage({ lang, tree, treeName, readOnly, onSaveLinks, onS
           )}
           {adding && (
             <li className="lead editing">
-              <LeadForm
+              <LinkForm
                 lang={lang}
                 titleLabel={t(lang, 'resourceTitle')}
+                titlePlaceholder={t(lang, 'resourceTitlePlaceholder')}
                 urlLabel={t(lang, 'resourceUrl')}
                 withNote
                 submitLabel={t(lang, 'addResource')}
                 onSubmit={(v) => {
-                  onSaveLinks([...resources, { id: newId('L'), title: v.title, url: v.url, note: v.note || undefined }]);
+                  onSaveLinks([...resources, { id: newId('L'), title: v.title || v.url, url: v.url, note: v.note || undefined }]);
                   setAdding(false);
                 }}
                 onCancel={() => setAdding(false)}

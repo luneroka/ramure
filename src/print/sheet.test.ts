@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseDate } from '@/gedcom/dates';
-import { newFamily, newIndividual, type Tree } from '@/gedcom/model';
+import { newFamily, newIndividual, writtenSource, type Tree } from '@/gedcom/model';
 import { parseGedcom } from '@/gedcom/parse';
 import { eventRows } from '@/app/lib/lifeEvents';
 import { personSheet, shortPlace, type SheetOptions } from './sheet';
@@ -19,7 +19,6 @@ const opts = (o: Partial<SheetOptions> = {}): SheetOptions => ({
   discreet: false,
   notes: true,
   sources: true,
-  leads: false,
   ...o,
 });
 const sheetOf = (id: string, o?: Partial<SheetOptions>, t: Tree = tree) => personSheet(t, id, opts(o))!;
@@ -176,16 +175,12 @@ describe('the person sheet', () => {
     expect(s.notes).toEqual([]);
     expect(s.sources).toEqual([]);
     expect(s.events.every((e) => e.refs.length === 0)).toBe(true);
-    expect(s.leads).toEqual({ open: [], done: [] });
   });
 
-  it('lists leads still open before those done, and documents other than the portrait', () => {
+  it('numbers a written source with its link and note, and lists documents other than the portrait', () => {
     const t = load();
     const henri = t.individuals.I2!;
-    henri.leads = [
-      { id: 'L1', title: 'Recensement 1926', url: '', done: true },
-      { id: 'L2', title: 'Registre matricule', url: 'https://archives.finistere.fr/', note: 'Classe 1941' },
-    ];
+    henri.citations = [writtenSource('Registre matricule', 'https://archives.finistere.fr/', ['Classe 1941'])];
     t.media.M9 = {
       id: 'M9',
       file: 'acte.jpg',
@@ -196,11 +191,9 @@ describe('the person sheet', () => {
       extra: [],
     };
     henri.mediaIds.push('M9');
-    const s = sheetOf('I2', { leads: true }, t);
-    expect(s.leads.open.map((l) => l.title)).toEqual(['Registre matricule']);
-    expect(s.leads.done.map((l) => l.title)).toEqual(['Recensement 1926']);
+    const s = sheetOf('I2', {}, t);
+    expect(s.sources[0]).toEqual({ n: 1, about: ['Identité'], text: 'Registre matricule — https://archives.finistere.fr/ · Classe 1941' });
     expect(s.documents).toEqual([{ id: 'M9', title: 'Acte de naissance d’Henri', detail: 'Acte de naissance, 5 févr. 1921' }]);
-    expect(s.counts.leads).toBe(2);
   });
 
   it('copes with someone who has no family at all', () => {

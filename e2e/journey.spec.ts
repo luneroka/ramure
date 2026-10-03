@@ -76,12 +76,22 @@ test('sign in with the code, import a tree, add a child, undo and redo, reload',
   await page.getByPlaceholder('Rechercher une personne…').fill('testine');
   await expect(page.getByRole('button', { name: /Testine/ })).toBeVisible();
 
-  // The panel's « Imprimer » opens the print page on that person's sheet, on paper-sized pages.
+  // A source written in her Documents tab: a text and a long link, shown short, saved and synced.
   await page.getByRole('button', { name: /Testine/ }).click();
-  await page.locator('.panel-actions').getByRole('button', { name: 'Imprimer' }).click();
+  await page.getByRole('tab', { name: /Documents/ }).click();
+  await page.getByRole('button', { name: '+ Ajouter une source' }).click();
+  await page.getByLabel('Source', { exact: true }).fill('Acte de naissance');
+  await page.getByLabel('Lien (facultatif)').fill('https://archives.example.org/ark:/12345/a1b2c3d4e5f6a7b8c9d0/daogrp/0/3E210_12');
+  await page.getByRole('button', { name: 'Ajouter une source' }).click();
+  await expect(page.locator('.source').filter({ hasText: 'Acte de naissance' })).toContainText('archives.example.org/…/3E210_12');
+  await expect(page.locator('.sync-pill').first()).toHaveAttribute('title', 'À jour', { timeout: 15_000 });
+
+  // The panel's « PDF » opens the print page on that person's sheet, on paper-sized pages.
+  await page.locator('.panel-actions').getByRole('button', { name: 'PDF' }).click();
   await expect(page.getByRole('radio', { name: 'Fiche individuelle' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.person-page').first()).toContainText('Testine');
   await expect(page.locator('.person-page').first()).toContainText('Marguerite');
+  await expect(page.locator('.person-page').first()).toContainText('Acte de naissance');
   await page.getByRole('button', { name: /← Arbre/ }).click();
   await expect(page.locator('canvas.tree-canvas')).toBeVisible();
 

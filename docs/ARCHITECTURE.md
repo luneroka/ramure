@@ -110,7 +110,7 @@ be tested on a wall-sized tree without building one.
 `person.ts` the short name-and-years form they both put on a card.
 
 `sheet.ts` is the person sheet: one person, their parents, siblings, unions,
-children and grandchildren, their events, notes, sources and leads — what is on
+children and grandchildren, their events, notes and sources — what is on
 it and how much of each, with discretion applied, as data the screen draws in
 HTML (`src/app/screens/PersonSheet.tsx`). `pack.ts` deals the drawn blocks onto
 pages and decides how far the text may shrink to keep one; the screen measures,
@@ -129,15 +129,15 @@ Routing is hash-based (`router.ts`) with French paths — `#/arbre/<id>`,
 Seven folders, never more than two deep, so a file's home is guessable from
 its name:
 
-| Folder     | What belongs here                                                                                                                  |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `screens/` | What a route renders: `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Leads`, `MapView`, `Timeline`, `PrintPage`. |
-| `person/`  | The person panel, its editor, the pickers that feed them, and `fields/` — the guided date, place and portrait inputs.              |
-| `stage/`   | Everything that sits over the canvas: the top bar, the HUD, search, the add-relative menu, the hosts that mount panels.            |
-| `ui/`      | Cross-cutting primitives with no domain knowledge: `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `icons`, `ErrorBoundary`.           |
-| `hooks/`   | The shell's state machines, one concern each (`useBoot`, `useAccounts`, `useTreeSession`, `useEditing`, `useSnapshots`…).          |
-| `state/`   | What the shell knows and how it changes: `Workspace` (the context), `history`, `editorState`, `router`, `useAuth`.                 |
-| `lib/`     | Pure helpers, no React: `format`, `report`, `mapPopup`, `errorText`, `lifeEvents`.                                                 |
+| Folder     | What belongs here                                                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `screens/` | What a route renders: `Home`, `Login`, `Admin`, `Settings`, `Documents`, `Resources`, `Research`, `MapView`, `Timeline`, `PrintPage`. |
+| `person/`  | The person panel, its editor, the pickers that feed them, and `fields/` — the guided date, place and portrait inputs.                 |
+| `stage/`   | Everything that sits over the canvas: the top bar, the HUD, search, the add-relative menu, the hosts that mount panels.               |
+| `ui/`      | Cross-cutting primitives with no domain knowledge: `Modal`, `Lightbox`, `SplitPanes`, `Menus`, `icons`, `ErrorBoundary`.              |
+| `hooks/`   | The shell's state machines, one concern each (`useBoot`, `useAccounts`, `useTreeSession`, `useEditing`, `useSnapshots`…).             |
+| `state/`   | What the shell knows and how it changes: `Workspace` (the context), `history`, `editorState`, `router`, `useAuth`.                    |
+| `lib/`     | Pure helpers, no React: `format`, `report`, `mapPopup`, `errorText`, `lifeEvents`.                                                    |
 
 `App.tsx` stays at the root — it is the entry point and belongs to no folder.
 Tests sit beside their subject.

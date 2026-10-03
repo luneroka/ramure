@@ -59,8 +59,16 @@ export interface EngineDeps {
   lock(name: string, until: Promise<void>): Promise<boolean>;
 }
 
+/**
+ * 3 since research leads became sources: every person record lost its `leads`
+ * field, so a base kept under 2 cannot replay the ops recorded since (their
+ * record fingerprints include it). Such a base is used to open the tree, then
+ * replaced by the server's document at the first sync.
+ */
+const SCHEMA = 3;
+
 interface PersistedBase {
-  schema: 2;
+  schema: 2 | typeof SCHEMA;
   version: number;
   baseGedcom: string;
 }
@@ -125,6 +133,8 @@ export class SyncEngine {
   private listeners = new Set<(e: EngineEvent) => void>();
   private disposed = false;
   private lockedElsewhere = false;
+  /** The local base was kept by a version before SCHEMA: replace it from the server at the next sync. */
+  private oldShape = false;
   private release!: () => void;
   private released = new Promise<void>((r) => {
     this.release = r;
@@ -166,6 +176,7 @@ export class SyncEngine {
     if (saved) {
       const outbox = 'schema' in saved ? ((await this.deps.kv.get<OpEnvelope[]>(this.outboxKey())) ?? []) : saved.outbox;
       this.state = { version: saved.version, base: parseGedcom(saved.baseGedcom), outbox };
+      this.oldShape = !('schema' in saved) || saved.schema !== SCHEMA;
       if (!('schema' in saved)) await this.persistAll();
       this.emit();
       void this.sync();
@@ -267,7 +278,8 @@ export class SyncEngine {
     if (!state) return Promise.resolve();
     return this.queueWrite(async () => {
       const a = await this.deps.kv.set(this.baseKey(), {
-        schema: 2,
+        // Still marked old until the server's document has replaced it, so a reload before that still fetches it.
+        schema: this.oldShape ? 2 : SCHEMA,
         version: state.version,
         baseGedcom: serializeGedcom(state.base),
       } satisfies PersistedBase);
@@ -324,6 +336,11 @@ export class SyncEngine {
     if (!this.state || this.disposed) return;
     try {
       this.status = 'syncing';
+      if (this.oldShape) {
+        await this.reloadFromServer();
+        this.oldShape = false;
+        await this.persistAll();
+      }
       // Push, rebasing on 409 until the server accepts.
       for (let attempt = 0; attempt < 5 && this.state.outbox.length && !this.frozen; attempt++) {
         const batch = this.state.outbox.slice(0, MAX_PUSH);

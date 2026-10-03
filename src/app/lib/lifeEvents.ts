@@ -12,6 +12,7 @@ import { approximateYear, formatDate } from '@/gedcom/dates';
 import { computeAge } from '@/gedcom/age';
 import { displayName, findEvent, placeText, type Citation, type Event, type EventType, type Individual, type Tree } from '@/gedcom/model';
 import { eventLabel, formatAge, t, type Lang } from '@/i18n';
+import type { FamilyPatch, PersonPatch } from '@/tree/edit';
 
 /** One row of the life timeline: a person event, or a union event seen from this person. */
 export interface LifeRow {
@@ -87,25 +88,65 @@ export function eventRows(tree: Tree, person: Individual, lang: Lang, nameOf: (i
   return rows.sort((a, b) => order(a) - order(b));
 }
 
-/** What a citation says, the way the panel and the sheet both write it: the source's title, the page, the transcription. */
+/** What a citation says, the way the sheet writes it: the source's title, the page, the transcription, a written source's link after its text, then its notes. */
 export function citationText(tree: Tree, c: Citation): string {
   const src = c.sourceId ? tree.sources[c.sourceId] : undefined;
-  return src ? [src.title, c.page, c.text].filter(Boolean).join(' · ') : [c.flat, c.text].filter(Boolean).join(' · ');
+  const said = src ? [src.title, c.page, c.text] : [c.flat?.split('\n').join(' — '), c.text];
+  return [...said, ...c.notes].filter(Boolean).join(' · ');
 }
 
-export function sourceRows(tree: Tree, person: Individual, lang: Lang): Array<{ label: string; text: string }> {
-  const out: Array<{ label: string; text: string }> = [];
-  const push = (label: string, cites: Event['citations']) => {
-    for (const c of cites) {
-      const text = citationText(tree, c);
-      if (text) out.push({ label, text });
-    }
-  };
-  push(t(lang, 'identity'), person.citations);
-  for (const e of person.events) push(eventLabel(lang, e.type, e.customType), e.citations);
-  for (const fid of person.partnerIn) {
-    const f = tree.families[fid];
-    if (f) for (const e of f.events) push(eventLabel(lang, e.type, e.customType), e.citations);
+/** Where a citation listed in the panel lives: on the person, on one of their events, or on an event of one of their unions. */
+export type SourceAt =
+  | { on: 'person'; index: number }
+  | { on: 'event'; event: number; index: number }
+  | { on: 'family'; familyId: string; event: number; index: number };
+
+export interface SourceRow {
+  key: string;
+  /** The event it backs; none for a source about the person as a whole. */
+  label?: string;
+  citation: Citation;
+  at: SourceAt;
+}
+
+/** Every source the panel lists for a person: their own first, then their events', then their unions'. */
+export function sourceRows(tree: Tree, person: Individual, lang: Lang): SourceRow[] {
+  const out: SourceRow[] = [];
+  person.citations.forEach((citation, index) => out.push({ key: `p${index}`, citation, at: { on: 'person', index } }));
+  person.events.forEach((e, event) =>
+    e.citations.forEach((citation, index) =>
+      out.push({ key: `e${event}.${index}`, label: eventLabel(lang, e.type, e.customType), citation, at: { on: 'event', event, index } }),
+    ),
+  );
+  for (const familyId of person.partnerIn) {
+    tree.families[familyId]?.events.forEach((e, event) =>
+      e.citations.forEach((citation, index) =>
+        out.push({
+          key: `f${familyId}.${event}.${index}`,
+          label: eventLabel(lang, e.type, e.customType),
+          citation,
+          at: { on: 'family', familyId, event, index },
+        }),
+      ),
+    );
   }
-  return out;
+  return out.filter((r) => citationText(tree, r.citation));
+}
+
+/** The edit that replaces the citation at `at` with `next`, or removes it when `next` is null. */
+export type SourceChange = { person: PersonPatch } | { family: string; patch: FamilyPatch };
+
+export function sourceChange(tree: Tree, person: Individual, at: SourceAt, next: Citation | null): SourceChange | null {
+  const swap = (list: Citation[]): Citation[] =>
+    next ? list.map((c, i) => (i === at.index ? next : c)) : list.filter((_, i) => i !== at.index);
+  const inEvent = (events: Event[], event: number): Event[] | null =>
+    events[event] ? events.map((e, i) => (i === event ? { ...e, citations: swap(e.citations) } : e)) : null;
+  if (at.on === 'person') return { person: { citations: swap(person.citations) } };
+  if (at.on === 'event') {
+    const events = inEvent(person.events, at.event);
+    return events && { person: { events } };
+  }
+  const fam = tree.families[at.familyId];
+  const events = fam && inEvent(fam.events, at.event);
+  return events ? { family: at.familyId, patch: { events } } : null;
 }

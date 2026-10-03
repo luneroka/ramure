@@ -1,4 +1,7 @@
 {
   "version": "0.0.1",
-  "configurations": [{ "name": "ramure-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5175 }]
+  "configurations": [
+    { "name": "ramure-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5175 },
+    { "name": "ramure-api", "runtimeExecutable": "npx", "runtimeArgs": ["wrangler", "dev", "--port", "8787"], "port": 8787 }
+  ]
 }

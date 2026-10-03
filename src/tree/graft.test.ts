@@ -194,6 +194,31 @@ describe('what comes with a citation or a picture', () => {
     0 @S1@ SOUR
     1 TITL État civil de Brest`);
 
+  it('takes a file’s research leads as sources, once', () => {
+    const mine = ged(`
+      0 @I1@ INDI
+      1 NAME Jean /MARTIN/
+      1 BIRT
+      2 DATE 1850
+      1 SOUR Acte de mariage
+      2 CONT https://example.org/m`);
+    const file = ged(`
+      0 @P1@ INDI
+      1 NAME Jean /MARTIN/
+      1 BIRT
+      2 DATE 1850
+      1 _LINK https://example.org/m
+      2 TITL Acte de mariage
+      1 _LINK https://example.org/r
+      2 TITL Recensement 1906`);
+    const plan = planGraft(mine, file, 'x.ged');
+    expect(plan.tree.individuals.I1!.citations.map((c) => c.flat)).toEqual([
+      'Acte de mariage\nhttps://example.org/m',
+      'Recensement 1906\nhttps://example.org/r',
+    ]);
+    expect(plan.completed).toEqual([{ id: 'I1', facts: [{ kind: 'source' }] }]);
+  });
+
   it('brings the sources a new citation needs, and reuses the tree’s own', () => {
     const file = ged(`
       0 @P1@ INDI
