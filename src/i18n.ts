@@ -153,6 +153,8 @@ const strings = {
   showAll: { fr: 'Vue d’ensemble', en: 'Overview' },
   shownOf: { fr: '{n} / {total} affichées', en: '{n} / {total} shown' },
   addRelative: { fr: 'Ajouter un proche', en: 'Add a relative' },
+  addRelativeHint: { fr: 'Ajouter un proche (A)', en: 'Add a relative (A)' },
+  kinshipHint: { fr: 'Lien de parenté avec une autre personne (R)', en: 'Relationship to another person (R)' },
   viewAncestors: { fr: 'Ancêtres', en: 'Ancestors' },
   viewDescendants: { fr: 'Descendants', en: 'Descendants' },
   givenName: { fr: 'Prénom(s)', en: 'Given name(s)' },
