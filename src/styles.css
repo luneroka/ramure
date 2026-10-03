@@ -2177,6 +2177,16 @@ label.check input {
     /* Over the canvas HUD, which on a narrow screen sits in the same corner and showed through the field. */
     z-index: 1100;
   }
+  /* The field's own z-index counts only inside the bar, and the bar sits at 10 while the HUD and the
+     canvas tools sit at 1001 to clear Leaflet: the HUD covered the field and took every tap meant for
+     it. The bar rises while its search is open, and only then, so dialogs still cover it otherwise. */
+  .topbar:has(.search.open) {
+    z-index: 1100;
+  }
+  /* Under 16 px iOS zooms the page on focus and leaves it zoomed. */
+  .search input {
+    font-size: 16px;
+  }
   .search-toggle {
     display: inline-flex;
   }

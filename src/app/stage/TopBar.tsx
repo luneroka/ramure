@@ -6,7 +6,7 @@ import type { SyncStatus } from '@/sync/engine';
 import { TreeMenu, UserMenu } from '@/app/ui/Menus';
 import type { Route } from '@/app/state/router';
 import type { Workspace } from '@/app/state/Workspace';
-import { RedoIcon, ResourcesIcon, ThemeIcon, UndoIcon } from '@/app/ui/icons';
+import { RedoIcon, ResourcesIcon, SearchIcon, ThemeIcon, UndoIcon } from '@/app/ui/icons';
 import { useUi } from '@/app/ui/UiContext';
 import { SearchBox } from './SearchBox';
 
@@ -135,7 +135,7 @@ export function TopBar(p: Props) {
             aria-label={t(lang, 'searchShort')}
             data-tip={t(lang, 'searchShort')}
           >
-            ⌕
+            <SearchIcon />
           </button>
         )}
         {w && !w.readOnly && (
