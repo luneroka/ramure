@@ -45,11 +45,20 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'google-fonts-files', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } },
           },
+          // The person sheet's own faces: cached the first time a sheet is shown, so its PDF can be made offline after that.
+          {
+            urlPattern: /\/fonts\/sheet\/[^/]+\.ttf$/i,
+            handler: 'CacheFirst',
+            options: { cacheName: 'sheet-fonts', expiration: { maxEntries: 20 } },
+          },
         ],
       },
     }),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  // jsPDF loads these only to snapshot HTML or draw SVG, which the person sheet never asks it to do. Left out of the
+  // build, they are neither shipped nor precached for every visitor.
+  build: { rollupOptions: { external: ['html2canvas', 'dompurify', 'canvg'] } },
   // strictPort so a busy 5173 fails loudly instead of sliding to another port: APP_ORIGIN in
   // .dev.vars names this exact origin, and a silent shift sends sign-in redirects somewhere the
   // session cookie does not exist. 5175 because Docker holds 5173 on the machine this is developed on.

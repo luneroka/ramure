@@ -411,14 +411,26 @@ single sheet was pinned over the page with `position: fixed`, and prints blank
 pages the moment a poster has several sheets. The sheets print in flow, one page
 each, with `break-after: page`.
 
-**The person sheet is paginated by the app, not the browser.** Every page
-prints with no page margin, like the charts, because the margin is where the
-browser writes its own header and footer — the address and the date — and a
-sheet sent to a relative should carry neither. With no page margin the browser
-cannot give a second page its own top margin, so the sheet's blocks are measured
-off screen at the paper's real size and packed onto page-sized boxes
+**The person sheet downloads as a PDF; it does not go through the print
+dialog.** It is a file to keep or send to a relative, and printing it is the
+reader's business. The PDF is made in the browser, so nothing about the family
+leaves the device and it works offline once the sheet's fonts have been seen
+([src/app/screens/sheetPdf.ts](../src/app/screens/sheetPdf.ts)). It is painted
+from the laid-out pages rather than from the sheet's data, so it cannot differ
+from the preview: each line of text is drawn where the browser broke it.
+
+**The sheet and its PDF share their font files.** The static faces in
+`public/fonts/sheet` (Public Sans, Newsreader, IBM Plex Mono, all OFL, with their
+licences beside them) are what the screen sets the sheet in and what the PDF
+embeds; kerning, ligatures and synthesised styles are off on the sheet because
+the PDF draws plain advances. Set the sheet in another face, or let the browser
+kern, and lines drawn in the PDF overrun the places measured for them.
+
+**The person sheet is paginated by the app.** Its blocks are measured off
+screen at the paper's real size and packed onto page-sized boxes
 ([src/print/pack.ts](../src/print/pack.ts)): a section title or a union's header
 never ends a page, and the space above a block is dropped when it opens one.
+Each box becomes one page of the PDF, with its running head and page number.
 
 **The person sheet stays on one page when shrinking the text by 15 % at most
 does it.** Past that it takes the pages it needs at full size, and the line
@@ -433,6 +445,13 @@ and a birth year and loses the day, the place and the occupation. The person
 the sheet is about is always printed in full — they were chosen. A relative the
 file marks private (`RESN privacy` or `confidential`) is held back whatever the
 box says, because that mark was made on purpose by whoever entered them.
+
+**The person sheet carries the subject's photo unless « Photo » is unticked.**
+The box is ticked by default and offered only when the app can show the
+portrait: an imported file often names pictures it does not carry, and a box
+that changes nothing reads as broken. Unticked, the sheet is laid out as if
+there were no portrait — the name takes its place rather than leaving a gap —
+and the PDF, made from those pages, has no picture in it at all.
 
 **The person sheet is written in words, never in genealogical signs.**
 « Né le 4 févr. 1921 à Brest », « Mariés en 1919 », « Claire AUBRY (née en 1976) »: no °, †, ~ or x, no dash for a missing date. The sheet is read by

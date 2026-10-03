@@ -115,6 +115,9 @@ it and how much of each, with discretion applied, as data the screen draws in
 HTML (`src/app/screens/PersonSheet.tsx`). `pack.ts` deals the drawn blocks onto
 pages and decides how far the text may shrink to keep one; the screen measures,
 these two decide, so both are tested without a browser.
+The PDF of a sheet is made in the browser by `src/app/screens/sheetPdf.ts`,
+which paints the laid-out pages with jsPDF (loaded only when someone downloads)
+in the same font files the screen uses, from `public/fonts/sheet`.
 
 ### `src/app/` — the React shell
 

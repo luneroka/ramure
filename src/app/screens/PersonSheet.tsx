@@ -15,12 +15,11 @@
  * markup: notes, places and sources arrive in files imported from elsewhere.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { t, tf, type Lang } from '@/i18n';
 import { localeOf } from '@/app/lib/format';
 import { fitScale, packPages, type MeasuredBlock } from '@/print/pack';
 import type { ChildRow, Mention, ParentCouple, PersonSheet, SheetEvent, SiblingRow, UnionBlock } from '@/print/sheet';
-import { usePortraitUrl } from '@/app/person/fields/Portrait';
 
 export type SheetPaper = 'a4' | 'letter';
 export interface SheetLayout {
@@ -56,14 +55,17 @@ interface Props {
   lang: Lang;
   paper: SheetPaper;
   treeName: string;
+  /** The subject's portrait, ready to draw: none when there is none to show or it is left off. */
+  photo?: string;
   /** The day the sheet is printed, already written out. */
   date: string;
   discreet: boolean;
   onLayout(layout: SheetLayout): void;
+  /** Holds the drawn pages, for the PDF to be made from. */
+  pagesRef?: RefObject<HTMLDivElement | null>;
 }
 
-export function PersonSheetView({ sheet, lang, paper, treeName, date, discreet, onLayout }: Props) {
-  const photo = usePortraitUrl(sheet.subject.portrait);
+export function PersonSheetView({ sheet, lang, paper, treeName, photo, date, discreet, onLayout, pagesRef }: Props) {
   const blocks = useMemo(() => blocksOf(sheet, lang, { photo, treeName, date }), [sheet, lang, photo, treeName, date]);
   const size = SHEET_PAPER[paper];
   const measure = useRef<HTMLDivElement>(null);
@@ -101,18 +103,20 @@ export function PersonSheetView({ sheet, lang, paper, treeName, date, discreet, 
           <div className="ps-flow">{blocks.map(draw)}</div>
         </div>
       </div>
-      {current.pages.map((indices, p) => (
-        <div key={p} className="print-sheet portrait person-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} lang={lang}>
-          <div className="ps-page" style={{ '--paper-w': size.w, '--fit': current.fit } as CSSProperties}>
-            {p > 0 && <div className="ps-running">{tf(lang, 'sheetContinued', { name })}</div>}
-            <div className="ps-flow">{indices.map((i) => current.blocks[i]).map((b) => b && draw(b))}</div>
-            <footer className="ps-foot">
-              <span>{foot}</span>
-              {total > 1 && <span className="ps-pageno">{tf(lang, 'sheetPageOf', { n: p + 1, total })}</span>}
-            </footer>
+      <div ref={pagesRef} className="ps-pages">
+        {current.pages.map((indices, p) => (
+          <div key={p} className="print-sheet portrait person-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} lang={lang}>
+            <div className="ps-page" style={{ '--paper-w': size.w, '--fit': current.fit } as CSSProperties}>
+              {p > 0 && <div className="ps-running">{tf(lang, 'sheetContinued', { name })}</div>}
+              <div className="ps-flow">{indices.map((i) => current.blocks[i]).map((b) => b && draw(b))}</div>
+              <footer className="ps-foot">
+                <span>{foot}</span>
+                {total > 1 && <span className="ps-pageno">{tf(lang, 'sheetPageOf', { n: p + 1, total })}</span>}
+              </footer>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </>
   );
 }
@@ -159,7 +163,17 @@ function fullName(sheet: PersonSheet, lang: Lang): string {
 function blocksOf(sheet: PersonSheet, lang: Lang, o: { photo?: string; treeName: string; date: string }): Block[] {
   const out: Block[] = [];
   const add = (key: string, kinds: string[], node: ReactNode, keep = false, first = false) => out.push({ key, kinds, node, keep, first });
-  const title = (key: string, text: string) => add(`title-${key}`, ['title'], <h3 className="ps-h">{text}</h3>, true);
+  const title = (key: string, text: string) =>
+    add(
+      `title-${key}`,
+      ['title'],
+      <h3 className="ps-h">
+        <span className="ps-h-bar" />
+        {text}
+        <span className="ps-h-rule" />
+      </h3>,
+      true,
+    );
 
   add('head', ['head'], <Head sheet={sheet} lang={lang} {...o} />);
   if (sheet.parents.length) {

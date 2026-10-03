@@ -1,15 +1,23 @@
 // @vitest-environment happy-dom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { createRef } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PrintPage } from './PrintPage';
+import { sheetPdf } from '@/app/screens/sheetPdf';
+import { mediaStore } from '@/store';
 import { parseGedcom } from '@/gedcom/parse';
 import { displayName, writtenSource, type Tree } from '@/gedcom/model';
 import { DEFAULT_LAYOUT } from '@/tree/layout';
 import { initialEditor } from '@/app/state/editorState';
 import { WorkspaceProvider, type Workspace } from '@/app/state/Workspace';
 import { UiProvider } from '@/app/ui/UiContext';
+
+// The PDF itself is painted from real layout, which happy-dom has none of: here it only has to be asked for.
+vi.mock('@/app/screens/sheetPdf', () => ({ sheetPdf: vi.fn(async () => new Blob(['%PDF-1.3'], { type: 'application/pdf' })) }));
+// Portraits are read from the device's media store, which holds only what a test puts in it.
+const stored = vi.hoisted(() => new Map<string, Blob>());
+vi.mock('@/store', () => ({ mediaStore: { get: vi.fn(async (id: string) => stored.get(id)) } }));
 
 /**
  * The print screen's wiring: that the options reach the drawing and that the
@@ -143,6 +151,51 @@ describe('the printable charts screen', () => {
     expect(screen.queryByLabelText('Orientation')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Enregistrer en PNG' })).toBeNull();
     expect(screen.getByText(/16 personnes · 6 événements/)).toBeTruthy();
+  });
+
+  it('downloads the sheet as a PDF instead of opening the print dialog', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    URL.createObjectURL = vi.fn(() => 'blob:sheet');
+    URL.revokeObjectURL = vi.fn();
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I1' });
+    expect(screen.queryByRole('button', { name: 'Imprimer ou enregistrer en PDF' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Télécharger le PDF' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    // The pages on screen are what the PDF is made from, on the paper chosen.
+    const [pages, paper, meta] = vi.mocked(sheetPdf).mock.calls[0]!;
+    expect(pages.map((p) => p.className)).toEqual(['print-sheet portrait person-page']);
+    expect(paper).toEqual({ w: 210, h: 297 });
+    expect(meta).toEqual({ title: 'Fiche individuelle · Marguerite LENOIR', lang: 'fr' });
+    const link = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(link.download).toBe('Marguerite-LENOIR-fiche.pdf');
+    expect(print).not.toHaveBeenCalled();
+    print.mockRestore();
+    click.mockRestore();
+  });
+
+  it('offers the photo only when there is one to show, and leaves it off the sheet when unticked', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:portrait');
+    URL.revokeObjectURL = vi.fn();
+    // Henri's file names a picture this device does not hold: there is nothing to offer.
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I2' });
+    await waitFor(() => expect(vi.mocked(mediaStore.get)).toHaveBeenCalledWith('O1'));
+    expect(screen.queryByLabelText('Photo')).toBeNull();
+    expect(document.querySelector('.person-page img')).toBeNull();
+    cleanup();
+
+    stored.set('O1', new Blob(['jpeg'], { type: 'image/jpeg' }));
+    renderPage(léa.id, { name: 'print', id: 'T1', sheet: true, person: 'I2' });
+    const photo = (await screen.findByLabelText('Photo')) as HTMLInputElement;
+    expect(photo.checked).toBe(true);
+    expect(document.querySelector('.person-page .ps-portrait img')!.getAttribute('src')).toBe('blob:portrait');
+    // Unticked, the pages the PDF is made from are laid out as if there were no portrait.
+    fireEvent.click(photo);
+    expect(document.querySelector('.person-page img')).toBeNull();
+    expect(document.querySelector('.person-page .ps-id')!.className).toBe('ps-id');
+    fireEvent.click(photo);
+    expect(document.querySelector('.person-page .ps-portrait img')).not.toBeNull();
+    stored.clear();
   });
 
   it('holds the living back only when discretion is ticked', () => {
