@@ -3,6 +3,11 @@
  * events happened there; a popup lists who was born, married or died there.
  * Places without coordinates can be located in one gentle pass, saved back
  * into the tree as an ordinary edit.
+ *
+ * A cursor along the bottom narrows the map to one generation at a time, so
+ * the family can be watched moving: the places of the window are drawn in
+ * full, the places already left behind stay as faint rings, and the places
+ * still to come are not drawn at all.
  */
 
 import L from 'leaflet';
@@ -11,8 +16,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Tree } from '@/gedcom/model';
 import { t, type Lang } from '@/i18n';
 import { geocodeAll } from '@/places/geocode';
-import { collectPlaces, type Geocode } from '@/tree/places';
+import { collectPlaces, placesBetween, yearSpan, type Geocode, type PlaceEntry } from '@/tree/places';
 import { esc, popupFor } from '@/app/lib/mapPopup';
+import { PauseIcon, PlayIcon } from '@/app/ui/icons';
 
 interface Props {
   tree: Tree;
@@ -27,6 +33,11 @@ interface Props {
 
 const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+/** A generation: the width of the window the cursor shows, ending at the year it points to. */
+const GENERATION = 30;
+/** How far the cursor moves at each step when playing, and how often. */
+const PLAY_STEP = 5;
+const PLAY_MS = 450;
 
 export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGeocoded, onNotice }: Props) {
   const box = useRef<HTMLDivElement>(null);
@@ -35,6 +46,16 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
   const places = useMemo(() => collectPlaces(tree), [tree]);
   const located = useMemo(() => places.filter((p) => p.lat !== undefined && p.lon !== undefined), [places]);
   const missing = useMemo(() => places.filter((p) => p.lat === undefined), [places]);
+  const span = useMemo(() => yearSpan(located), [located]);
+  // The year the cursor points to; unset shows every period, undated events included.
+  const [year, setYear] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const shown = useMemo(() => (year === null ? located : placesBetween(located, year - GENERATION + 1, year)), [located, year]);
+  const ghosts = useMemo<PlaceEntry[]>(() => {
+    if (year === null) return [];
+    const now = new Set(shown.map((p) => p.key));
+    return placesBetween(located, -Infinity, year - GENERATION).filter((p) => !now.has(p.key));
+  }, [located, shown, year]);
   const [progress, setProgress] = useState<{ done: number; total: number; found: number } | null>(null);
   const abort = useRef<AbortController | null>(null);
   const fitted = useRef(false);
@@ -65,17 +86,29 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
       g = layer.current;
     if (!m || !g) return;
     g.clearLayers();
+    for (const p of ghosts) {
+      const ghost = L.circleMarker([p.lat!, p.lon!], {
+        radius: 6,
+        weight: 2,
+        color: 'var(--pin-ring)',
+        fill: false,
+        className: 'map-pin ghost',
+      });
+      ghost.bindTooltip(esc(p.text), { direction: 'top', offset: [0, -6] });
+      g.addLayer(ghost);
+    }
+    // Sized against the whole tree, so a place keeps its size as the cursor moves and only its own count changes it.
     const max = Math.max(1, ...located.map((p) => p.mentions.length));
-    for (const p of located) {
+    for (const p of shown) {
       const mine = selectedId ? p.mentions.some((x) => x.personId === selectedId) : false;
       const r = 6 + Math.sqrt(p.mentions.length / max) * 14;
       const marker = L.circleMarker([p.lat!, p.lon!], {
         radius: r,
-        color: mine ? 'var(--focus)' : 'var(--accent)',
+        color: mine ? 'var(--focus)' : 'var(--pin-ring)',
         weight: mine ? 3 : 1.5,
-        fillColor: mine ? 'var(--focus)' : 'var(--accent)',
+        fillColor: mine ? 'var(--focus)' : 'var(--pin)',
         fillOpacity: mine ? 0.55 : 0.35,
-        className: 'map-pin',
+        className: mine ? 'map-pin mine' : 'map-pin',
       });
       marker.bindTooltip(`${esc(p.text)} · ${p.mentions.length}`, { direction: 'top', offset: [0, -r] });
       marker.on('click', () => marker.bindPopup(popupFor(p, lang), { maxWidth: 320, className: 'map-popup' }).openPopup());
@@ -85,7 +118,20 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
       fitted.current = true;
       m.fitBounds(L.latLngBounds(located.map((p) => [p.lat!, p.lon!] as [number, number])).pad(0.2), { maxZoom: 9 });
     }
-  }, [located, selectedId, lang]);
+  }, [located, shown, ghosts, selectedId, lang]);
+
+  // Playing walks the cursor forward a few years at a time and stops at the last dated event.
+  useEffect(() => {
+    if (!playing || !span) return;
+    const id = window.setInterval(() => {
+      setYear((y) => {
+        const next = Math.min(span.max, (y ?? span.min) + PLAY_STEP);
+        if (next >= span.max) setPlaying(false);
+        return next;
+      });
+    }, PLAY_MS);
+    return () => window.clearInterval(id);
+  }, [playing, span]);
 
   // Popup buttons: delegated clicks select the person.
   useEffect(() => {
@@ -142,7 +188,7 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
     <div className={`map-view ${dark ? 'map-dark' : ''}`}>
       <div ref={box} className="map-box" role="region" aria-label={t(lang, 'modeMap')} />
       {(missing.length > 0 || progress) && (
-        <div className="map-notice">
+        <div className={`map-notice ${progress ? 'busy' : ''}`} role="status">
           {progress ? (
             <>
               <span>
@@ -156,6 +202,51 @@ export function MapView({ tree, lang, selectedId, readOnly, dark, onSelect, onGe
             <span>
               {missing.length} {t(lang, missing.length === 1 ? 'placeMissing' : 'placesMissing')}
             </span>
+          )}
+        </div>
+      )}
+      {span && span.max > span.min && (
+        <div className="map-timeline">
+          <button
+            className="btn small subtle icon"
+            aria-label={t(lang, playing ? 'mapPause' : 'mapPlay')}
+            data-tip={t(lang, playing ? 'mapPause' : 'mapPlay')}
+            onClick={() => {
+              if (playing) return setPlaying(false);
+              // From the end, or from every period at once, playing starts again at the first generation.
+              if (year === null || year >= span.max) setYear(Math.min(span.max, span.min + GENERATION - 1));
+              setPlaying(true);
+            }}
+          >
+            {playing ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <input
+            type="range"
+            min={span.min}
+            max={span.max}
+            step={1}
+            value={year ?? span.max}
+            aria-label={t(lang, 'mapTimeline')}
+            aria-valuetext={year === null ? t(lang, 'mapAllYears') : `${year - GENERATION + 1} – ${year}`}
+            className={year === null ? 'all' : ''}
+            onChange={(e) => {
+              setPlaying(false);
+              setYear(Number(e.target.value));
+            }}
+          />
+          <span className="map-years">{year === null ? t(lang, 'mapAllYears') : `${year - GENERATION + 1} – ${year}`}</span>
+          {year !== null && (
+            <button
+              className="btn small subtle icon"
+              aria-label={t(lang, 'mapShowAll')}
+              data-tip={t(lang, 'mapShowAll')}
+              onClick={() => {
+                setPlaying(false);
+                setYear(null);
+              }}
+            >
+              ×
+            </button>
           )}
         </div>
       )}

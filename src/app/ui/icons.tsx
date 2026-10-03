@@ -45,6 +45,22 @@ export function SearchIcon() {
   );
 }
 
+export function PlayIcon() {
+  return (
+    <svg {...stroke}>
+      <path d="M8 5.5v13l10-6.5z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PauseIcon() {
+  return (
+    <svg {...stroke} strokeWidth={2.6}>
+      <path d="M9 6v12M15 6v12" />
+    </svg>
+  );
+}
+
 export function UndoIcon() {
   return (
     <svg {...stroke} strokeWidth={2}>
