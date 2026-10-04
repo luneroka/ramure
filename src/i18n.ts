@@ -756,10 +756,14 @@ const strings = {
   sectionTracking: { fr: 'Suivi', en: 'Tracking' },
   sectionUnions: { fr: 'Unions', en: 'Unions' },
   newEvent: { fr: 'Nouvel événement', en: 'New event' },
-  unionsNeedPartner: {
-    fr: 'Unions — ajoutez d’abord un conjoint (onglet Famille)',
-    en: 'Unions — add a partner first (Family tab)',
-  },
+  addUnion: { fr: 'Union', en: 'Union' },
+  newUnion: { fr: 'Nouvelle union…', en: 'New union…' },
+  chooseUnionPartner: { fr: 'Avec qui ?', en: 'With whom?' },
+  unionWho: { fr: 'Union avec…', en: 'Union with…' },
+  unionFromTree: { fr: 'Une personne de l’arbre :', en: 'Someone in the tree:' },
+  unionNewPerson: { fr: 'Ou une personne qui n’est pas encore dans l’arbre :', en: 'Or someone not in the tree yet:' },
+  unionAddPerson: { fr: 'Ajouter', en: 'Add' },
+  unionPartnerNeeded: { fr: 'Choisissez avec qui avant d’enregistrer.', en: 'Choose who this is with before saving.' },
   editPerson: { fr: 'Modifier la fiche', en: 'Edit the profile' },
   newPersonTitle: { fr: 'Nouvelle personne', en: 'New person' },
   storageHint: {

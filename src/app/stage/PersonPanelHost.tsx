@@ -35,7 +35,18 @@ export function PersonPanelHost({ navigate }: { navigate(r: Route): void }) {
       onSavePerson={(id, patch, unions) => {
         if (draft) return w.saveDraft(patch);
         const person = ops.updatePerson(id, patch);
-        const op = unions.length ? ops.batch([person, ...unions.map((u) => ops.updateFamily(u.familyId, u.patch))]) : person;
+        // A union made in the editor is created first, under the id its events were filed with.
+        const unionOps = unions.flatMap((u) => [
+          ...(u.create
+            ? [
+                'partnerId' in u.create
+                  ? ops.linkPartner(id, u.create.partnerId, u.familyId)
+                  : ops.addPartner(id, u.create.partner, u.familyId),
+              ]
+            : []),
+          ops.updateFamily(u.familyId, u.patch),
+        ]);
+        const op = unionOps.length ? ops.batch([person, ...unionOps]) : person;
         saved(w.commit(op), 'saved');
       }}
       onDeletePerson={(id) => saved(w.commit(ops.deletePerson(id), { select: false }), 'personDeleted')}

@@ -36,7 +36,11 @@ export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint 
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onCancel();
-          if (e.key === 'Enter' && matches[0]) onPick(matches[0].id);
+          // Inside a form (the person editor), Enter must pick, never submit the form around it.
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (matches[0]) onPick(matches[0].id);
+          }
         }}
       />
       <ul className="people picker-results">
@@ -45,7 +49,7 @@ export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint 
             d = findEvent(m.events, 'death')?.date?.date?.year;
           return (
             <li key={m.id}>
-              <button className="link-person" onClick={() => onPick(m.id)}>
+              <button type="button" className="link-person" onClick={() => onPick(m.id)}>
                 <span className={`sex-dot ${m.sex}`} aria-hidden="true" />
                 <span className="link-name">{displayName(m)}</span>
                 {(b || d) && <span className="link-years">{[b, d].filter(Boolean).join('–')}</span>}
@@ -56,7 +60,7 @@ export function PersonPicker({ tree, lang, exclude = [], onPick, onCancel, hint 
         {q.trim() && matches.length === 0 && <li className="muted small">{t(lang, 'noMatch')}</li>}
       </ul>
       <div className="row">
-        <button className="btn" onClick={onCancel}>
+        <button type="button" className="btn" onClick={onCancel}>
           {t(lang, 'cancel')}
         </button>
       </div>
