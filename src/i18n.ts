@@ -754,6 +754,7 @@ const strings = {
   },
   sectionIdentity: { fr: 'Identité', en: 'Identity' },
   sectionTracking: { fr: 'Suivi', en: 'Tracking' },
+  sectionUnions: { fr: 'Unions', en: 'Unions' },
   editPerson: { fr: 'Modifier la fiche', en: 'Edit the profile' },
   newPersonTitle: { fr: 'Nouvelle personne', en: 'New person' },
   storageHint: {
