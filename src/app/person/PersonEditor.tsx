@@ -1,12 +1,14 @@
 /**
- * The person editor: a modal over everything, sectioned (identity, the life's
- * events, notes, the « à vérifier » flag), that returns one patch on save. The
- * union editor below it is inline in the panel's Famille tab instead.
+ * The person editor: a modal over everything, in sections that fold away
+ * (identity, the life's events, the unions, notes, the « à vérifier » flag),
+ * that returns one patch on save. The union editor below it is inline in the
+ * panel's Famille tab instead.
  *
- * A marriage belongs to the union, not to either partner: GEDCOM keeps it on
- * the family record. The editor still lists the person's marriages among
- * their events, because that is where a person looks for them, and hands each
- * changed union back beside the person's patch so both are saved as one edit.
+ * A marriage, a divorce and the like belong to the union, not to either
+ * partner: GEDCOM keeps them on the family record. The editor still lists them
+ * here, in their own section, because a person's record is where one looks for
+ * them, and hands each changed union back beside the person's patch so both are
+ * saved as one edit.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -32,8 +34,9 @@ import { mediaStore } from '@/store';
 import { DateField } from '@/app/person/fields/DateField';
 import { PlaceField } from '@/app/person/fields/PlaceField';
 import { useDialog } from '@/app/ui/useDialog';
+import { UNION_EVENTS } from '@/app/lib/lifeEvents';
 
-/** A union whose events changed in the editor: its marriages were edited, added or removed. */
+/** A union whose events changed in the editor: a marriage, a divorce… edited, added or removed. */
 export interface UnionChange {
   familyId: string;
   patch: FamilyPatch;
@@ -57,7 +60,6 @@ const EVENT_TYPES: EventType[] = [
   'death',
   'burial',
   'cremation',
-  'marriage',
   'occupation',
   'residence',
   'census',
@@ -76,6 +78,8 @@ const EVENT_TYPES: EventType[] = [
   'description',
   'custom',
 ];
+/** What a union can record, in the order a couple would go through it. */
+const UNION_TYPES: EventType[] = ['engagement', 'marriage', 'separation', 'divorce', 'annulment'];
 const WITH_DESCRIPTION = new Set<EventType>(['occupation', 'residence', 'education', 'religion', 'title', 'description', 'custom']);
 
 /** Someone born this long ago gets a death row offered by default. */
@@ -91,7 +95,7 @@ interface EventDraft {
   cause: string;
   note: string;
   original?: Event;
-  /** The union a marriage row belongs to: saved on that family, not on the person. */
+  /** The union a row belongs to: saved on that family, not on the person. */
   familyId?: string;
   /** Offered by default; dropped on save if left empty. */
   suggested?: boolean;
@@ -161,18 +165,17 @@ function unionsOf(tree: Tree, person: Individual, lang: Lang): Array<{ id: strin
 }
 
 /**
- * Initial rows: the person's events and their unions' marriages, plus an empty birth and, when
- * warranted, an empty death. Marriages go before a death so the list still reads in life order.
+ * Initial rows: the person's events and their unions' events, plus an empty birth and, when
+ * warranted, an empty death.
  */
 function initialDrafts(person: Individual, tree: Tree, withUnions: boolean): EventDraft[] {
   const drafts = person.events.map((e) => toDraft(e));
-  if (withUnions) {
-    const marriages = person.partnerIn.flatMap((fid) =>
-      (tree.families[fid]?.events ?? []).filter((e) => e.type === 'marriage').map((e) => toDraft(e, fid)),
+  if (withUnions)
+    drafts.push(
+      ...person.partnerIn.flatMap((fid) =>
+        (tree.families[fid]?.events ?? []).filter((e) => UNION_EVENTS.has(e.type)).map((e) => toDraft(e, fid)),
+      ),
     );
-    const end = drafts.findIndex((d) => d.type === 'death' || d.type === 'burial' || d.type === 'cremation');
-    drafts.splice(end < 0 ? drafts.length : end, 0, ...marriages);
-  }
   if (!drafts.some((d) => d.type === 'birth')) drafts.unshift(emptyDraft('birth', true));
   if (!drafts.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(drafts)) {
     const i = drafts.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -204,7 +207,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [sex, setSex] = useState<Sex>(person.sex);
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
   const [unsure, setUnsure] = useState(!!person.unsure);
-  // A relative being added has no union of its own yet to carry a marriage.
+  // A relative being added has no union of its own yet to carry a marriage or a divorce.
   const unions = useMemo(() => (isDraft ? [] : unionsOf(tree, person, lang)), [isDraft, tree, person, lang]);
   const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person, tree, !isDraft));
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -224,14 +227,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
   const update = (key: number, patch: Partial<EventDraft>) =>
     setEvents((evs) => {
-      const next = evs.map((e) => {
-        if (e.key !== key) return e;
-        const merged = { ...e, ...patch, suggested: false };
-        // Turning a row into a marriage gives it a union; turning it into anything else takes it back.
-        if (patch.type === 'marriage' && !merged.familyId) merged.familyId = unions[0]?.id;
-        else if (patch.type && patch.type !== 'marriage') merged.familyId = undefined;
-        return merged;
-      });
+      const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
       // A birth more than a century ago earns an empty death row, once.
       if ('date' in patch && !next.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(next)) {
         const i = next.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -247,17 +243,27 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
         evs.some((e) => e.type === 'death') ? 'occupation' : evs.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth',
       ),
     ]);
+  /** A new union row: on the first union, a marriage unless it has one already, then a divorce. */
+  const addUnionEvent = () =>
+    setEvents((evs) => {
+      const familyId = unions[0]!.id;
+      const married = evs.some((e) => e.familyId === familyId && e.type === 'marriage');
+      return [...evs, { ...emptyDraft(married ? 'divorce' : 'marriage'), familyId }];
+    });
+  const lifeRows = events.filter((d) => !d.familyId);
+  const unionRows = events.filter((d) => d.familyId);
 
-  /** The unions whose marriages differ from what the tree holds, each with its new event list. */
+  /** The unions whose events differ from what the tree holds, each with its new event list. */
   const unionChanges = (kept: EventDraft[]): UnionChange[] =>
     unions.flatMap(({ id }) => {
       const fam = tree.families[id]!;
-      const before = fam.events.filter((e) => e.type === 'marriage');
+      const before = fam.events.filter((e) => UNION_EVENTS.has(e.type));
       const after = kept.filter((d) => d.familyId === id).map(fromDraft);
       if (JSON.stringify(before) === JSON.stringify(after)) return [];
-      const patch: FamilyPatch = { events: [...after, ...fam.events.filter((e) => e.type !== 'marriage')] };
+      const patch: FamilyPatch = { events: [...after, ...fam.events.filter((e) => !UNION_EVENTS.has(e.type))] };
       // Recording a marriage says the couple married, whatever the union was set to.
-      if (after.length && (fam.unionType === 'unknown' || fam.unionType === 'unmarried')) patch.unionType = 'married';
+      const married = after.some((e) => e.type === 'marriage');
+      if (married && (fam.unionType === 'unknown' || fam.unionType === 'unmarried')) patch.unionType = 'married';
       return [{ familyId: id, patch }];
     });
 
@@ -283,6 +289,56 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       unionChanges(kept),
     );
   };
+
+  /** One event's row, the same in « Parcours » and « Unions »; only the types offered differ. */
+  const eventRow = (d: EventDraft, types: EventType[]) => (
+    <div key={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''}`}>
+      <div className="ev-top">
+        <select value={d.type} onChange={(e) => update(d.key, { type: e.target.value as EventType })} aria-label={t(lang, 'eventType')}>
+          {(types.includes(d.type) ? types : [d.type, ...types]).map((ty) => (
+            <option key={ty} value={ty}>
+              {eventLabel(lang, ty)}
+            </option>
+          ))}
+        </select>
+        {d.familyId &&
+          (unions.length > 1 ? (
+            <select
+              value={d.familyId}
+              onChange={(e) => update(d.key, { familyId: e.target.value })}
+              aria-label={t(lang, 'marriagePartner')}
+            >
+              {unions.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {t(lang, 'with')} {u.partner}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="ev-with">
+              {t(lang, 'with')} {unions.find((u) => u.id === d.familyId)?.partner}
+            </span>
+          ))}
+        {d.type === 'custom' && (
+          <input value={d.customType} placeholder={t(lang, 'other')} onChange={(e) => update(d.key, { customType: e.target.value })} />
+        )}
+        {WITH_DESCRIPTION.has(d.type) && (
+          <input value={d.value} placeholder={t(lang, 'description')} onChange={(e) => update(d.key, { value: e.target.value })} />
+        )}
+        <button type="button" className="icon-btn" onClick={() => remove(d.key)} aria-label={t(lang, 'delete')}>
+          ×
+        </button>
+      </div>
+      <div className="ed-grid">
+        <DateField key={`d${d.key}`} lang={lang} value={d.date} onChange={(date) => update(d.key, { date })} />
+        <PlaceField key={`p${d.key}`} lang={lang} value={d.place} known={places} onChange={(place) => update(d.key, { place })} />
+      </div>
+      {(d.type === 'death' || d.type === 'burial') && (
+        <input value={d.cause} placeholder={t(lang, 'cause')} onChange={(e) => update(d.key, { cause: e.target.value })} />
+      )}
+      <input value={d.note} placeholder={t(lang, 'notes')} onChange={(e) => update(d.key, { note: e.target.value })} />
+    </div>
+  );
 
   const title = isDraft ? t(lang, 'newPersonTitle') : t(lang, 'editPerson');
   const shownName = [given, surname].filter((s) => s.trim()).join(' ');
@@ -318,8 +374,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
         <div className="editor-body editor">
           {isDraft && <p className="ed-hint">{t(lang, 'draftHint')}</p>}
 
-          <section className="ed-section">
-            <h3 className="band">{t(lang, 'sectionIdentity')}</h3>
+          <EdSection title={t(lang, 'sectionIdentity')} open={isDraft}>
             <div className="ed-identity">
               <PortraitPicker lang={lang} current={portraitId(person, tree)} allocateId={allocateMediaId} onChange={setPortrait} compact />
               <div className="ed-grid">
@@ -354,98 +409,39 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
                 </div>
               </div>
             </div>
-          </section>
+          </EdSection>
 
-          <section className="ed-section">
-            <h3 className="band">{t(lang, 'lifeEvents')}</h3>
-            <div className="event-drafts">
-              {events.map((d) => (
-                <div key={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''}`}>
-                  <div className="ev-top">
-                    <select
-                      value={d.type}
-                      onChange={(e) => update(d.key, { type: e.target.value as EventType })}
-                      aria-label={t(lang, 'eventType')}
-                    >
-                      {EVENT_TYPES.filter((ty) => ty !== 'marriage' || unions.length > 0 || d.type === 'marriage').map((ty) => (
-                        <option key={ty} value={ty}>
-                          {eventLabel(lang, ty)}
-                        </option>
-                      ))}
-                    </select>
-                    {d.familyId &&
-                      (unions.length > 1 ? (
-                        <select
-                          value={d.familyId}
-                          onChange={(e) => update(d.key, { familyId: e.target.value })}
-                          aria-label={t(lang, 'marriagePartner')}
-                        >
-                          {unions.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {t(lang, 'with')} {u.partner}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="ev-with">
-                          {t(lang, 'with')} {unions.find((u) => u.id === d.familyId)?.partner}
-                        </span>
-                      ))}
-                    {d.type === 'custom' && (
-                      <input
-                        value={d.customType}
-                        placeholder={t(lang, 'other')}
-                        onChange={(e) => update(d.key, { customType: e.target.value })}
-                      />
-                    )}
-                    {WITH_DESCRIPTION.has(d.type) && (
-                      <input
-                        value={d.value}
-                        placeholder={t(lang, 'description')}
-                        onChange={(e) => update(d.key, { value: e.target.value })}
-                      />
-                    )}
-                    <button type="button" className="icon-btn" onClick={() => remove(d.key)} aria-label={t(lang, 'delete')}>
-                      ×
-                    </button>
-                  </div>
-                  <div className="ed-grid">
-                    <DateField key={`d${d.key}`} lang={lang} value={d.date} onChange={(date) => update(d.key, { date })} />
-                    <PlaceField
-                      key={`p${d.key}`}
-                      lang={lang}
-                      value={d.place}
-                      known={places}
-                      onChange={(place) => update(d.key, { place })}
-                    />
-                  </div>
-                  {(d.type === 'death' || d.type === 'burial') && (
-                    <input value={d.cause} placeholder={t(lang, 'cause')} onChange={(e) => update(d.key, { cause: e.target.value })} />
-                  )}
-                  <input value={d.note} placeholder={t(lang, 'notes')} onChange={(e) => update(d.key, { note: e.target.value })} />
-                </div>
-              ))}
-            </div>
+          <EdSection title={t(lang, 'lifeEvents')} count={lifeRows.length} open>
+            <div className="event-drafts">{lifeRows.map((d) => eventRow(d, EVENT_TYPES))}</div>
             <div className="row small-actions">
               <button type="button" className="btn small" onClick={add}>
                 + {t(lang, 'addEvent')}
               </button>
             </div>
-          </section>
+          </EdSection>
 
-          <section className="ed-section">
-            <h3 className="band">{t(lang, 'notes')}</h3>
-            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </section>
+          {unions.length > 0 && (
+            <EdSection title={t(lang, 'sectionUnions')} count={unionRows.length}>
+              <div className="event-drafts">{unionRows.map((d) => eventRow(d, UNION_TYPES))}</div>
+              <div className="row small-actions">
+                <button type="button" className="btn small" onClick={addUnionEvent}>
+                  + {t(lang, 'addEvent')}
+                </button>
+              </div>
+            </EdSection>
+          )}
 
-          <section className="ed-section">
-            <h3 className="band">{t(lang, 'sectionTracking')}</h3>
+          <EdSection title={t(lang, 'notes')}>
+            <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} aria-label={t(lang, 'notes')} />
+          </EdSection>
+
+          <EdSection title={t(lang, 'sectionTracking')}>
             <label className="check">
               <input type="checkbox" checked={unsure} onChange={(e) => setUnsure(e.target.checked)} />
               {t(lang, 'unsureLabel')}
             </label>
             <p className="ed-hint">{t(lang, 'unsureHint')}</p>
-          </section>
+          </EdSection>
         </div>
 
         <footer className="editor-foot">
@@ -475,6 +471,24 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       </form>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * A section of the editor that folds away. A native `<details>`: the summary is a real button for the
+ * keyboard and for screen readers, and nothing has to remember which ones are open. Only « Parcours »
+ * starts open, so a long record opens on its events rather than on a page of fields; « Identité » too
+ * for a relative being added, who has no name yet.
+ */
+function EdSection({ title, count, open = false, children }: { title: string; count?: number; open?: boolean; children: React.ReactNode }) {
+  return (
+    <details className="ed-section" open={open}>
+      <summary className="band">
+        <span>{title}</span>
+        {count !== undefined && count > 0 && <span className="ed-count">{count}</span>}
+      </summary>
+      <div className="ed-section-body">{children}</div>
+    </details>
   );
 }
 

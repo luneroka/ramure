@@ -23,7 +23,11 @@ export function useDialog<T extends HTMLElement>(
     if (!open) return;
     const root = ref.current;
     const before = document.activeElement as HTMLElement | null;
-    const focusables = () => (root ? Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)) : []);
+    // A field inside a folded `<details>` is in the document but cannot take focus: it must not be the trap's end.
+    const focusables = () =>
+      root
+        ? Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.closest('details:not([open]) > :not(summary)'))
+        : [];
     // Something inside may already hold focus (an autoFocus field): leave it there.
     if (!root || !root.contains(document.activeElement)) (initialFocus?.current ?? focusables()[0] ?? root)?.focus();
     const onKey = (e: KeyboardEvent) => {

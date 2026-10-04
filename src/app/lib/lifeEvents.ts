@@ -27,7 +27,7 @@ export interface LifeRow {
   citations: Citation[];
 }
 
-const UNION_EVENTS = new Set<EventType>(['marriage', 'divorce', 'engagement', 'separation', 'annulment']);
+export const UNION_EVENTS = new Set<EventType>(['marriage', 'divorce', 'engagement', 'separation', 'annulment']);
 
 /** `nameOf` writes the partner in a union event: the panel uses the file's spelling, the printed sheet its capitals. */
 export function eventRows(tree: Tree, person: Individual, lang: Lang, nameOf: (ind: Individual) => string = displayName): LifeRow[] {

@@ -31,7 +31,7 @@ describe('PersonEditor', () => {
     expect(patch.events?.length).toBe(person.events.length);
   });
 
-  describe('marriages, which GEDCOM keeps on the union', () => {
+  describe('union events, which GEDCOM keeps on the union', () => {
     const editorFor = (id: string) => {
       const onSave = vi.fn<(p: PersonPatch, u: UnionChange[]) => void>();
       render(
@@ -90,29 +90,79 @@ describe('PersonEditor', () => {
       expect(unions[0]!.patch.events!.some((e) => e.type === 'marriage')).toBe(false);
     });
 
-    it('offers « Mariage » when the person has a union, and files it under the partner picked', async () => {
+    it('adds a divorce in « Unions », filed under the partner picked', async () => {
       const user = userEvent.setup();
-      const onSave = editorFor('I2'); // Henri LENOIR: two unions, F1 and F2
-      await user.click(screen.getByRole('button', { name: /Événement/ }));
-      const added = typeSelects().at(-1)!;
-      expect([...added.options].map((o) => o.value)).toContain('marriage');
-      await user.selectOptions(added, 'marriage');
+      const onSave = editorFor('I2'); // Henri LENOIR: two unions, F1 and F2, both with a marriage
+      const unions = screen.getByText('Unions').closest('details')!;
+      await user.click(within(unions).getByRole('button', { name: /Événement/ }));
+      const added = within(unions).getAllByLabelText('Type').at(-1) as HTMLSelectElement;
+      // The first union already has its marriage: the new row offers a divorce, among union events only.
+      expect(added.value).toBe('divorce');
+      expect([...added.options].map((o) => o.value)).toEqual(['engagement', 'marriage', 'separation', 'divorce', 'annulment']);
       const row = added.closest('.ev-draft') as HTMLElement;
-      const partner = within(row).getByLabelText('Marié·e avec') as HTMLSelectElement;
-      await user.selectOptions(partner, 'F1');
-      await user.type(within(row).getByPlaceholderText('Notes'), 'Seconde cérémonie');
+      await user.selectOptions(within(row).getByLabelText('Marié·e avec'), 'F2');
+      await user.type(within(row).getByPlaceholderText('Notes'), 'Jugement du tribunal');
       await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
-      const [patch, unions] = onSave.mock.calls[0]!;
-      expect(patch.events?.some((e) => e.type === 'marriage')).toBe(false);
-      const f1 = unions.find((u) => u.familyId === 'F1')!;
-      expect(f1.patch.events!.filter((e) => e.type === 'marriage').map((e) => e.notes)).toContainEqual(['Seconde cérémonie']);
+      const [patch, changed] = onSave.mock.calls[0]!;
+      expect(patch.events?.some((e) => e.type === 'divorce')).toBe(false);
+      expect(changed.map((u) => u.familyId)).toEqual(['F2']);
+      const events = changed[0]!.patch.events!;
+      expect(events.filter((e) => e.type === 'marriage')).toHaveLength(1);
+      expect(events.find((e) => e.type === 'divorce')?.notes).toEqual(['Jugement du tribunal']);
     });
 
-    it('does not offer « Mariage » to someone with no union', () => {
+    it('lists an imported divorce in « Unions »', () => {
+      // Marguerite LENOIR's own divorce, kept on her union in the fixture.
+      editorFor('I1');
+      const unions = screen.getByText('Unions').closest('details')!;
+      const types = within(unions)
+        .getAllByLabelText('Type')
+        .map((s) => (s as HTMLSelectElement).value);
+      expect(types).toContain('divorce');
+    });
+
+    it('has no « Unions » section, and no union event among the others, for someone with no union', () => {
       const lone = Object.values(tree.individuals).find((i) => i.partnerIn.length === 0)!;
       editorFor(lone.id);
-      expect([...typeSelects()[0]!.options].map((o) => o.value)).not.toContain('marriage');
+      expect(screen.queryByText('Unions')).toBeNull();
+      const offered = [...typeSelects()[0]!.options].map((o) => o.value);
+      expect(offered).not.toContain('marriage');
+      expect(offered).not.toContain('divorce');
     });
+  });
+
+  it('opens on « Parcours » alone, the other sections folded with their count', () => {
+    render(
+      <PersonEditor
+        tree={tree}
+        person={tree.individuals.I3!}
+        lang="fr"
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+    const open = (title: string) => (screen.getByText(title).closest('details') as HTMLDetailsElement).open;
+    expect(open('Parcours')).toBe(true);
+    expect(open('Identité')).toBe(false);
+    expect(open('Unions')).toBe(false);
+    expect(open('Suivi')).toBe(false);
+    expect(within(screen.getByText('Unions').closest('summary')!).getByText('1')).toBeTruthy();
+  });
+
+  it('opens « Identité » too for a relative being added, who still needs a name', () => {
+    render(
+      <PersonEditor
+        tree={tree}
+        person={tree.individuals.I3!}
+        lang="fr"
+        isDraft
+        onSave={() => undefined}
+        onCancel={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+    expect((screen.getByText('Identité').closest('details') as HTMLDetailsElement).open).toBe(true);
   });
 
   it('cancels on Escape', async () => {
