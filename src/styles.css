@@ -331,12 +331,18 @@ textarea:focus {
   border-radius: 6px;
   max-width: min(60vw, 520px);
 }
-.hud-warn {
-  color: var(--warn);
+/* The status line is a convenience, not information anyone needs, so it shows only where it fits
+   beside the full row of tools — about 1 120 px of stage. Below that it would sit on the tools or
+   over the tree, and it goes. */
+@container stage (max-width: 1200px) {
+  .hud {
+    display: none;
+  }
 }
-/* A narrow stage: the labels give way to their glyph, the view chooser takes its own line, and the
-   reading rules over the canvas move to the top so the two do not sit on each other. */
-@container stage (max-width: 560px) {
+/* A narrow stage: the labels give way to their glyph and the view chooser takes its own line. The
+   full row of labelled tools needs about 780 px, so this starts at 800; any lower and the row runs
+   off the left edge. */
+@container stage (max-width: 800px) {
   .canvas-tools {
     max-width: calc(100cqw - 24px);
     flex-wrap: wrap;
@@ -363,10 +369,6 @@ textarea:focus {
     flex: 1;
     min-width: 0;
     padding: 5px 6px;
-  }
-  .hud {
-    bottom: auto;
-    top: 12px;
   }
 }
 /* Narrower still — a phone in portrait beside an open panel — and four labels cannot share a line at

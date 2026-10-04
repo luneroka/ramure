@@ -385,6 +385,13 @@ tools, the view chooser and the reading rules answer to a container query on
 and they crowd exactly as they would on a phone. Two viewport media queries used
 to decide this and they disagreed with each other.
 
+**The status line under the canvas shows only on a wide stage.** It is a
+convenience — zoom, how many people are shown, the detail band — and below
+1 200 px of stage it would share the tools' line or sit over the tree, so it is
+hidden there. It carries short labels only, never a sentence or a warning. Below 800 px the
+tools themselves take their compact form: the labelled row needs about 780 px
+and would otherwise run off the left edge.
+
 **Nothing floats over the editor or a dialog.** The editor is modal at every
 width, and the tools and the HUD sit at `z-index: 1001` against the dialog's 40,
 so they had to be told to stand down while it is open. The checks list is not
