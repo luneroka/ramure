@@ -23,7 +23,7 @@ import { isLiving } from '@/canvas/renderer';
 import { nextId, portraitId, RAMURE_MEDIA_SCHEME, type FamilyPatch, type PersonPatch } from '@/tree/edit';
 import { mediaStore } from '@/store';
 import { prepareImage } from '@/media/portraits';
-import { FamilyEditor, PersonEditor } from './PersonEditor';
+import { FamilyEditor, PersonEditor, type UnionChange } from './PersonEditor';
 import { PersonPicker } from './PersonPicker';
 import { PersonRow } from './PersonRow';
 import { SplitPanes } from '@/app/ui/SplitPanes';
@@ -36,7 +36,8 @@ export interface PanelActions {
   onFocus(id: string): void;
   onSelect(id: string): void;
   onClose(): void;
-  onSavePerson(id: string, patch: PersonPatch): void;
+  /** The person's patch, and the unions whose marriages were edited alongside: one edit, saved together. */
+  onSavePerson(id: string, patch: PersonPatch, unions: UnionChange[]): void;
   onDeletePerson(id: string): void;
   onSaveFamily(id: string, patch: FamilyPatch): void;
   onAddChild(personId: string, familyId: string): void;
@@ -484,8 +485,8 @@ export function PersonPanel(props: Props) {
           lang={lang}
           canDelete={!isDraft}
           isDraft={isDraft}
-          onSave={(patch) => {
-            props.onSavePerson(person.id, patch);
+          onSave={(patch, unions) => {
+            props.onSavePerson(person.id, patch, unions);
             if (!isDraft) setEditing(false);
           }}
           onCancel={() => setEditing(false)}

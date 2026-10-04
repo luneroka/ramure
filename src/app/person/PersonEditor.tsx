@@ -2,12 +2,18 @@
  * The person editor: a modal over everything, sectioned (identity, the life's
  * events, notes, the « à vérifier » flag), that returns one patch on save. The
  * union editor below it is inline in the panel's Famille tab instead.
+ *
+ * A marriage belongs to the union, not to either partner: GEDCOM keeps it on
+ * the family record. The editor still lists the person's marriages among
+ * their events, because that is where a person looks for them, and hands each
+ * changed union back beside the person's patch so both are saved as one edit.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { approximateYear, type GDate } from '@/gedcom/dates';
 import {
+  displayName,
   placeText,
   type Event,
   type EventType,
@@ -19,7 +25,7 @@ import {
   type Tree,
 } from '@/gedcom/model';
 import { eventLabel, t, type Lang } from '@/i18n';
-import { blankEvent, type PersonPatch, portraitId } from '@/tree/edit';
+import { blankEvent, type FamilyPatch, type PersonPatch, portraitId } from '@/tree/edit';
 import { newId } from '@/tree/ids';
 import { PortraitPicker } from '@/app/person/fields/Portrait';
 import { mediaStore } from '@/store';
@@ -27,11 +33,17 @@ import { DateField } from '@/app/person/fields/DateField';
 import { PlaceField } from '@/app/person/fields/PlaceField';
 import { useDialog } from '@/app/ui/useDialog';
 
+/** A union whose events changed in the editor: its marriages were edited, added or removed. */
+export interface UnionChange {
+  familyId: string;
+  patch: FamilyPatch;
+}
+
 interface Props {
   tree: Tree;
   person: Individual;
   lang: Lang;
-  onSave(patch: PersonPatch): void;
+  onSave(patch: PersonPatch, unions: UnionChange[]): void;
   onCancel(): void;
   onDelete(): void;
   canDelete?: boolean;
@@ -45,6 +57,7 @@ const EVENT_TYPES: EventType[] = [
   'death',
   'burial',
   'cremation',
+  'marriage',
   'occupation',
   'residence',
   'census',
@@ -78,15 +91,18 @@ interface EventDraft {
   cause: string;
   note: string;
   original?: Event;
+  /** The union a marriage row belongs to: saved on that family, not on the person. */
+  familyId?: string;
   /** Offered by default; dropped on save if left empty. */
   suggested?: boolean;
 }
 
 let draftKey = 1;
 
-function toDraft(e: Event): EventDraft {
+function toDraft(e: Event, familyId?: string): EventDraft {
   return {
     key: draftKey++,
+    familyId,
     type: e.type,
     customType: e.customType ?? '',
     value: e.value ?? '',
@@ -133,9 +149,30 @@ function bornLongAgo(drafts: EventDraft[]): boolean {
   return y !== undefined && new Date().getFullYear() - y > DEATH_AFTER_YEARS;
 }
 
-/** Initial rows: the person's events, plus an empty birth and, when warranted, an empty death. */
-function initialDrafts(person: Individual): EventDraft[] {
-  const drafts = person.events.map(toDraft);
+/** The person's unions that exist in the tree, with the partner's name for the row that says « avec … ». */
+function unionsOf(tree: Tree, person: Individual, lang: Lang): Array<{ id: string; partner: string }> {
+  return person.partnerIn.flatMap((fid) => {
+    const f = tree.families[fid];
+    if (!f) return [];
+    const pid = f.husbandId === person.id ? f.wifeId : f.husbandId;
+    const partner = pid ? tree.individuals[pid] : undefined;
+    return [{ id: fid, partner: partner ? displayName(partner) : t(lang, 'unknownPerson') }];
+  });
+}
+
+/**
+ * Initial rows: the person's events and their unions' marriages, plus an empty birth and, when
+ * warranted, an empty death. Marriages go before a death so the list still reads in life order.
+ */
+function initialDrafts(person: Individual, tree: Tree, withUnions: boolean): EventDraft[] {
+  const drafts = person.events.map((e) => toDraft(e));
+  if (withUnions) {
+    const marriages = person.partnerIn.flatMap((fid) =>
+      (tree.families[fid]?.events ?? []).filter((e) => e.type === 'marriage').map((e) => toDraft(e, fid)),
+    );
+    const end = drafts.findIndex((d) => d.type === 'death' || d.type === 'burial' || d.type === 'cremation');
+    drafts.splice(end < 0 ? drafts.length : end, 0, ...marriages);
+  }
   if (!drafts.some((d) => d.type === 'birth')) drafts.unshift(emptyDraft('birth', true));
   if (!drafts.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(drafts)) {
     const i = drafts.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -167,7 +204,9 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [sex, setSex] = useState<Sex>(person.sex);
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
   const [unsure, setUnsure] = useState(!!person.unsure);
-  const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person));
+  // A relative being added has no union of its own yet to carry a marriage.
+  const unions = useMemo(() => (isDraft ? [] : unionsOf(tree, person, lang)), [isDraft, tree, person, lang]);
+  const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person, tree, !isDraft));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [portrait, setPortrait] = useState<MediaObject | null | undefined>(undefined);
   const places = useMemo(() => knownPlaces(tree), [tree]);
@@ -185,7 +224,14 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
   const update = (key: number, patch: Partial<EventDraft>) =>
     setEvents((evs) => {
-      const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
+      const next = evs.map((e) => {
+        if (e.key !== key) return e;
+        const merged = { ...e, ...patch, suggested: false };
+        // Turning a row into a marriage gives it a union; turning it into anything else takes it back.
+        if (patch.type === 'marriage' && !merged.familyId) merged.familyId = unions[0]?.id;
+        else if (patch.type && patch.type !== 'marriage') merged.familyId = undefined;
+        return merged;
+      });
       // A birth more than a century ago earns an empty death row, once.
       if ('date' in patch && !next.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(next)) {
         const i = next.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -202,23 +248,40 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       ),
     ]);
 
+  /** The unions whose marriages differ from what the tree holds, each with its new event list. */
+  const unionChanges = (kept: EventDraft[]): UnionChange[] =>
+    unions.flatMap(({ id }) => {
+      const fam = tree.families[id]!;
+      const before = fam.events.filter((e) => e.type === 'marriage');
+      const after = kept.filter((d) => d.familyId === id).map(fromDraft);
+      if (JSON.stringify(before) === JSON.stringify(after)) return [];
+      const patch: FamilyPatch = { events: [...after, ...fam.events.filter((e) => e.type !== 'marriage')] };
+      // Recording a marriage says the couple married, whatever the union was set to.
+      if (after.length && (fam.unionType === 'unknown' || fam.unionType === 'unmarried')) patch.unionType = 'married';
+      return [{ familyId: id, patch }];
+    });
+
   const save = () => {
+    const kept = events.filter((d) => !isBlank(d) || (d.original && !d.suggested));
     const names: Name[] = [{ ...first, given: given.trim(), surname: surname.trim() }, ...person.names.slice(1)];
     if (nick.trim()) names[0]!.nick = nick.trim();
     else delete names[0]!.nick;
-    onSave({
-      names,
-      sex,
-      unsure: unsure || undefined,
-      events: events.filter((d) => !isBlank(d) || (d.original && !d.suggested)).map(fromDraft),
-      notes: notes.trim()
-        ? notes
-            .split(/\n{2,}/)
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
-      ...(portrait !== undefined ? { portrait } : {}),
-    });
+    onSave(
+      {
+        names,
+        sex,
+        unsure: unsure || undefined,
+        events: kept.filter((d) => !d.familyId).map(fromDraft),
+        notes: notes.trim()
+          ? notes
+              .split(/\n{2,}/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+        ...(portrait !== undefined ? { portrait } : {}),
+      },
+      unionChanges(kept),
+    );
   };
 
   const title = isDraft ? t(lang, 'newPersonTitle') : t(lang, 'editPerson');
@@ -304,12 +367,30 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
                       onChange={(e) => update(d.key, { type: e.target.value as EventType })}
                       aria-label={t(lang, 'eventType')}
                     >
-                      {EVENT_TYPES.map((ty) => (
+                      {EVENT_TYPES.filter((ty) => ty !== 'marriage' || unions.length > 0 || d.type === 'marriage').map((ty) => (
                         <option key={ty} value={ty}>
                           {eventLabel(lang, ty)}
                         </option>
                       ))}
                     </select>
+                    {d.familyId &&
+                      (unions.length > 1 ? (
+                        <select
+                          value={d.familyId}
+                          onChange={(e) => update(d.key, { familyId: e.target.value })}
+                          aria-label={t(lang, 'marriagePartner')}
+                        >
+                          {unions.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {t(lang, 'with')} {u.partner}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="ev-with">
+                          {t(lang, 'with')} {unions.find((u) => u.id === d.familyId)?.partner}
+                        </span>
+                      ))}
                     {d.type === 'custom' && (
                       <input
                         value={d.customType}

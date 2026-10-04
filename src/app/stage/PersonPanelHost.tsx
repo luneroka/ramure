@@ -32,9 +32,11 @@ export function PersonPanelHost({ navigate }: { navigate(r: Route): void }) {
       onFocus={w.focusOn}
       onSelect={w.select}
       onClose={() => w.dispatch({ type: 'closePanel' })}
-      onSavePerson={(id, patch) => {
-        if (draft) w.saveDraft(patch);
-        else saved(w.commit(ops.updatePerson(id, patch)), 'saved');
+      onSavePerson={(id, patch, unions) => {
+        if (draft) return w.saveDraft(patch);
+        const person = ops.updatePerson(id, patch);
+        const op = unions.length ? ops.batch([person, ...unions.map((u) => ops.updateFamily(u.familyId, u.patch))]) : person;
+        saved(w.commit(op), 'saved');
       }}
       onDeletePerson={(id) => saved(w.commit(ops.deletePerson(id), { select: false }), 'personDeleted')}
       onSaveFamily={(id, patch) => saved(w.commit(ops.updateFamily(id, patch)), 'saved')}

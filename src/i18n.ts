@@ -659,6 +659,7 @@ const strings = {
   renameTree: { fr: 'Renommer l’arbre', en: 'Rename tree' },
   occupation: { fr: 'Profession', en: 'Occupation' },
   with: { fr: 'avec', en: 'with' },
+  marriagePartner: { fr: 'Marié·e avec', en: 'Married to' },
   family: { fr: 'Famille', en: 'Family' },
   identity: { fr: 'Identité', en: 'Identity' },
   tabFiche: { fr: 'Fiche', en: 'Profile' },
