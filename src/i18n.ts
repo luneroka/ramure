@@ -756,6 +756,10 @@ const strings = {
   sectionTracking: { fr: 'Suivi', en: 'Tracking' },
   sectionUnions: { fr: 'Unions', en: 'Unions' },
   newEvent: { fr: 'Nouvel événement', en: 'New event' },
+  unionsNeedPartner: {
+    fr: 'Unions — ajoutez d’abord un conjoint (onglet Famille)',
+    en: 'Unions — add a partner first (Family tab)',
+  },
   editPerson: { fr: 'Modifier la fiche', en: 'Edit the profile' },
   newPersonTitle: { fr: 'Nouvelle personne', en: 'New person' },
   storageHint: {

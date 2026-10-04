@@ -160,13 +160,16 @@ describe('PersonEditor', () => {
       expect(types).toContain('divorce');
     });
 
-    it('has no « Unions » section, and no union event among the others, for someone with no union', () => {
+    it('has no « Unions » section for someone with no union, and lists union events greyed, saying why', () => {
       const lone = Object.values(tree.individuals).find((i) => i.partnerIn.length === 0)!;
       editorFor(lone.id);
       expect(screen.queryByText('Unions')).toBeNull();
-      const offered = [...typeSelects()[0]!.options].map((o) => o.value);
-      expect(offered).not.toContain('marriage');
-      expect(offered).not.toContain('divorce');
+      // Listed, so nobody wonders where they went, but greyed until there is a partner to carry them.
+      const unionGroup = typeSelects()[0]!.querySelector('optgroup[label^="Unions"]')!;
+      expect(unionGroup.getAttribute('label')).toContain('ajoutez d’abord un conjoint');
+      const options = [...unionGroup.querySelectorAll('option')];
+      expect(options.map((o) => o.value)).toContain('divorce');
+      expect(options.every((o) => o.disabled)).toBe(true);
     });
   });
 

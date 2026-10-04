@@ -316,7 +316,8 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
   /**
    * One event's row, the same in « Parcours » and « Unions ». Both offer every type: the person's own
-   * and, when there is a union to carry them, the union's, under their own heading in the list.
+   * and the union's, under their own heading in the list. A union's event is saved on a union, so with
+   * no partner yet those are listed but greyed, the heading saying where to add one.
    */
   const eventRow = (d: EventDraft) => (
     <div key={d.key} data-draft={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''} ${d.fresh ? 'fresh' : ''}`}>
@@ -331,15 +332,14 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
               </option>
             ))}
           </optgroup>
-          {(unions.length > 0 || UNION_TYPES.includes(d.type)) && (
-            <optgroup label={t(lang, 'sectionUnions')}>
-              {UNION_TYPES.map((ty) => (
-                <option key={ty} value={ty}>
-                  {eventLabel(lang, ty)}
-                </option>
-              ))}
-            </optgroup>
-          )}
+          {/* Always listed: with no partner yet they are shown greyed, saying why, rather than missing. */}
+          <optgroup label={unions.length || UNION_TYPES.includes(d.type) ? t(lang, 'sectionUnions') : t(lang, 'unionsNeedPartner')}>
+            {UNION_TYPES.map((ty) => (
+              <option key={ty} value={ty} disabled={!unions.length && d.type !== ty}>
+                {eventLabel(lang, ty)}
+              </option>
+            ))}
+          </optgroup>
         </select>
         {d.familyId &&
           (unions.length > 1 ? (
