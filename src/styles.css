@@ -2962,6 +2962,15 @@ textarea:focus {
   flex: 1;
   min-width: 0;
 }
+.ev-with {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .editor .check {
   display: flex;
   align-items: center;
