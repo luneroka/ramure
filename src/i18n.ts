@@ -659,7 +659,7 @@ const strings = {
   renameTree: { fr: 'Renommer l’arbre', en: 'Rename tree' },
   occupation: { fr: 'Profession', en: 'Occupation' },
   with: { fr: 'avec', en: 'with' },
-  marriagePartner: { fr: 'Marié·e avec', en: 'Married to' },
+  marriagePartner: { fr: 'Union avec', en: 'Union with' },
   family: { fr: 'Famille', en: 'Family' },
   identity: { fr: 'Identité', en: 'Identity' },
   tabFiche: { fr: 'Fiche', en: 'Profile' },
@@ -755,6 +755,7 @@ const strings = {
   sectionIdentity: { fr: 'Identité', en: 'Identity' },
   sectionTracking: { fr: 'Suivi', en: 'Tracking' },
   sectionUnions: { fr: 'Unions', en: 'Unions' },
+  newEvent: { fr: 'Nouvel événement', en: 'New event' },
   editPerson: { fr: 'Modifier la fiche', en: 'Edit the profile' },
   newPersonTitle: { fr: 'Nouvelle personne', en: 'New person' },
   storageHint: {

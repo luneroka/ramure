@@ -97,6 +97,13 @@ interface EventDraft {
   original?: Event;
   /** The union a row belongs to: saved on that family, not on the person. */
   familyId?: string;
+  /**
+   * The section the row is drawn in. Fixed when the row is made, so a row whose type changes between a
+   * person's event and a union's stays under the eye rather than jumping to the other section.
+   */
+  section: 'life' | 'unions';
+  /** Added in this sitting with « + Événement »: drawn apart from the rows the record already had. */
+  fresh?: boolean;
   /** Offered by default; dropped on save if left empty. */
   suggested?: boolean;
 }
@@ -107,6 +114,7 @@ function toDraft(e: Event, familyId?: string): EventDraft {
   return {
     key: draftKey++,
     familyId,
+    section: familyId ? 'unions' : 'life',
     type: e.type,
     customType: e.customType ?? '',
     value: e.value ?? '',
@@ -119,7 +127,7 @@ function toDraft(e: Event, familyId?: string): EventDraft {
 }
 
 function emptyDraft(type: EventType, suggested = false): EventDraft {
-  return { key: draftKey++, type, customType: '', value: '', cause: '', note: '', suggested };
+  return { key: draftKey++, type, customType: '', value: '', cause: '', note: '', section: 'life', suggested };
 }
 
 function isBlank(d: EventDraft): boolean {
@@ -227,7 +235,13 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
   const update = (key: number, patch: Partial<EventDraft>) =>
     setEvents((evs) => {
-      const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
+      const next = evs.map((e) => {
+        if (e.key !== key) return e;
+        const merged = { ...e, ...patch, suggested: false };
+        // A union's event is saved on a union: picking one gives the row the first, picking anything else takes it away.
+        if (patch.type) merged.familyId = UNION_EVENTS.has(patch.type) ? (merged.familyId ?? unions[0]?.id) : undefined;
+        return merged;
+      });
       // A birth more than a century ago earns an empty death row, once.
       if ('date' in patch && !next.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(next)) {
         const i = next.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -236,22 +250,32 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       return next;
     });
   const remove = (key: number) => setEvents((evs) => evs.filter((e) => e.key !== key));
+  /** The row just added: brought into view with its type ready to choose, once it is drawn. */
+  const [justAdded, setJustAdded] = useState<number | null>(null);
+  useEffect(() => {
+    if (justAdded === null) return;
+    const row = dialog.current?.querySelector<HTMLElement>(`[data-draft="${justAdded}"]`);
+    row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    row?.querySelector('select')?.focus({ preventScroll: true });
+  }, [justAdded, dialog]);
+  const append = (d: EventDraft) => {
+    setEvents((evs) => [...evs, { ...d, fresh: true }]);
+    setJustAdded(d.key);
+  };
   const add = () =>
-    setEvents((evs) => [
-      ...evs,
+    append(
       emptyDraft(
-        evs.some((e) => e.type === 'death') ? 'occupation' : evs.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth',
+        events.some((e) => e.type === 'death') ? 'occupation' : events.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth',
       ),
-    ]);
+    );
   /** A new union row: on the first union, a marriage unless it has one already, then a divorce. */
-  const addUnionEvent = () =>
-    setEvents((evs) => {
-      const familyId = unions[0]!.id;
-      const married = evs.some((e) => e.familyId === familyId && e.type === 'marriage');
-      return [...evs, { ...emptyDraft(married ? 'divorce' : 'marriage'), familyId }];
-    });
-  const lifeRows = events.filter((d) => !d.familyId);
-  const unionRows = events.filter((d) => d.familyId);
+  const addUnionEvent = () => {
+    const familyId = unions[0]!.id;
+    const married = events.some((e) => e.familyId === familyId && e.type === 'marriage');
+    append({ ...emptyDraft(married ? 'divorce' : 'marriage'), familyId, section: 'unions' });
+  };
+  const lifeRows = events.filter((d) => d.section === 'life');
+  const unionRows = events.filter((d) => d.section === 'unions');
 
   /** The unions whose events differ from what the tree holds, each with its new event list. */
   const unionChanges = (kept: EventDraft[]): UnionChange[] =>
@@ -290,16 +314,32 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
     );
   };
 
-  /** One event's row, the same in « Parcours » and « Unions »; only the types offered differ. */
-  const eventRow = (d: EventDraft, types: EventType[]) => (
-    <div key={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''}`}>
+  /**
+   * One event's row, the same in « Parcours » and « Unions ». Both offer every type: the person's own
+   * and, when there is a union to carry them, the union's, under their own heading in the list.
+   */
+  const eventRow = (d: EventDraft) => (
+    <div key={d.key} data-draft={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''} ${d.fresh ? 'fresh' : ''}`}>
+      {d.fresh && <span className="ev-new">{t(lang, 'newEvent')}</span>}
       <div className="ev-top">
         <select value={d.type} onChange={(e) => update(d.key, { type: e.target.value as EventType })} aria-label={t(lang, 'eventType')}>
-          {(types.includes(d.type) ? types : [d.type, ...types]).map((ty) => (
-            <option key={ty} value={ty}>
-              {eventLabel(lang, ty)}
-            </option>
-          ))}
+          {!EVENT_TYPES.includes(d.type) && !UNION_TYPES.includes(d.type) && <option value={d.type}>{eventLabel(lang, d.type)}</option>}
+          <optgroup label={t(lang, 'lifeEvents')}>
+            {EVENT_TYPES.map((ty) => (
+              <option key={ty} value={ty}>
+                {eventLabel(lang, ty)}
+              </option>
+            ))}
+          </optgroup>
+          {(unions.length > 0 || UNION_TYPES.includes(d.type)) && (
+            <optgroup label={t(lang, 'sectionUnions')}>
+              {UNION_TYPES.map((ty) => (
+                <option key={ty} value={ty}>
+                  {eventLabel(lang, ty)}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         {d.familyId &&
           (unions.length > 1 ? (
@@ -413,7 +453,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
           </section>
 
           <EdSection title={t(lang, 'lifeEvents')} count={lifeRows.length} open>
-            <div className="event-drafts">{lifeRows.map((d) => eventRow(d, EVENT_TYPES))}</div>
+            <div className="event-drafts">{lifeRows.map(eventRow)}</div>
             <div className="row small-actions">
               <button type="button" className="btn small" onClick={add}>
                 + {t(lang, 'addEvent')}
@@ -423,7 +463,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
           {unions.length > 0 && (
             <EdSection title={t(lang, 'sectionUnions')} count={unionRows.length}>
-              <div className="event-drafts">{unionRows.map((d) => eventRow(d, UNION_TYPES))}</div>
+              <div className="event-drafts">{unionRows.map(eventRow)}</div>
               <div className="row small-actions">
                 <button type="button" className="btn small" onClick={addUnionEvent}>
                   + {t(lang, 'addEvent')}
