@@ -87,12 +87,13 @@ export const ops = {
     personId: newId('I'),
     familyId: newId('F'),
   }),
-  addPartner: (personId: string, data: NewPerson = {}): Op => ({
+  /** `familyId` given when the caller must know the union's id ahead, to write its events in the same batch. */
+  addPartner: (personId: string, data: NewPerson = {}, familyId: string = newId('F')): Op => ({
     t: 'addPartner',
     personId,
     data,
     newPersonId: newId('I'),
-    familyId: newId('F'),
+    familyId,
   }),
   addChild: (personId: string, data: NewPerson = {}, inFamilyId?: string): Op => ({
     t: 'addChild',
@@ -111,7 +112,12 @@ export const ops = {
   }),
   linkChild: (familyId: string, childId: string): Op => ({ t: 'linkChild', familyId, childId }),
   unlinkChild: (familyId: string, childId: string): Op => ({ t: 'unlinkChild', familyId, childId }),
-  linkPartner: (personId: string, partnerId: string): Op => ({ t: 'linkPartner', personId, partnerId, familyId: newId('F') }),
+  linkPartner: (personId: string, partnerId: string, familyId: string = newId('F')): Op => ({
+    t: 'linkPartner',
+    personId,
+    partnerId,
+    familyId,
+  }),
   updateFamily: (id: string, patch: FamilyPatch): Op => ({ t: 'updateFamily', id, patch }),
   mergePeople: (keepId: string, dropId: string): Op => ({ t: 'mergePeople', keepId, dropId }),
   setResources: (resources: Lead[]): Op => ({ t: 'setResources', resources }),

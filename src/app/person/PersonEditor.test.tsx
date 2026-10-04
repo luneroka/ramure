@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { displayName } from '@/gedcom/model';
 import { parseGedcom } from '@/gedcom/parse';
 import type { PersonPatch } from '@/tree/edit';
 import type { UnionChange } from './PersonEditor';
@@ -98,9 +99,16 @@ describe('PersonEditor', () => {
       const added = within(unions).getAllByLabelText('Type').at(-1) as HTMLSelectElement;
       // The first union already has its marriage: the new row offers a divorce, among union events only.
       expect(added.value).toBe('divorce');
-      expect([...added.options].map((o) => o.value)).toEqual(['engagement', 'marriage', 'separation', 'divorce', 'annulment']);
+      const unionGroup = [...added.querySelectorAll('optgroup')].find((g) => g.label === 'Unions')!;
+      expect([...unionGroup.querySelectorAll('option')].map((o) => o.value)).toEqual([
+        'engagement',
+        'marriage',
+        'separation',
+        'divorce',
+        'annulment',
+      ]);
       const row = added.closest('.ev-draft') as HTMLElement;
-      await user.selectOptions(within(row).getByLabelText('Marié·e avec'), 'F2');
+      await user.selectOptions(within(row).getByLabelText('Union avec'), 'F2');
       await user.type(within(row).getByPlaceholderText('Notes'), 'Jugement du tribunal');
       await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
       const [patch, changed] = onSave.mock.calls[0]!;
@@ -109,6 +117,38 @@ describe('PersonEditor', () => {
       const events = changed[0]!.patch.events!;
       expect(events.filter((e) => e.type === 'marriage')).toHaveLength(1);
       expect(events.find((e) => e.type === 'divorce')?.notes).toEqual(['Jugement du tribunal']);
+    });
+
+    it('takes a union event from « + Événement » under « Parcours », and saves it on the union', async () => {
+      const user = userEvent.setup();
+      const onSave = editorFor('I3'); // Jeanne MARCHAL: one union, F2
+      const life = screen.getByText('Parcours').closest('details')!;
+      await user.click(within(life).getByRole('button', { name: /Événement/ }));
+      const added = within(life).getAllByLabelText('Type').at(-1) as HTMLSelectElement;
+      await user.selectOptions(added, 'divorce');
+      const row = added.closest('.ev-draft') as HTMLElement;
+      // It stays where it was added, now naming the partner it belongs with.
+      expect(life.contains(row)).toBe(true);
+      expect(within(row).getByText(/avec Henri/)).toBeTruthy();
+      await user.type(within(row).getByPlaceholderText('Notes'), 'Séparés depuis 1960');
+      await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+      const [patch, changed] = onSave.mock.calls[0]!;
+      expect(patch.events?.some((e) => e.type === 'divorce')).toBe(false);
+      expect(changed[0]!.familyId).toBe('F2');
+      expect(changed[0]!.patch.events!.find((e) => e.type === 'divorce')?.notes).toEqual(['Séparés depuis 1960']);
+    });
+
+    it('marks a row added with « + Événement » apart from the rows the record had', async () => {
+      const user = userEvent.setup();
+      editorFor('I3');
+      const life = screen.getByText('Parcours').closest('details')!;
+      const before = life.querySelectorAll('.ev-draft').length;
+      expect(life.querySelectorAll('.ev-draft.fresh')).toHaveLength(0);
+      await user.click(within(life).getByRole('button', { name: /Événement/ }));
+      const fresh = life.querySelectorAll('.ev-draft.fresh');
+      expect(life.querySelectorAll('.ev-draft')).toHaveLength(before + 1);
+      expect(fresh).toHaveLength(1);
+      expect(within(fresh[0] as HTMLElement).getByText('Nouvel événement')).toBeTruthy();
     });
 
     it('lists an imported divorce in « Unions »', () => {
@@ -121,13 +161,64 @@ describe('PersonEditor', () => {
       expect(types).toContain('divorce');
     });
 
-    it('has no « Unions » section, and no union event among the others, for someone with no union', () => {
-      const lone = Object.values(tree.individuals).find((i) => i.partnerIn.length === 0)!;
-      editorFor(lone.id);
-      expect(screen.queryByText('Unions')).toBeNull();
-      const offered = [...typeSelects()[0]!.options].map((o) => o.value);
-      expect(offered).not.toContain('marriage');
-      expect(offered).not.toContain('divorce');
+    const lone = () => Object.values(tree.individuals).filter((i) => i.partnerIn.length === 0);
+
+    it('makes a union with someone in the tree, asked for when a union event is picked with no partner yet', async () => {
+      const user = userEvent.setup();
+      const [person, other] = lone();
+      const onSave = editorFor(person!.id);
+      const life = screen.getByText('Parcours').closest('details')!;
+      await user.click(within(life).getByRole('button', { name: /Événement/ }));
+      const added = within(life).getAllByLabelText('Type').at(-1) as HTMLSelectElement;
+      await user.selectOptions(added, 'marriage');
+      const row = added.closest('.ev-draft') as HTMLElement;
+      // Nobody to be married to yet: the row asks who.
+      expect(within(row).getByText('Union avec…')).toBeTruthy();
+      const name = displayName(other!);
+      await user.type(within(row).getByPlaceholderText('Choisir une personne…'), name);
+      await user.click(within(row).getByRole('button', { name: new RegExp(`^${name}`) }));
+      expect(within(row).getByLabelText('Union avec')).toBeTruthy();
+      await user.type(within(row).getAllByPlaceholderText('Notes').at(-1)!, 'Mariage civil');
+      await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+      const [patch, unions] = onSave.mock.calls[0]!;
+      expect(patch.events?.some((e) => e.type === 'marriage')).toBe(false);
+      expect(unions).toHaveLength(1);
+      expect(unions[0]!.create).toEqual({ partnerId: other!.id });
+      expect(unions[0]!.patch.unionType).toBe('married');
+      expect(unions[0]!.patch.events!.map((e) => [e.type, e.notes])).toEqual([['marriage', ['Mariage civil']]]);
+    });
+
+    it('makes a union with a new person named in the editor, from « + Union »', async () => {
+      const user = userEvent.setup();
+      const onSave = editorFor(lone()[0]!.id);
+      const unionsSection = screen.getByText('Unions').closest('details')!;
+      await user.click(within(unionsSection).getByRole('button', { name: /Union/ }));
+      const chooser = unionsSection.querySelector('.union-chooser') as HTMLElement;
+      await user.type(within(chooser).getByLabelText('Prénom(s)'), 'Rosa');
+      await user.type(within(chooser).getByLabelText('Nom'), 'LO BUE');
+      await user.click(within(chooser).getByRole('button', { name: 'Ajouter' }));
+      // A marriage row joins the new union straight away.
+      const row = unionsSection.querySelector('.ev-draft.fresh') as HTMLElement;
+      expect((within(row).getByLabelText('Union avec') as HTMLSelectElement).selectedOptions[0]!.textContent).toContain('Rosa LO BUE');
+      await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+      const unions = onSave.mock.calls[0]![1];
+      expect(unions).toHaveLength(1);
+      expect(unions[0]!.create).toEqual({ partner: { given: 'Rosa', surname: 'LO BUE' } });
+    });
+
+    it('will not save a union event filled in with nobody chosen, and says so', async () => {
+      const user = userEvent.setup();
+      const onSave = editorFor(lone()[0]!.id);
+      const life = screen.getByText('Parcours').closest('details')!;
+      await user.click(within(life).getByRole('button', { name: /Événement/ }));
+      const added = within(life).getAllByLabelText('Type').at(-1) as HTMLSelectElement;
+      await user.selectOptions(added, 'divorce');
+      const row = added.closest('.ev-draft') as HTMLElement;
+      await user.click(within(row).getByRole('button', { name: 'Annuler' }));
+      await user.type(within(row).getByPlaceholderText('Notes'), 'Tribunal de Palerme');
+      await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+      expect(onSave).not.toHaveBeenCalled();
+      expect(within(row).getByText('Choisissez avec qui avant d’enregistrer.')).toBeTruthy();
     });
   });
 

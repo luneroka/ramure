@@ -27,19 +27,35 @@ import {
   type Tree,
 } from '@/gedcom/model';
 import { eventLabel, t, type Lang } from '@/i18n';
-import { blankEvent, type FamilyPatch, type PersonPatch, portraitId } from '@/tree/edit';
+import { blankEvent, type FamilyPatch, type NewPerson, type PersonPatch, portraitId } from '@/tree/edit';
 import { newId } from '@/tree/ids';
 import { PortraitPicker } from '@/app/person/fields/Portrait';
+import { PersonPicker } from '@/app/person/PersonPicker';
 import { mediaStore } from '@/store';
 import { DateField } from '@/app/person/fields/DateField';
 import { PlaceField } from '@/app/person/fields/PlaceField';
 import { useDialog } from '@/app/ui/useDialog';
 import { UNION_EVENTS } from '@/app/lib/lifeEvents';
 
-/** A union whose events changed in the editor: a marriage, a divorce… edited, added or removed. */
+/** A union made in the editor: with someone already in the tree, or with a new person named there. */
+export type NewUnion = { partnerId: string } | { partner: NewPerson };
+
+/**
+ * A union whose events changed in the editor: a marriage, a divorce… edited, added or removed. With
+ * `create`, the union does not exist yet and is made first, under `familyId`, in the same edit.
+ */
 export interface UnionChange {
   familyId: string;
   patch: FamilyPatch;
+  create?: NewUnion;
+}
+
+/** A union the rows can belong to: one the tree has, or one made in this sitting (`create`). */
+interface UnionChoice {
+  id: string;
+  partner: string;
+  partnerId?: string;
+  create?: NewUnion;
 }
 
 interface Props {
@@ -97,6 +113,13 @@ interface EventDraft {
   original?: Event;
   /** The union a row belongs to: saved on that family, not on the person. */
   familyId?: string;
+  /**
+   * The section the row is drawn in. Fixed when the row is made, so a row whose type changes between a
+   * person's event and a union's stays under the eye rather than jumping to the other section.
+   */
+  section: 'life' | 'unions';
+  /** Added in this sitting with « + Événement »: drawn apart from the rows the record already had. */
+  fresh?: boolean;
   /** Offered by default; dropped on save if left empty. */
   suggested?: boolean;
 }
@@ -107,6 +130,7 @@ function toDraft(e: Event, familyId?: string): EventDraft {
   return {
     key: draftKey++,
     familyId,
+    section: familyId ? 'unions' : 'life',
     type: e.type,
     customType: e.customType ?? '',
     value: e.value ?? '',
@@ -119,7 +143,7 @@ function toDraft(e: Event, familyId?: string): EventDraft {
 }
 
 function emptyDraft(type: EventType, suggested = false): EventDraft {
-  return { key: draftKey++, type, customType: '', value: '', cause: '', note: '', suggested };
+  return { key: draftKey++, type, customType: '', value: '', cause: '', note: '', section: 'life', suggested };
 }
 
 function isBlank(d: EventDraft): boolean {
@@ -154,13 +178,13 @@ function bornLongAgo(drafts: EventDraft[]): boolean {
 }
 
 /** The person's unions that exist in the tree, with the partner's name for the row that says « avec … ». */
-function unionsOf(tree: Tree, person: Individual, lang: Lang): Array<{ id: string; partner: string }> {
+function unionsOf(tree: Tree, person: Individual, lang: Lang): UnionChoice[] {
   return person.partnerIn.flatMap((fid) => {
     const f = tree.families[fid];
     if (!f) return [];
     const pid = f.husbandId === person.id ? f.wifeId : f.husbandId;
     const partner = pid ? tree.individuals[pid] : undefined;
-    return [{ id: fid, partner: partner ? displayName(partner) : t(lang, 'unknownPerson') }];
+    return [{ id: fid, partnerId: pid, partner: partner ? displayName(partner) : t(lang, 'unknownPerson') }];
   });
 }
 
@@ -208,7 +232,14 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   const [notes, setNotes] = useState(person.notes.join('\n\n'));
   const [unsure, setUnsure] = useState(!!person.unsure);
   // A relative being added has no union of its own yet to carry a marriage or a divorce.
-  const unions = useMemo(() => (isDraft ? [] : unionsOf(tree, person, lang)), [isDraft, tree, person, lang]);
+  const existingUnions = useMemo(() => (isDraft ? [] : unionsOf(tree, person, lang)), [isDraft, tree, person, lang]);
+  /** Unions made in this sitting: created on save, before their events are written to them. */
+  const [madeUnions, setMadeUnions] = useState<UnionChoice[]>([]);
+  const unions = useMemo(() => [...existingUnions, ...madeUnions], [existingUnions, madeUnions]);
+  /** Where « avec qui ? » is being answered: under one row, or at the foot of « Unions ». */
+  const [choosingFor, setChoosingFor] = useState<number | 'section' | null>(null);
+  /** Rows saved without a partner chosen: shown in error until one is. */
+  const [needPartner, setNeedPartner] = useState<number[]>([]);
   const [events, setEvents] = useState<EventDraft[]>(() => initialDrafts(person, tree, !isDraft));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [portrait, setPortrait] = useState<MediaObject | null | undefined>(undefined);
@@ -225,9 +256,18 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
   });
   const dialog = useDialog<HTMLFormElement>(true, () => cancelRef.current());
 
-  const update = (key: number, patch: Partial<EventDraft>) =>
+  const update = (key: number, patch: Partial<EventDraft>) => {
+    // A union's event with nobody to be with yet: ask who, right under the row.
+    if (patch.type && UNION_EVENTS.has(patch.type) && !unions.length) setChoosingFor(key);
+    if (patch.familyId) setNeedPartner((keys) => keys.filter((k) => k !== key));
     setEvents((evs) => {
-      const next = evs.map((e) => (e.key === key ? { ...e, ...patch, suggested: false } : e));
+      const next = evs.map((e) => {
+        if (e.key !== key) return e;
+        const merged = { ...e, ...patch, suggested: false };
+        // A union's event is saved on a union: picking one gives the row the first, picking anything else takes it away.
+        if (patch.type) merged.familyId = UNION_EVENTS.has(patch.type) ? (merged.familyId ?? unions[0]?.id) : undefined;
+        return merged;
+      });
       // A birth more than a century ago earns an empty death row, once.
       if ('date' in patch && !next.some((d) => d.type === 'death' || d.type === 'burial') && bornLongAgo(next)) {
         const i = next.findIndex((d) => d.type === 'birth' || d.type === 'baptism');
@@ -235,27 +275,61 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
       }
       return next;
     });
+  };
   const remove = (key: number) => setEvents((evs) => evs.filter((e) => e.key !== key));
+  /** The row just added: brought into view with its type ready to choose, once it is drawn. */
+  const [justAdded, setJustAdded] = useState<number | null>(null);
+  useEffect(() => {
+    if (justAdded === null) return;
+    const row = dialog.current?.querySelector<HTMLElement>(`[data-draft="${justAdded}"]`);
+    row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    row?.querySelector('select')?.focus({ preventScroll: true });
+  }, [justAdded, dialog]);
+  const append = (d: EventDraft) => {
+    setEvents((evs) => [...evs, { ...d, fresh: true }]);
+    setJustAdded(d.key);
+  };
   const add = () =>
-    setEvents((evs) => [
-      ...evs,
+    append(
       emptyDraft(
-        evs.some((e) => e.type === 'death') ? 'occupation' : evs.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth',
+        events.some((e) => e.type === 'death') ? 'occupation' : events.some((e) => e.type === 'birth' && !isBlank(e)) ? 'death' : 'birth',
       ),
-    ]);
+    );
   /** A new union row: on the first union, a marriage unless it has one already, then a divorce. */
-  const addUnionEvent = () =>
-    setEvents((evs) => {
-      const familyId = unions[0]!.id;
-      const married = evs.some((e) => e.familyId === familyId && e.type === 'marriage');
-      return [...evs, { ...emptyDraft(married ? 'divorce' : 'marriage'), familyId }];
-    });
-  const lifeRows = events.filter((d) => !d.familyId);
-  const unionRows = events.filter((d) => d.familyId);
+  const addUnionEvent = () => {
+    if (!unions.length) return setChoosingFor('section');
+    const familyId = unions[0]!.id;
+    const married = events.some((e) => e.familyId === familyId && e.type === 'marriage');
+    append({ ...emptyDraft(married ? 'divorce' : 'marriage'), familyId, section: 'unions' });
+  };
+  /** A partner chosen for a new union: the union is made on save; the row that asked, or a new marriage, joins it. */
+  const makeUnion = (create: NewUnion, label: string) => {
+    const union: UnionChoice = {
+      id: newId('F'),
+      partner: label,
+      create,
+      ...('partnerId' in create ? { partnerId: create.partnerId } : {}),
+    };
+    setMadeUnions((us) => [...us, union]);
+    if (typeof choosingFor === 'number') update(choosingFor, { familyId: union.id });
+    else append({ ...emptyDraft('marriage'), familyId: union.id, section: 'unions' });
+    setChoosingFor(null);
+  };
+  const partnerIds = [person.id, ...unions.flatMap((u) => (u.partnerId ? [u.partnerId] : []))];
+  const chooser = <UnionChooser tree={tree} lang={lang} exclude={partnerIds} onChoose={makeUnion} onCancel={() => setChoosingFor(null)} />;
+  const lifeRows = events.filter((d) => d.section === 'life');
+  const unionRows = events.filter((d) => d.section === 'unions');
 
   /** The unions whose events differ from what the tree holds, each with its new event list. */
   const unionChanges = (kept: EventDraft[]): UnionChange[] =>
-    unions.flatMap(({ id }) => {
+    unions.flatMap(({ id, create }) => {
+      if (create) {
+        // Made here: always created, since the partner was chosen on purpose, with whatever rows joined it.
+        const after = kept.filter((d) => d.familyId === id).map(fromDraft);
+        const patch: FamilyPatch = { events: after };
+        if (after.some((e) => e.type === 'marriage')) patch.unionType = 'married';
+        return [{ familyId: id, patch, create }];
+      }
       const fam = tree.families[id]!;
       const before = fam.events.filter((e) => UNION_EVENTS.has(e.type));
       const after = kept.filter((d) => d.familyId === id).map(fromDraft);
@@ -269,6 +343,14 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
   const save = () => {
     const kept = events.filter((d) => !isBlank(d) || (d.original && !d.suggested));
+    // A union's event belongs to a union: one filled in with nobody chosen yet stops the save and says so.
+    const orphans = kept.filter((d) => UNION_EVENTS.has(d.type) && !d.familyId && !d.original);
+    if (orphans.length) {
+      setNeedPartner(orphans.map((d) => d.key));
+      setChoosingFor(orphans[0]!.key);
+      dialog.current?.querySelector(`[data-draft="${orphans[0]!.key}"]`)?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     const names: Name[] = [{ ...first, given: given.trim(), surname: surname.trim() }, ...person.names.slice(1)];
     if (nick.trim()) names[0]!.nick = nick.trim();
     else delete names[0]!.nick;
@@ -290,22 +372,45 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
     );
   };
 
-  /** One event's row, the same in « Parcours » and « Unions »; only the types offered differ. */
-  const eventRow = (d: EventDraft, types: EventType[]) => (
-    <div key={d.key} className={`ev-draft ${d.suggested ? 'suggested' : ''}`}>
+  /**
+   * One event's row, the same in « Parcours » and « Unions ». Both offer every type: the person's own
+   * and the union's, under their own heading in the list. A union's event says who it is with; with
+   * nobody yet, the row asks, and a new union can be started from the partner list at any time.
+   */
+  const eventRow = (d: EventDraft) => (
+    <div
+      key={d.key}
+      data-draft={d.key}
+      className={`ev-draft ${d.suggested ? 'suggested' : ''} ${d.fresh ? 'fresh' : ''} ${needPartner.includes(d.key) ? 'invalid' : ''}`}
+    >
+      {d.fresh && <span className="ev-new">{t(lang, 'newEvent')}</span>}
       <div className="ev-top">
         <select value={d.type} onChange={(e) => update(d.key, { type: e.target.value as EventType })} aria-label={t(lang, 'eventType')}>
-          {(types.includes(d.type) ? types : [d.type, ...types]).map((ty) => (
-            <option key={ty} value={ty}>
-              {eventLabel(lang, ty)}
-            </option>
-          ))}
+          {!EVENT_TYPES.includes(d.type) && !UNION_TYPES.includes(d.type) && <option value={d.type}>{eventLabel(lang, d.type)}</option>}
+          <optgroup label={t(lang, 'lifeEvents')}>
+            {EVENT_TYPES.map((ty) => (
+              <option key={ty} value={ty}>
+                {eventLabel(lang, ty)}
+              </option>
+            ))}
+          </optgroup>
+          {/* A relative being added is not in the tree yet: a union waits until it is. */}
+          {(!isDraft || UNION_TYPES.includes(d.type)) && (
+            <optgroup label={t(lang, 'sectionUnions')}>
+              {UNION_TYPES.map((ty) => (
+                <option key={ty} value={ty}>
+                  {eventLabel(lang, ty)}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
-        {d.familyId &&
-          (unions.length > 1 ? (
+        {UNION_EVENTS.has(d.type) &&
+          !isDraft &&
+          (d.familyId ? (
             <select
               value={d.familyId}
-              onChange={(e) => update(d.key, { familyId: e.target.value })}
+              onChange={(e) => (e.target.value === NEW_UNION ? setChoosingFor(d.key) : update(d.key, { familyId: e.target.value }))}
               aria-label={t(lang, 'marriagePartner')}
             >
               {unions.map((u) => (
@@ -313,11 +418,12 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
                   {t(lang, 'with')} {u.partner}
                 </option>
               ))}
+              <option value={NEW_UNION}>{t(lang, 'newUnion')}</option>
             </select>
           ) : (
-            <span className="ev-with">
-              {t(lang, 'with')} {unions.find((u) => u.id === d.familyId)?.partner}
-            </span>
+            <button type="button" className="btn small ev-who" onClick={() => setChoosingFor(d.key)}>
+              {t(lang, 'chooseUnionPartner')}
+            </button>
           ))}
         {d.type === 'custom' && (
           <input value={d.customType} placeholder={t(lang, 'other')} onChange={(e) => update(d.key, { customType: e.target.value })} />
@@ -329,6 +435,8 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
           ×
         </button>
       </div>
+      {needPartner.includes(d.key) && !d.familyId && <p className="ev-error">{t(lang, 'unionPartnerNeeded')}</p>}
+      {choosingFor === d.key && chooser}
       <div className="ed-grid">
         <DateField key={`d${d.key}`} lang={lang} value={d.date} onChange={(date) => update(d.key, { date })} />
         <PlaceField key={`p${d.key}`} lang={lang} value={d.place} known={places} onChange={(place) => update(d.key, { place })} />
@@ -413,7 +521,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
           </section>
 
           <EdSection title={t(lang, 'lifeEvents')} count={lifeRows.length} open>
-            <div className="event-drafts">{lifeRows.map((d) => eventRow(d, EVENT_TYPES))}</div>
+            <div className="event-drafts">{lifeRows.map(eventRow)}</div>
             <div className="row small-actions">
               <button type="button" className="btn small" onClick={add}>
                 + {t(lang, 'addEvent')}
@@ -421,13 +529,19 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
             </div>
           </EdSection>
 
-          {unions.length > 0 && (
-            <EdSection title={t(lang, 'sectionUnions')} count={unionRows.length}>
-              <div className="event-drafts">{unionRows.map((d) => eventRow(d, UNION_TYPES))}</div>
+          {!isDraft && (
+            <EdSection title={t(lang, 'sectionUnions')} count={unionRows.length} open={choosingFor === 'section' || undefined}>
+              <div className="event-drafts">{unionRows.map(eventRow)}</div>
+              {choosingFor === 'section' && chooser}
               <div className="row small-actions">
-                <button type="button" className="btn small" onClick={addUnionEvent}>
-                  + {t(lang, 'addEvent')}
+                <button type="button" className="btn small" onClick={() => setChoosingFor('section')}>
+                  + {t(lang, 'addUnion')}
                 </button>
+                {unions.length > 0 && (
+                  <button type="button" className="btn small" onClick={addUnionEvent}>
+                    + {t(lang, 'addEvent')}
+                  </button>
+                )}
               </div>
             </EdSection>
           )}
@@ -490,6 +604,85 @@ function EdSection({ title, count, open = false, children }: { title: string; co
       </summary>
       <div className="ed-section-body">{children}</div>
     </details>
+  );
+}
+
+/** The partner list's last entry: start a union with someone else. */
+const NEW_UNION = '__new-union';
+
+/**
+ * « Avec qui ? »: someone already in the tree, found by name, or a new person named here, who joins
+ * the tree as this person's partner when the editor is saved. Escape closes this, not the editor.
+ */
+function UnionChooser({
+  tree,
+  lang,
+  exclude,
+  onChoose,
+  onCancel,
+}: {
+  tree: Tree;
+  lang: Lang;
+  exclude: string[];
+  onChoose(create: NewUnion, label: string): void;
+  onCancel(): void;
+}) {
+  const [given, setGiven] = useState('');
+  const [surname, setSurname] = useState('');
+  const named = given.trim() || surname.trim();
+  const addNew = () => {
+    if (!named) return;
+    onChoose({ partner: { given: given.trim(), surname: surname.trim() } }, [given.trim(), surname.trim()].filter(Boolean).join(' '));
+  };
+  return (
+    <div
+      className="union-chooser"
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return;
+        e.stopPropagation();
+        onCancel();
+      }}
+    >
+      <p className="union-chooser-title">{t(lang, 'unionWho')}</p>
+      <PersonPicker
+        tree={tree}
+        lang={lang}
+        exclude={exclude}
+        hint={t(lang, 'unionFromTree')}
+        onPick={(id) => onChoose({ partnerId: id }, displayName(tree.individuals[id]!))}
+        onCancel={onCancel}
+      />
+      <p className="muted small">{t(lang, 'unionNewPerson')}</p>
+      <div className="union-new">
+        <input
+          value={given}
+          placeholder={t(lang, 'givenName')}
+          aria-label={t(lang, 'givenName')}
+          onChange={(e) => setGiven(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addNew();
+            }
+          }}
+        />
+        <input
+          value={surname}
+          placeholder={t(lang, 'surname')}
+          aria-label={t(lang, 'surname')}
+          onChange={(e) => setSurname(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addNew();
+            }
+          }}
+        />
+        <button type="button" className="btn small primary" disabled={!named} onClick={addNew}>
+          {t(lang, 'unionAddPerson')}
+        </button>
+      </div>
+    </div>
   );
 }
 
