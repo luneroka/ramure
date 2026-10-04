@@ -131,7 +131,7 @@ describe('PersonEditor', () => {
     });
   });
 
-  it('opens on « Parcours » alone, the other sections folded with their count', () => {
+  it('opens on « Identité », which never folds, and « Parcours »; the other sections folded with their count', () => {
     render(
       <PersonEditor
         tree={tree}
@@ -144,25 +144,12 @@ describe('PersonEditor', () => {
     );
     const open = (title: string) => (screen.getByText(title).closest('details') as HTMLDetailsElement).open;
     expect(open('Parcours')).toBe(true);
-    expect(open('Identité')).toBe(false);
+    // « Identité » does not fold at all: its fields are always there.
+    expect(screen.getByText('Identité').closest('details')).toBeNull();
+    expect(screen.getByLabelText('Prénom(s)')).toBeTruthy();
     expect(open('Unions')).toBe(false);
     expect(open('Suivi')).toBe(false);
     expect(within(screen.getByText('Unions').closest('summary')!).getByText('1')).toBeTruthy();
-  });
-
-  it('opens « Identité » too for a relative being added, who still needs a name', () => {
-    render(
-      <PersonEditor
-        tree={tree}
-        person={tree.individuals.I3!}
-        lang="fr"
-        isDraft
-        onSave={() => undefined}
-        onCancel={() => undefined}
-        onDelete={() => undefined}
-      />,
-    );
-    expect((screen.getByText('Identité').closest('details') as HTMLDetailsElement).open).toBe(true);
   });
 
   it('cancels on Escape', async () => {

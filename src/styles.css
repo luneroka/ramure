@@ -2878,11 +2878,18 @@ textarea:focus {
   gap: 10px;
   padding-top: 10px;
 }
+/* « Identité » always shows: a plain section with the same band, no chevron, no fold. */
+.ed-fixed {
+  display: grid;
+  gap: 10px;
+}
 .ed-section > .band {
   margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+details.ed-section > .band {
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -2890,7 +2897,7 @@ textarea:focus {
 .ed-section > .band::-webkit-details-marker {
   display: none;
 }
-.ed-section > .band::before {
+details.ed-section > .band::before {
   content: '';
   width: 6px;
   height: 6px;
@@ -2902,7 +2909,7 @@ textarea:focus {
 .ed-section[open] > .band::before {
   transform: rotate(45deg);
 }
-.ed-section > .band:hover {
+details.ed-section > .band:hover {
   color: var(--ink);
 }
 .ed-section > .band:focus-visible {

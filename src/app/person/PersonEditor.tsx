@@ -374,7 +374,8 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
         <div className="editor-body editor">
           {isDraft && <p className="ed-hint">{t(lang, 'draftHint')}</p>}
 
-          <EdSection title={t(lang, 'sectionIdentity')} open={isDraft}>
+          <section className="ed-section ed-fixed">
+            <h3 className="band">{t(lang, 'sectionIdentity')}</h3>
             <div className="ed-identity">
               <PortraitPicker lang={lang} current={portraitId(person, tree)} allocateId={allocateMediaId} onChange={setPortrait} compact />
               <div className="ed-grid">
@@ -409,7 +410,7 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
                 </div>
               </div>
             </div>
-          </EdSection>
+          </section>
 
           <EdSection title={t(lang, 'lifeEvents')} count={lifeRows.length} open>
             <div className="event-drafts">{lifeRows.map((d) => eventRow(d, EVENT_TYPES))}</div>
@@ -476,9 +477,9 @@ export function PersonEditor({ tree, person, lang, onSave, onCancel, onDelete, c
 
 /**
  * A section of the editor that folds away. A native `<details>`: the summary is a real button for the
- * keyboard and for screen readers, and nothing has to remember which ones are open. Only « Parcours »
- * starts open, so a long record opens on its events rather than on a page of fields; « Identité » too
- * for a relative being added, who has no name yet.
+ * keyboard and for screen readers, and nothing has to remember which ones are open. « Identité » is
+ * not one of them: the name is what the editor is for, so it always shows. Of the rest only
+ * « Parcours » starts open, so a long record opens on its events rather than on a page of fields.
  */
 function EdSection({ title, count, open = false, children }: { title: string; count?: number; open?: boolean; children: React.ReactNode }) {
   return (
