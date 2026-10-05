@@ -84,6 +84,12 @@ is ours to update today, or a copy nested inside
 `@cloudflare/vitest-pool-workers`' own `node_modules`, which only moves when
 that package does.
 
+**It fired again on 2026-10-05, the same shape.** The advisories were on
+transitive copies of `brace-expansion`, `fast-uri` and `serialize-javascript`
+reached through packages `package.json` names, each with a patch release out. A
+plain `npm audit fix`, without `--force`, cleared them; the held chain was
+untouched and still accounts for every advisory left.
+
 **Checked at the same time: the held major would not clear any of this.**
 `@cloudflare/vitest-pool-workers@0.22.0` pins `wrangler 4.124.0` and
 `miniflare 5.20260815.0-alpha`, and both sit **inside** the advisory ranges
