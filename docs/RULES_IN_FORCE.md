@@ -65,7 +65,10 @@ so matching on them would attach new finds to the wrong people. Only Ramure's
 own random ids, coming home in an export, count as identity. A pair is accepted
 only when it is the one candidate on both sides: a miss costs a duplicate, which
 the checks flag and « Fusionner » repairs, while a wrong match would write a
-stranger's facts onto somebody's ancestor with nothing to say so.
+stranger's facts onto somebody's ancestor with nothing to say so. Spelling is
+forgiven one letter at a time — in surnames anywhere, in given names only for a
+partner or a parent of a recognised family, where there is one person to be:
+« Bonifacia » is « Bonafacia », but two daughters can be Rosaria and Rosalia.
 
 **A graft only adds, and the tree wins.** New people come in with their links;
 recognised people gain the facts they lack, and the blank date or place of an
