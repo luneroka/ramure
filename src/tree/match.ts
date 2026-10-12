@@ -154,6 +154,24 @@ function nameFit(a: Profile, b: Profile, spelling = false): number {
   return best;
 }
 
+/**
+ * The same given names, one letter apart at most in each, under surnames that agree: « Bonifacia » and
+ * « Bonafacia », a register misread. Only for a place in a recognised family, where there is one person to
+ * be: two sisters can be Rosaria and Rosalia.
+ */
+function spelledAlike(a: Profile, b: Profile): boolean {
+  return a.names.some((x) =>
+    b.names.some(
+      (y) =>
+        x.surname !== '' &&
+        oneLetterApart(x.surname, y.surname) &&
+        x.given.length > 0 &&
+        x.given.length === y.given.length &&
+        x.given.every((w, i) => oneLetterApart(w, y.given[i]!)),
+    ),
+  );
+}
+
 function sameGiven(a: Profile, b: Profile): boolean {
   return a.names.some(
     (x) => x.given.length > 0 && b.names.some((y) => y.given.length === x.given.length && y.given.every((w, i) => w === x.given[i])),
@@ -194,7 +212,7 @@ function relativeFit(a: Profile, b: Profile, slot: boolean, loose: boolean): num
   // Names weigh most; years then tell candidates apart, the same year more than a close one, so two
   // sisters both called Marie, born two years apart, each find their own.
   const years = YEARS[birth] + YEARS[death];
-  const fit = nameFit(a, b, true);
+  const fit = Math.max(nameFit(a, b, true), slot && spelledAlike(a, b) ? 2 : 0);
   if (fit >= 2) return fit * 5 + years;
   if (fit === 1 || (!a.names.length && !b.names.length)) return slot || years > 0 ? 5 + years : 0;
   return slot && loose && sameGiven(a, b) ? 5 : 0;

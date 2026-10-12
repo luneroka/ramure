@@ -172,6 +172,72 @@ describe('matchTrees', () => {
     expect(m.families.get('Fx')).toBe('F');
   });
 
+  it('finds a wife whose given name the file spells one letter differently', () => {
+    // « Bonafacia » in the tree, « Bonifacia » in a later export: missed, she came in again as a second wife,
+    // and the children the file added went to the copy.
+    const family = (given: string) =>
+      ged(`
+      0 @H@ INDI
+      1 NAME Orazio /PISA/
+      1 SEX M
+      1 BIRT
+      2 DATE 1840
+      1 FAMS @F@
+      0 @W@ INDI
+      1 NAME ${given} /ESPOSTA/
+      1 SEX F
+      1 FAMS @F@
+      0 @C@ INDI
+      1 NAME Stefano /PISA/
+      1 SEX M
+      1 BIRT
+      2 DATE 1870
+      1 FAMC @F@
+      0 @F@ FAM
+      1 HUSB @H@
+      1 WIFE @W@
+      1 CHIL @C@`);
+    const m = matchTrees(family('Bonafacia'), renumbered(family('Bonifacia')));
+    expect(m.people.get('Wx')).toBe('W');
+    expect(m.families.get('Fx')).toBe('F');
+  });
+
+  it('never takes one sister for another on a one-letter difference', () => {
+    // Rosaria and Rosalia can both be daughters of one couple; a child is one of several, so only the exact
+    // name counts there.
+    const tree = ged(`
+      0 @P@ INDI
+      1 NAME Luigi /PISA/
+      1 SEX M
+      1 BIRT
+      2 DATE 1850
+      1 FAMS @F@
+      0 @A@ INDI
+      1 NAME Rosalia /PISA/
+      1 SEX F
+      1 FAMC @F@
+      0 @F@ FAM
+      1 HUSB @P@
+      1 CHIL @A@`);
+    const file = ged(`
+      0 @Px@ INDI
+      1 NAME Luigi /PISA/
+      1 SEX M
+      1 BIRT
+      2 DATE 1850
+      1 FAMS @Fx@
+      0 @Bx@ INDI
+      1 NAME Rosaria /PISA/
+      1 SEX F
+      1 FAMC @Fx@
+      0 @Fx@ FAM
+      1 HUSB @Px@
+      1 CHIL @Bx@`);
+    const m = matchTrees(tree, file);
+    expect(m.people.get('Px')).toBe('P');
+    expect(m.people.has('Bx')).toBe(false);
+  });
+
   it('brings a Ramure export home by its own ids, even after a rename elsewhere', () => {
     const create = ops.createPerson({ given: 'Testine', surname: 'LENOIR', sex: 'F' });
     const id = create.t === 'createPerson' ? create.id : '';
