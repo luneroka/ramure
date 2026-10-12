@@ -281,18 +281,34 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
     if (!neigh.length) return undefined;
     return neigh.reduce((a, b) => a + b, 0) / neigh.length;
   };
+  /**
+   * Partners side by side, and everyone married to the same person in one run with that person in the middle:
+   * first wife, husband, second wife. A second wife sorted elsewhere in the row would be placed on her own, and
+   * one the file gives no parents and no children has nothing to place her by but where she last stood.
+   */
   const keepCouplesTogether = (row: string[]) => {
     const out: string[] = [];
     const done = new Set<string>();
+    const rank = new Map(row.map((id, i) => [id, i]));
     for (const id of row) {
       if (done.has(id)) continue;
-      out.push(id);
+      const run = [id];
       done.add(id);
-      for (const p of partnersOf(id))
-        if (!done.has(p) && gen.get(p) === gen.get(id)) {
-          out.push(p);
-          done.add(p);
-        }
+      for (let k = 0; k < run.length; k++)
+        for (const p of partnersOf(run[k]!))
+          if (!done.has(p) && gen.get(p) === gen.get(id)) {
+            run.push(p);
+            done.add(p);
+          }
+      if (run.length < 3) {
+        out.push(...run);
+        continue;
+      }
+      const ties = (a: string) => partnersOf(a).filter((p) => run.includes(p)).length;
+      const hub = run.reduce((a, b) => (ties(b) > ties(a) ? b : a));
+      const others = run.filter((p) => p !== hub).sort((a, b) => rank.get(a)! - rank.get(b)!);
+      const half = Math.floor(others.length / 2);
+      out.push(...others.slice(0, half), hub, ...others.slice(half));
     }
     return out;
   };
@@ -353,6 +369,8 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
   /**
    * Place one row. Adjacent partners form a rigid block that moves as one, so
    * couples never drift apart; blocks keep at least siblingGap between them.
+   * A run of one person's partners is one block too, so a partner with nothing
+   * else to go by is carried along rather than left where they last stood.
    */
   const placeRow = (row: string[], want: Map<string, number>) => {
     interface Block {
@@ -366,7 +384,7 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
     while (i < row.length) {
       const ids = [row[i]!];
       let j = i;
-      while (j + 1 < row.length && partnersOf(row[j]!).includes(row[j + 1]!)) {
+      while (j + 1 < row.length && ids.some((m) => partnersOf(m).includes(row[j + 1]!))) {
         ids.push(row[j + 1]!);
         j++;
       }
@@ -430,10 +448,29 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
       }
     }
   };
+  /** How far every line runs sideways: partner to partner, and each child from their parents' midpoint. */
+  const families = [...new Set(ids.flatMap((id) => tree.individuals[id]!.partnerIn))];
+  const sprawl = (): number => {
+    let total = 0;
+    for (const fid of families) {
+      const f = fam(fid);
+      const ps = [f?.husbandId, f?.wifeId].filter((p): p is string => !!p && idSet.has(p));
+      if (!f || !ps.length) continue;
+      if (ps.length === 2) total += Math.abs(x.get(ps[0]!)! - x.get(ps[1]!)!);
+      const mid = ps.reduce((s, p) => s + center(p), 0) / ps.length;
+      for (const c of f.childIds) if (idSet.has(c)) total += Math.abs(center(c) - mid);
+    }
+    return total;
+  };
+  const keep = () => ({ sprawl: sprawl(), x: new Map(x), rows: new Map([...rows].map(([g, row]) => [g, [...row]])) });
   relax();
   // The first order was decided before anyone had a position, so a couple whose only tie is a child placed
   // far away (a spouse's parents, typically) ended up at the row's end and stayed there, its bus crossing the
   // whole row. Reorder each row by where the relatives actually are, settle again, and repeat.
+  // Nothing makes a pass converge: on a large tree with many marriages between lines, each one can push the
+  // rows wider than the last, and eight of them tore one 230-person tree across 75 000 px. So the passes only
+  // propose, and the arrangement with the shortest lines is the one kept.
+  let best = keep();
   for (let pass = 0; pass < 8; pass++) {
     for (const g of gens) {
       const row = rows.get(g)!;
@@ -446,7 +483,10 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
     }
     reindex();
     relax();
+    if (sprawl() < best.sprawl) best = keep();
   }
+  for (const [id, v] of best.x) x.set(id, v);
+  for (const [g, row] of best.rows) rows.set(g, row);
 
   const out: Placed[] = [];
   for (const g of gens) rows.get(g)!.forEach((id, i) => out.push({ id, gen: g, x: x.get(id)!, order: i }));
