@@ -144,16 +144,35 @@ function intermarried(seed: number, generations: number, secondUnions: number): 
   ].join('\n');
 }
 
+/** How far every line of a layout runs sideways: partner to partner, and each child from their parents' midpoint. */
+function sideways(t: ReturnType<typeof parseGedcom>, L: ReturnType<typeof layoutEverything>): number {
+  const x = new Map(L.nodes.map((n) => [n.id, n.x]));
+  let total = 0;
+  for (const f of Object.values(t.families)) {
+    const [h, w] = [x.get(f.husbandId!)!, x.get(f.wifeId!)!];
+    total += Math.abs(h - w);
+    for (const c of f.childIds) total += Math.abs(x.get(c)! - (h + w) / 2);
+  }
+  return total;
+}
+
 describe('large intermarried trees', () => {
-  it('keeps every partner beside the person they married, second unions included', () => {
+  // Ten trees, each laid out once for every test here: a layout tries several arrangements, which takes time.
+  let laidOut: Array<{ seed: number; t: ReturnType<typeof parseGedcom>; L: ReturnType<typeof layoutEverything> }> | undefined;
+  const ten = () =>
+    (laidOut ??= Array.from({ length: 10 }, (_, k) => {
+      const seed = k + 1;
+      const t = parseGedcom(intermarried(seed, seed % 2 ? 9 : 11, 1 + (seed % 5)));
+      return { seed, t, L: layoutEverything(t) };
+    }));
+
+  // The first test here lays the ten trees out for the rest, so it is given the time that takes on a slow runner.
+  it('keeps every partner beside the person they married, second unions included', { timeout: 15_000 }, () => {
     // A second wife with no parents and no children had nothing to place her by but where the last pass left
     // her, and each reordering pass pushed the rest of her row aside to make room: a 230-person tree came out
-    // 75 000 px wide, torn in two along her partner line.
+    // 75 000 px wide, torn in two along her partner line. Seven of these ten trees caught it.
     const { cardW, partnerGap } = DEFAULT_LAYOUT;
-    // Ten trees: seven of them caught the original tear, and each is now laid out several times over.
-    for (let seed = 1; seed <= 10; seed++) {
-      const t = parseGedcom(intermarried(seed, seed % 2 ? 9 : 11, 1 + (seed % 5)));
-      const L = layoutEverything(t);
+    for (const { seed, t, L } of ten()) {
       const at = new Map(L.nodes.map((n) => [n.id, n]));
       for (const f of Object.values(t.families)) {
         const [h, w] = [at.get(f.husbandId!)!, at.get(f.wifeId!)!];
@@ -164,20 +183,20 @@ describe('large intermarried trees', () => {
     }
   });
 
+  it('carries a branch stranded among another line back under its parents', () => {
+    // A son, his wife whom the file gives no parents, and their daughter with no family of her own sat 3 400 px
+    // from his parents, drawn among a line they do not belong to: the two who only follow him voted for staying.
+    // Bringing such branches home shortens these ten trees' lines from 1 094 000 px to 1 017 000.
+    const total = ten().reduce((sum, { t, L }) => sum + sideways(t, L), 0);
+    expect(total).toBeLessThan(1_050_000);
+  });
+
   it('does not keep a bad arrangement just because the stored order led to it', () => {
     // The same 230 people came out 23 000 px wide from the order one tree stored them in and 15 000 px from
     // another's. In this tree the stored order settles with 155 000 px of sideways lines; another start finds
     // 121 000.
     const t = parseGedcom(intermarried(19, 9, 5));
-    const L = layoutEverything(t);
-    const x = new Map(L.nodes.map((n) => [n.id, n.x]));
-    let sideways = 0;
-    for (const f of Object.values(t.families)) {
-      const [h, w] = [x.get(f.husbandId!)!, x.get(f.wifeId!)!];
-      sideways += Math.abs(h - w);
-      for (const c of f.childIds) sideways += Math.abs(x.get(c)! - (h + w) / 2);
-    }
-    expect(sideways).toBeLessThan(135_000);
+    expect(sideways(t, layoutEverything(t))).toBeLessThan(135_000);
   });
 
   it('seats someone married twice between the two partners', () => {

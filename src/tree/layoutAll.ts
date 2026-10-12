@@ -244,7 +244,8 @@ function layoutFromSeveralStarts(tree: Tree, ids: string[], gen: Map<string, num
     const next = layoutComponent(tree, shuffled(ids, k), gen, opts);
     if (next.sprawl < best.sprawl) best = next;
   }
-  return best.placed;
+  // Each move re-settles the whole component, so a large tree tries fewer.
+  return best.bringHome(Math.min(16, Math.floor((4 * ATTEMPT_BUDGET) / ids.length)));
 }
 
 /** The same ids in an order fixed by the seed. */
@@ -259,8 +260,15 @@ function shuffled(ids: string[], seed: number): string[] {
   return out;
 }
 
-/** Order and position one connected component: world x per person (y comes from gen), and how far its lines run sideways. */
-function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, opts: LayoutOptions): { placed: Placed[]; sprawl: number } {
+interface Settled {
+  /** How far the arrangement's lines run sideways. */
+  sprawl: number;
+  /** Move up to `tries` stranded branches home, keeping each move that shortens the lines; the final positions. */
+  bringHome: (tries: number) => Placed[];
+}
+
+/** Order and position one connected component; world x per person comes from `bringHome` (y comes from gen). */
+function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, opts: LayoutOptions): Settled {
   const idSet = new Set(ids);
   const fam = (id: string): Family | undefined => tree.families[id];
   const partnersOf = (id: string): string[] =>
@@ -519,10 +527,48 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
     relax();
     if (sprawl() < best.sprawl) best = keep();
   }
-  for (const [id, v] of best.x) x.set(id, v);
-  for (const [g, row] of best.rows) rows.set(g, row);
+  const restore = (kept: ReturnType<typeof keep>) => {
+    for (const [id, v] of kept.x) x.set(id, v);
+    for (const [g, row] of kept.rows) rows.set(g, [...row]);
+    reindex();
+  };
+  restore(best);
 
-  const out: Placed[] = [];
-  for (const g of gens) rows.get(g)!.forEach((id, i) => out.push({ id, gen: g, x: x.get(id)!, order: i }));
-  return { placed: out, sprawl: best.sprawl };
+  // Every pass sorts a person by where their relatives are, and some relatives only ever follow: a wife the file
+  // gives no parents, a daughter with no family of her own. A son's branch that the first order put on the wrong
+  // side of the row votes, through them, for staying there, and ends up thousands of pixels from his parents,
+  // drawn among a line he does not belong to. So the people furthest from their parents are carried home with
+  // their descendants and the partners who have nobody else, the rows settle again, and the move is kept only if
+  // the lines come out shorter.
+  const bringHome = (tries: number): Placed[] => {
+    const mid = (ps: string[]) => ps.reduce((s, p) => s + center(p), 0) / ps.length;
+    const away = (id: string) => mid(parentsOf(id)) - center(id);
+    const tooFar = 2 * (opts.cardW + opts.siblingGap);
+    const stranded = ids
+      .filter((id) => parentsOf(id).length && Math.abs(away(id)) > tooFar)
+      .sort((a, b) => Math.abs(away(b)) - Math.abs(away(a)))
+      .slice(0, tries);
+    for (const who of stranded) {
+      const delta = away(who);
+      if (Math.abs(delta) <= tooFar) continue;
+      const branch = new Set<string>();
+      const carry = (id: string) => {
+        if (branch.has(id)) return;
+        branch.add(id);
+        for (const p of partnersOf(id)) if (!parentsOf(p).length) branch.add(p);
+        for (const c of childrenOf(id)) carry(c);
+      };
+      carry(who);
+      for (const id of branch) x.set(id, x.get(id)! + delta);
+      for (const g of gens) rows.set(g, keepCouplesTogether([...rows.get(g)!].sort((a, b) => x.get(a)! - x.get(b)!)));
+      reindex();
+      relax();
+      if (sprawl() < best.sprawl) best = keep();
+      else restore(best);
+    }
+    const out: Placed[] = [];
+    for (const g of gens) rows.get(g)!.forEach((id, i) => out.push({ id, gen: g, x: x.get(id)!, order: i }));
+    return out;
+  };
+  return { sprawl: best.sprawl, bringHome };
 }
