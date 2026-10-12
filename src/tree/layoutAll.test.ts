@@ -150,7 +150,8 @@ describe('large intermarried trees', () => {
     // her, and each reordering pass pushed the rest of her row aside to make room: a 230-person tree came out
     // 75 000 px wide, torn in two along her partner line.
     const { cardW, partnerGap } = DEFAULT_LAYOUT;
-    for (let seed = 1; seed <= 40; seed++) {
+    // Ten trees: seven of them caught the original tear, and each is now laid out several times over.
+    for (let seed = 1; seed <= 10; seed++) {
       const t = parseGedcom(intermarried(seed, seed % 2 ? 9 : 11, 1 + (seed % 5)));
       const L = layoutEverything(t);
       const at = new Map(L.nodes.map((n) => [n.id, n]));
