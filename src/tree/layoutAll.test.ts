@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseGedcom } from '../gedcom/parse';
 import { addChild, addPartner } from './edit';
+import { DEFAULT_LAYOUT } from './layout';
 import { layoutEverything } from './layoutAll';
 
 const tree = parseGedcom(readFileSync(new URL('../../fixtures/geneanet/input-fixture.ged', import.meta.url), 'utf8'));
@@ -80,5 +81,95 @@ describe('connector ownership', () => {
     const L = layoutEverything(tree);
     for (const l of L.links) expect(l.family, `${l.kind} link without a family`).toBeTruthy();
     expect(L.links.some((l) => l.family === 'F2')).toBe(true);
+  });
+});
+
+/**
+ * A tree of several lines marrying into one another over many generations, with second unions that bring
+ * nobody else: a wife with no parents and no children in the file. Built from a seed so a failure replays.
+ */
+function intermarried(seed: number, generations: number, secondUnions: number): string {
+  let s = seed;
+  const random = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32;
+  const people: Array<{ id: string; sex: 'M' | 'F'; famc?: string; fams: string[] }> = [];
+  const families: Array<{ id: string; husb: string; wife: string; children: string[] }> = [];
+  const person = (sex: 'M' | 'F', famc?: string) => {
+    const p = { id: `I${people.length + 1}`, sex, famc, fams: [] as string[] };
+    people.push(p);
+    return p;
+  };
+  const marry = (a: (typeof people)[number], b: (typeof people)[number]) => {
+    const [husb, wife] = a.sex === 'M' ? [a, b] : [b, a];
+    const f = { id: `F${families.length + 1}`, husb: husb.id, wife: wife.id, children: [] as string[] };
+    families.push(f);
+    husb.fams.push(f.id);
+    wife.fams.push(f.id);
+    return f;
+  };
+  const other = (p: (typeof people)[number]) => person(p.sex === 'M' ? 'F' : 'M');
+  let couples = Array.from({ length: 4 }, () => marry(person('M'), person('F')));
+  for (let g = 1; g < generations; g++) {
+    const children = couples.flatMap((f) =>
+      Array.from({ length: 1 + Math.floor(random() * 3) }, () => {
+        const c = person(random() < 0.5 ? 'M' : 'F', f.id);
+        f.children.push(c.id);
+        return c;
+      }),
+    );
+    const single = children.filter(() => random() < 0.8);
+    const next: typeof couples = [];
+    while (single.length) {
+      const a = single.splice(Math.floor(random() * single.length), 1)[0]!;
+      // Half the time a child of another family in the row: two lines joined by a marriage.
+      const k = single.findIndex((b) => b.sex !== a.sex && b.famc !== a.famc);
+      next.push(marry(a, k >= 0 && random() < 0.5 ? single.splice(k, 1)[0]! : other(a)));
+    }
+    couples = next.slice(0, 10);
+  }
+  const married = people.filter((p) => p.fams.length);
+  for (let k = 0; k < secondUnions; k++) {
+    const p = married[Math.floor(random() * married.length)]!;
+    marry(p, other(p));
+  }
+  return [
+    '0 HEAD',
+    ...people.flatMap((p) => [
+      `0 @${p.id}@ INDI`,
+      `1 SEX ${p.sex}`,
+      ...(p.famc ? [`1 FAMC @${p.famc}@`] : []),
+      ...p.fams.map((f) => `1 FAMS @${f}@`),
+    ]),
+    ...families.flatMap((f) => [`0 @${f.id}@ FAM`, `1 HUSB @${f.husb}@`, `1 WIFE @${f.wife}@`, ...f.children.map((c) => `1 CHIL @${c}@`)]),
+    '0 TRLR',
+  ].join('\n');
+}
+
+describe('large intermarried trees', () => {
+  it('keeps every partner beside the person they married, second unions included', () => {
+    // A second wife with no parents and no children had nothing to place her by but where the last pass left
+    // her, and each reordering pass pushed the rest of her row aside to make room: a 230-person tree came out
+    // 75 000 px wide, torn in two along her partner line.
+    const { cardW, partnerGap } = DEFAULT_LAYOUT;
+    for (let seed = 1; seed <= 40; seed++) {
+      const t = parseGedcom(intermarried(seed, seed % 2 ? 9 : 11, 1 + (seed % 5)));
+      const L = layoutEverything(t);
+      const at = new Map(L.nodes.map((n) => [n.id, n]));
+      for (const f of Object.values(t.families)) {
+        const [h, w] = [at.get(f.husbandId!)!, at.get(f.wifeId!)!];
+        const between = Math.abs(h.x - w.x) - cardW;
+        // Beside, or one partner's width away when a third person married to one of them sits between.
+        expect(between, `seed ${seed}: ${f.id} drawn ${Math.round(between)} px apart`).toBeLessThanOrEqual(cardW + 2 * partnerGap);
+      }
+    }
+  });
+
+  it('seats someone married twice between the two partners', () => {
+    const r = addPartner(tree, 'I1', { given: 'Second' });
+    const second = Object.keys(r.tree.individuals).find((id) => !tree.individuals[id])!;
+    const L = layoutEverything(r.tree);
+    const x = (id: string) => L.nodes.find((n) => n.id === id)!.x;
+    const [first, again] = [x('I24'), x(second)].sort((a, b) => a - b);
+    expect(x('I1')).toBeGreaterThan(first!);
+    expect(x('I1')).toBeLessThan(again!);
   });
 });
