@@ -163,6 +163,22 @@ describe('large intermarried trees', () => {
     }
   });
 
+  it('does not keep a bad arrangement just because the stored order led to it', () => {
+    // The same 230 people came out 23 000 px wide from the order one tree stored them in and 15 000 px from
+    // another's. In this tree the stored order settles with 155 000 px of sideways lines; another start finds
+    // 121 000.
+    const t = parseGedcom(intermarried(19, 9, 5));
+    const L = layoutEverything(t);
+    const x = new Map(L.nodes.map((n) => [n.id, n.x]));
+    let sideways = 0;
+    for (const f of Object.values(t.families)) {
+      const [h, w] = [x.get(f.husbandId!)!, x.get(f.wifeId!)!];
+      sideways += Math.abs(h - w);
+      for (const c of f.childIds) sideways += Math.abs(x.get(c)! - (h + w) / 2);
+    }
+    expect(sideways).toBeLessThan(135_000);
+  });
+
   it('seats someone married twice between the two partners', () => {
     const r = addPartner(tree, 'I1', { given: 'Second' });
     const second = Object.keys(r.tree.individuals).find((id) => !tree.individuals[id])!;

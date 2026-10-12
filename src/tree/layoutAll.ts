@@ -104,7 +104,7 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
     const shift = topGen - comp.max;
     const gen = new Map<string, number>();
     for (const id of comp.ids) gen.set(id, comp.gen.get(id)! + shift);
-    const placed = layoutComponent(tree, comp.ids, gen, opts);
+    const placed = layoutFromSeveralStarts(tree, comp.ids, gen, opts);
     let minX = Infinity,
       maxX = -Infinity;
     for (const p of placed) {
@@ -225,8 +225,42 @@ export function layoutEverything(tree: Tree, opts: LayoutOptions = DEFAULT_LAYOU
   return { focusId: '', nodes, links, rows, bounds, truncatedUp: false, truncatedDown: false, rowLabels: labels };
 }
 
-/** Order and position one connected component. Returns world x per person (y comes from gen). */
-function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, opts: LayoutOptions): Placed[] {
+/** Room for extra attempts: a component gets as many as keep it near this many people laid out, four at most. */
+const ATTEMPT_BUDGET = 1000;
+
+/**
+ * Lay a component out from more than one starting order and keep the one with the shortest lines.
+ *
+ * Where the settling ends depends on where it starts, and on a family whose lines marry into one another
+ * again and again it can end in a much worse place: the same 230 people laid out 23 000 px wide from the
+ * order one tree stored them in and 15 000 px from another. The starting order is only the order of people
+ * the same age, so the other attempts reshuffle those ids from fixed seeds — the same tree always comes out
+ * the same. A large tree gets fewer attempts, down to one, so it costs what it always did.
+ */
+function layoutFromSeveralStarts(tree: Tree, ids: string[], gen: Map<string, number>, opts: LayoutOptions): Placed[] {
+  const attempts = Math.max(1, Math.min(4, Math.floor(ATTEMPT_BUDGET / ids.length)));
+  let best = layoutComponent(tree, ids, gen, opts);
+  for (let k = 1; k < attempts; k++) {
+    const next = layoutComponent(tree, shuffled(ids, k), gen, opts);
+    if (next.sprawl < best.sprawl) best = next;
+  }
+  return best.placed;
+}
+
+/** The same ids in an order fixed by the seed. */
+function shuffled(ids: string[], seed: number): string[] {
+  const out = [...ids];
+  let s = Math.imul(seed, 2654435761) >>> 0;
+  for (let i = out.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const j = Math.floor((s / 2 ** 32) * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+/** Order and position one connected component: world x per person (y comes from gen), and how far its lines run sideways. */
+function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, opts: LayoutOptions): { placed: Placed[]; sprawl: number } {
   const idSet = new Set(ids);
   const fam = (id: string): Family | undefined => tree.families[id];
   const partnersOf = (id: string): string[] =>
@@ -490,5 +524,5 @@ function layoutComponent(tree: Tree, ids: string[], gen: Map<string, number>, op
 
   const out: Placed[] = [];
   for (const g of gens) rows.get(g)!.forEach((id, i) => out.push({ id, gen: g, x: x.get(id)!, order: i }));
-  return out;
+  return { placed: out, sprawl: best.sprawl };
 }
