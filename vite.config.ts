@@ -1,5 +1,5 @@
-/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
+import { configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +66,8 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Agents' git worktrees live under .claude; their copies of the tests are never this checkout's.
+    exclude: [...configDefaults.exclude, '.claude/**'],
     setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',

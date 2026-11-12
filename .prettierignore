@@ -3,3 +3,4 @@ dev-dist
 node_modules
 fixtures
 package-lock.json
+.claude

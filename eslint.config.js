@@ -4,7 +4,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['dist', 'dev-dist', 'node_modules', 'docs', '.wrangler'] },
+  // .claude holds agents' git worktrees, each a full copy of the repo: linting them from here reports their files as ours.
+  { ignores: ['dist', 'dev-dist', 'node_modules', 'docs', '.wrangler', '.claude'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
