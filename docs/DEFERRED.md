@@ -51,84 +51,64 @@ certain threshold is reached".
 
 ## `dev-dependency-advisories`
 
-**The work.** Lift the hold on `@cloudflare/vitest-pool-workers` in
-[.github/dependabot.yml](../.github/dependabot.yml) and clear the development
-advisories that come with it.
+**The work.** Keep the development advisories clear: those on packages
+`package.json` names, and those on the copies `@cloudflare/vitest-plugin` pins
+inside its own `node_modules`. None of it ships — the Worker bundle contains
+none of those packages and `npm audit --omit=dev` is clean — so it waits for a
+fix that needs no breaking change, and no longer.
 
-**Why it was deferred.** `npm audit` reports ten, six of them high — `sharp`
-(libvips and libheif), `undici`, `ws`, `esbuild` — and every one lives under
-wrangler / miniflare / `@cloudflare/vitest-pool-workers`. **None of it ships.**
-The Worker bundle contains none of those packages and `npm audit --omit=dev` is
-clean. The realistic exposure is a developer's own machine: the `esbuild`
-advisory lets a page the developer visits read from the local dev server while
-it is running, and `sharp` needs a hostile image reaching miniflare's image
-emulation, which Ramure never invokes.
+**The migration this entry used to defer is done, 2026-11-12.** For two months
+the high advisories — `sharp`, `undici`, `ws`, `miniflare`, `wrangler` — all sat
+on copies pinned by `@cloudflare/vitest-pool-workers@0.12`, which held vitest
+at 3. Every release that needed vitest 4 pinned a wrangler and a miniflare
+still inside the advisory ranges, so moving early would have swapped one set
+of vulnerable pins for another. Two critical advisories on vitest 3's own
+`tinypool` made the wait untenable, and by then the package had been renamed
+`@cloudflare/vitest-plugin`, whose 1.8 line pins a wrangler and a miniflare
+outside every range. vitest, `@vitest/coverage-v8` and the plugin moved to
+vitest 4 together; both test configurations ran against it before the hold in
+[.github/dependabot.yml](../.github/dependabot.yml) came off.
 
-And it cannot be fixed today. `npm audit fix --force` wants
-`@cloudflare/vitest-pool-workers@0.22.0`, which needs vitest 4, which
-`dependabot.yml` holds at 3 on purpose — that hold was added on 2026-09-09 after
-a Dependabot pull request that could not install at all, because the package is
-`0.x` and npm treats 0.12 → 0.22 as a minor bump carrying a peer dependency on
-the next vitest major.
+**What the tripwire caught before that.** On 2026-09-11 and 2026-10-05 it fired
+on packages `package.json` names, each with a routine fix out — a drifted
+top-level `wrangler`, then transitive `brace-expansion`, `fast-uri` and
+`serialize-javascript`. The held chain was never the reason. That is why the
+measure is two counts, by where the vulnerable copy sits.
 
-**What the tripwire caught, 2026-09-11 — and it was not the hold.** The count
-went to one, and the advisory was on **our own** top-level `wrangler`, which had
-drifted into the range `4.16.0 – 4.130.0`. Nothing was holding it: `4.131.0`
-was published and clear, and a routine bump fixed it. The held chain was not
-involved.
-
-That is worth stating because the hold had been assumed to be the only thing
-standing between the tree and a fix, and it is not. So the measure is now two
-counts, by where the vulnerable copy sits: a package `package.json` names, which
-is ours to update today, or a copy nested inside
-`@cloudflare/vitest-pool-workers`' own `node_modules`, which only moves when
-that package does.
-
-**It fired again on 2026-10-05, the same shape.** The advisories were on
-transitive copies of `brace-expansion`, `fast-uri` and `serialize-javascript`
-reached through packages `package.json` names, each with a patch release out. A
-plain `npm audit fix`, without `--force`, cleared them; the held chain was
-untouched and still accounts for every advisory left.
-
-**Checked at the same time: the held major would not clear any of this.**
-`@cloudflare/vitest-pool-workers@0.22.0` pins `wrangler 4.124.0` and
-`miniflare 5.20260815.0-alpha`, and both sit **inside** the advisory ranges
-(`4.16.0 – 4.130.0` and `3.20250204.0 – 5.20260908.0-alpha`). Doing the vitest-4
-migration today would swap one set of vulnerable pins for another and clear only
-the `esbuild` advisory, which is `low`. npm's own `fixAvailable` names 0.22.0 as
-the fix for `sharp`, `undici`, `ws` and `miniflare`; on these exact pins it is
-wrong. The hold is therefore still right, but for a different reason than the
-one first written down: **upstream has not shipped a fixed release**, rather than
-**we are refusing the one that exists**.
+**What is left, and why.** Moderate and low advisories only: `minimatch` under
+eslint and typescript-eslint, whose patched release is a major neither accepts
+yet, and `deepmerge` and `glob` under vite-plugin-pwa's workbox, one of which
+has no patched release at all. npm's `fixAvailable` for each is an older major
+of the parent, which is a downgrade, not a fix.
 
 **What makes it worth doing.**
 
-| Measure                                                                    | Limit | Why that number                                                                                                       |
-| -------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |
-| High or critical advisories on a package `package.json` names, with a fix  | **0** | Nothing is holding these. They are a routine bump and should never sit.                                               |
-| High or critical advisories inside the held chain, fixable without a major | **0** | Any at all means the hold has stopped being the reason anything is waiting, and the migration below becomes the work. |
+| Measure                                                                       | Limit | Why that number                                                                                                    |
+| ----------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
+| High or critical advisories on a package `package.json` names, with a fix     | **0** | Nothing is holding these. They are a routine bump and should never sit.                                            |
+| High or critical advisories inside the plugin's pins, fixable without a major | **0** | The plugin pins exact wrangler and miniflare versions; a fixed release of it is a routine bump and should not sit. |
 
 `scripts/check-thresholds.mjs` reads `fixAvailable` from `npm audit --json`:
 `true`, or an object with `isSemVerMajor: false`, is npm saying the fix needs no
 breaking change. It sorts each advisory by whether every one of its `nodes` sits
-under `node_modules/@cloudflare/vitest-pool-workers/node_modules/`. When the
-audit cannot run at all it says so in the label rather than reporting a clean
-result.
+under `node_modules/@cloudflare/vitest-plugin/node_modules/`. When the audit
+cannot run at all it says so in the label rather than reporting a clean result.
 
 The other trigger has no cheap measure and counts for more: **any of this
 becoming reachable from the deployed Worker.** That would mean one of these
 packages entered `dependencies` rather than `devDependencies`, which should
 never happen silently — `npm audit --omit=dev` in CI is what would say so.
 
-**What it would look like.** One deliberate migration, not a routine bump:
-vitest 3 → 4 and `@cloudflare/vitest-pool-workers` together, since the peer
-range ties them. Both test configurations run against it before the hold comes
-off dependabot.
+**What it would look like.** A routine bump, most of the time. A major of
+vitest is the one deliberate migration: the plugin's peer range ties the two,
+so they move together and both test configurations run against it first.
 
 **Recorded** 2026-09-09, from finding S9 of
 [SECURITY_AUDIT_2026-09.md](SECURITY_AUDIT_2026-09.md). **Revised** 2026-09-11
 after the first firing: top-level `wrangler` bumped to `^4.131.0`, the measure
-split in two, and the note above added about what 0.22.0 actually pins.
+split in two, and a note added on why 0.22.0 would not have cleared it.
+**Revised** 2026-11-12 when the vitest 4 migration landed on
+`@cloudflare/vitest-plugin`.
 
 ---
 

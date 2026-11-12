@@ -154,7 +154,9 @@ describe('the printable charts screen', () => {
   });
 
   it('downloads the sheet as a PDF instead of opening the print dialog', async () => {
-    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    // happy-dom has no print dialog at all, so one is put in place to prove it is never opened.
+    const print = vi.fn();
+    vi.stubGlobal('print', print);
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     URL.createObjectURL = vi.fn(() => 'blob:sheet');
     URL.revokeObjectURL = vi.fn();
@@ -170,7 +172,7 @@ describe('the printable charts screen', () => {
     const link = click.mock.contexts[0] as HTMLAnchorElement;
     expect(link.download).toBe('Marguerite-LENOIR-fiche.pdf');
     expect(print).not.toHaveBeenCalled();
-    print.mockRestore();
+    vi.unstubAllGlobals();
     click.mockRestore();
   });
 
