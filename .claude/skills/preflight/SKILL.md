@@ -1,6 +1,6 @@
 ---
 name: preflight
-description: Run Ramure's full pre-merge check suite locally — lint, typecheck, format, unit tests, build, Worker tests, the Playwright journey, and a secret scan. Use before opening or merging any PR, or whenever asked to "run the checks", "run CI", or confirm a branch is green.
+description: Run Ramure's full pre-merge check suite locally — lint, typecheck, format, unit tests, build, Worker tests, the production dependency audit, the Playwright journey, and a secret scan. Use before opening or merging any PR, or whenever asked to "run the checks", "run CI", or confirm a branch is green.
 ---
 
 # Preflight
@@ -22,10 +22,17 @@ npm run format:check
 npm test
 npm run build
 npm run test:worker
+npm audit --audit-level=high --omit=dev
 ./scripts/scan-secrets.sh
 ./scripts/check-buckets.sh
 node scripts/check-thresholds.mjs
 ```
+
+`npm audit --omit=dev` is the same gate CI applies to the packages that ship.
+A high or critical advisory there fails the build, so it fails here first — in
+October a critical `dompurify` advisory, reached through `jspdf`, passed every
+local step and was caught only by CI. Development advisories are not part of
+this gate; `check-thresholds.mjs` reports those.
 
 `scan-secrets.sh` runs gitleaks over the whole history. It exits 127 with
 install instructions if gitleaks is missing (`brew install gitleaks`) rather
