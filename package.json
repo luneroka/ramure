@@ -30,7 +30,7 @@
     "check:buckets": "./scripts/check-buckets.sh"
   },
   "dependencies": {
-    "hono": "^4.13.16",
+    "hono": "^4.13.17",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "react": "^19.3.1",
@@ -56,8 +56,8 @@
     "happy-dom": "^21.0.4",
     "prettier": "^3.9.10",
     "typescript": "^5.8.0",
-    "typescript-eslint": "^8.72.1",
-    "vite": "^6.4.5",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^6.4.6",
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^4.1.12",
     "wrangler": "^4.161.0"
