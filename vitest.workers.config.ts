@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/vitest-pool-workers" />
 import { defineWorkersConfig, readD1Migrations } from '@cloudflare/vitest-pool-workers/config';
+import { configDefaults } from 'vitest/config';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
@@ -11,6 +12,8 @@ export default defineWorkersConfig(async () => {
   return {
     test: {
       include: ['worker/**/*.test.ts'],
+      // Agents' git worktrees live under .claude; their copies of the tests are never this checkout's.
+      exclude: [...configDefaults.exclude, '.claude/**'],
       setupFiles: ['./worker/test/setup.ts'],
       poolOptions: {
         workers: {
