@@ -9,9 +9,9 @@ name: CI
 # `push` is limited to main: a pull-request branch is already covered by the `pull_request` trigger, and
 # listing both bare would run every check twice on each push to an open PR.
 #
-# Node comes from `.node-version`, which Cloudflare Workers Builds reads too, so CI, the deploy build and
-# Dependabot all resolve the lockfile with the same npm. On Node 22, npm 10 wanted an optional peer entry
-# that npm 11 drops, and every Dependabot pull request arrived unable to `npm ci`.
+# Node comes from `.node-version`, which Cloudflare Workers Builds also reads, so CI and the deploy build
+# resolve the lockfile with the npm Dependabot uses. On Node 22, npm 10 wanted an optional peer entry that
+# npm 11 drops, and every Dependabot pull request arrived unable to `npm ci`.
 on:
   push:
     branches: [main]
