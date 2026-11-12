@@ -50,6 +50,7 @@ npm run format:check
 npm test
 npm run build
 npm run test:worker
+npm audit --audit-level=high --omit=dev   # the packages that ship; CI fails on these
 npx playwright test        # after: npm run build && restart npm run dev:api
 ./scripts/scan-secrets.sh   # gitleaks over the whole history
 node scripts/check-thresholds.mjs   # has any deferred work come due?
