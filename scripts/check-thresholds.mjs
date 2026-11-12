@@ -29,8 +29,7 @@ const sqlCount = workerFiles.reduce((n, f) => n + (f.text.match(/\b(SELECT|INSER
  * Development advisories that could be fixed without a held major version,
  * counted in two piles because the answer differs.
  *
- * Every advisory here lives under wrangler / miniflare /
- * @cloudflare/vitest-pool-workers, and none of it ships: the Worker bundle
+ * Every advisory here lives in the build, lint and test tooling, and none of it ships: the Worker bundle
  * contains none of those packages and `npm audit --omit=dev` is clean. But
  * *where* the vulnerable copy sits decides what to do about it.
  *
@@ -38,11 +37,11 @@ const sqlCount = workerFiles.reduce((n, f) => n + (f.text.match(/\b(SELECT|INSER
  *   holding it; update it. On 11 September 2026 this is what fired — the
  *   top-level wrangler had drifted into an advisory range and a routine bump
  *   to 4.131.0 cleared it, with the held chain untouched.
- * - **The held chain**: a copy nested inside @cloudflare/vitest-pool-workers'
- *   own node_modules, reachable only by moving that package — which
- *   .github/dependabot.yml holds because its next release needs vitest 4. A
- *   non-major fix appearing here means the hold has stopped being the reason
- *   anything is waiting.
+ * - **The held chain**: a copy nested inside @cloudflare/vitest-plugin's own
+ *   node_modules, reachable only by moving that package, which pins exact
+ *   wrangler and miniflare versions and whose majors .github/dependabot.yml
+ *   holds with vitest's. A non-major fix appearing here means a routine bump
+ *   of the plugin is waiting.
  *
  * npm marks each advisory with `fixAvailable`: `true`, or an object with
  * `isSemVerMajor: false`, means it can be fixed without a breaking change.
@@ -71,7 +70,7 @@ function fixableDevAdvisories() {
       ['high', 'critical'].includes(v.severity) &&
       (v.fixAvailable === true || (typeof v.fixAvailable === 'object' && v.fixAvailable?.isSemVerMajor === false)),
   );
-  const HELD = 'node_modules/@cloudflare/vitest-pool-workers/node_modules/';
+  const HELD = 'node_modules/@cloudflare/vitest-plugin/node_modules/';
   const inHeldChain = (v) => v.nodes?.length > 0 && v.nodes.every((n) => n.startsWith(HELD));
   return { ours: fixable.filter((v) => !inHeldChain(v)).length, chain: fixable.filter(inHeldChain).length };
 }
@@ -93,7 +92,7 @@ const checks = [
   },
   {
     id: 'dev-dependency-advisories',
-    what: 'Update the development dependency that has a fix, or lift the hold on @cloudflare/vitest-pool-workers — the count below says which.',
+    what: 'Update the development dependency that has a fix, or bump @cloudflare/vitest-plugin — the count below says which.',
     why: 'None of it reaches the deployed Worker, so it waits. It stops waiting when a fix needs neither the held major nor a breaking change.',
     where: 'docs/DEFERRED.md § dev-dependency-advisories',
     trips: [
@@ -111,7 +110,7 @@ const checks = [
         value: fixableDev?.chain ?? 0,
         limit: 0,
         unit: auditRan ? 'advisories' : 'advisories (npm audit DID NOT RUN)',
-        extra: 'the hold has stopped being the reason anything is waiting',
+        extra: 'a routine bump of the plugin clears these',
       },
     ],
   },

@@ -23,13 +23,13 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
-      # Minor too, not just major: this package is 0.x, so npm treats 0.12 -> 0.22 as a
-      # minor bump, and it carries a peer dependency on the matching vitest major. On
-      # 9 September 2026 that produced a pull request that could not install at all —
-      # it asked for a release needing vitest 4 while vitest itself was held at 3 by
-      # the rule below. It moves when vitest moves, as one deliberate migration.
-      - dependency-name: '@cloudflare/vitest-pool-workers'
-        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # The Workers test plugin peers on vitest's major and pins its own wrangler and
+      # miniflare, so a major of it moves with vitest, as one deliberate migration. It
+      # replaced @cloudflare/vitest-pool-workers on 12 November 2026; that 0.x package
+      # was held on minors too, since npm read 0.12 -> 0.22 as a minor carrying the
+      # next vitest major.
+      - dependency-name: '@cloudflare/vitest-plugin'
+        update-types: ['version-update:semver-major']
       - dependency-name: react
         update-types: ['version-update:semver-major']
       - dependency-name: react-dom
