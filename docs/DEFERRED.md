@@ -75,11 +75,17 @@ top-level `wrangler`, then transitive `brace-expansion`, `fast-uri` and
 `serialize-javascript`. The held chain was never the reason. That is why the
 measure is two counts, by where the vulnerable copy sits.
 
-**What is left, and why.** Moderate and low advisories only: `minimatch` under
-eslint and typescript-eslint, whose patched release is a major neither accepts
-yet, and `deepmerge` and `glob` under vite-plugin-pwa's workbox, one of which
-has no patched release at all. npm's `fixAvailable` for each is an older major
-of the parent, which is a downgrade, not a fix.
+**What is left, and why.** Nothing open as of 2026-11-21. The last moderate
+advisories were `minimatch`, in eslint and typescript-eslint (cleared by their
+own routine bumps) and under vite-plugin-pwa's workbox, where `workbox-build`
+7.4.1 is still the latest release and declares `glob@^11.0.1`, whose every
+release depends on a vulnerable `minimatch` 10. That one is cleared by an
+`overrides` entry in [package.json](../package.json) that puts `glob@^14.0.6`
+under `workbox-build`: outside the range it declares, so **remove it once
+`workbox-build` itself depends on `glob` 14 or later**, and re-check that the
+build's `dist/` is unchanged when it goes. `deepmerge` 4.3.1 stays in the tree
+under the same workbox, but its advisory was withdrawn and GitHub closed the
+alert; it never had a patched release.
 
 **What makes it worth doing.**
 
@@ -108,7 +114,8 @@ so they move together and both test configurations run against it first.
 after the first firing: top-level `wrangler` bumped to `^4.131.0`, the measure
 split in two, and a note added on why 0.22.0 would not have cleared it.
 **Revised** 2026-11-12 when the vitest 4 migration landed on
-`@cloudflare/vitest-plugin`.
+`@cloudflare/vitest-plugin`. **Revised** 2026-11-21 when the `glob` override
+cleared the last `minimatch` copy.
 
 ---
 
