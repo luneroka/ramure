@@ -61,5 +61,10 @@
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^4.1.12",
     "wrangler": "^4.161.0"
+  },
+  "overrides": {
+    "workbox-build": {
+      "glob": "^14.0.6"
+    }
   }
 }
