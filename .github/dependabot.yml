@@ -12,6 +12,10 @@ updates:
     groups:
       all-dependencies:
         patterns: ['*']
+        # jest-dom 8 peers on vitest 5 only (>=5 <6), while we run vitest 4. Left in the
+        # group, its major would sit in the weekly pull request and block the routine
+        # bumps beside it. It moves with the vitest 5 migration, as its own pull request.
+        exclude-patterns: ['@testing-library/jest-dom']
     ignore:
       - dependency-name: vite
         update-types: ['version-update:semver-major']
